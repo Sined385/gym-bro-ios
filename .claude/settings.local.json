@@ -1,0 +1,16 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(tree:*)",
+      "Bash(find:*)",
+      "Bash(xcodebuild:*)",
+      "Bash(xargs:*)",
+      "Bash(xcrun simctl:*)",
+      "WebFetch(domain:www.figma.com)",
+      "mcp__figma-desktop__get_design_context",
+      "mcp__figma-desktop__get_screenshot"
+    ],
+    "deny": [],
+    "ask": []
+  }
+}

@@ -1,0 +1,483 @@
+//
+//  ShareSessionView.swift
+//  GymBro
+//
+//  Created by Claude Code on 2026-03-20.
+//
+
+import SwiftUI
+import Supabase
+
+struct ShareSessionView: View {
+    @ObservedObject var viewModel: SessionFlowViewModel
+    let sessionDurationMinutes: Int?
+    var onShare: (CommunityPost) -> Void
+    var onSkip: () -> Void
+
+    @State private var postContent: String = ""
+    @State private var visibility: String = "global"
+    @State private var isSharing: Bool = false
+    @State private var errorMessage: String?
+    @State private var showImageSourcePicker: Bool = false
+
+    // Photo
+    @State private var photoData: Data?
+    @State private var photoPreview: Image?
+    @State private var uploadedPhotoUrl: String?
+    @State private var isUploadingPhoto: Bool = false
+
+    @Environment(\.dismiss) private var dismiss
+
+    private let networkService: NetworkServiceProtocol = DependencyContainer.shared.resolve(NetworkServiceProtocol.self)
+
+    var body: some View {
+        NavigationStack {
+            ScrollView(.vertical, showsIndicators: false) {
+                VStack(spacing: 20) {
+                    // Workout summary card
+                    workoutSummaryCard
+
+                    // User info row
+                    userInfoRow
+
+                    // Text editor
+                    textEditorSection
+
+                    // Photo attachment
+                    photoSection
+
+                    // Bottom buttons
+                    actionButtons
+                }
+                .padding(.horizontal, 20)
+                .padding(.bottom, 40)
+                .padding(.top, 8)
+            }
+            .background(Color.gymBroBackground.ignoresSafeArea())
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .principal) {
+                    Text("Share Your Victory \u{1F389}")
+                        .font(.system(size: 18, weight: .bold))
+                        .foregroundColor(.gymBroNeutral900)
+                }
+                ToolbarItem(placement: .topBarTrailing) {
+                    Button {
+                        onSkip()
+                        dismiss()
+                    } label: {
+                        ZStack {
+                            Circle()
+                                .fill(Color.white)
+                                .frame(width: 32, height: 32)
+                                .shadow(color: .black.opacity(0.1), radius: 4, y: 2)
+                            Image(systemName: "xmark")
+                                .font(.system(size: 12, weight: .bold))
+                                .foregroundColor(.gymBroNeutral900)
+                        }
+                    }
+                    .buttonStyle(.plain)
+                }
+            }
+        }
+        .imageSourcePicker(isPresented: $showImageSourcePicker) { data in
+            Task { await handleImageData(data) }
+        }
+    }
+
+    // MARK: - Workout Summary Card
+
+    private var workoutSummaryCard: some View {
+        VStack(spacing: 14) {
+            // Header
+            HStack(spacing: 10) {
+                ZStack {
+                    Circle()
+                        .fill(
+                            LinearGradient(
+                                colors: [Color(hex: "30C08D"), Color(hex: "28A677")],
+                                startPoint: .topLeading,
+                                endPoint: .bottomTrailing
+                            )
+                        )
+                        .frame(width: 40, height: 40)
+                    Image(systemName: "dumbbell.fill")
+                        .font(.system(size: 18, weight: .bold))
+                        .foregroundColor(.white)
+                }
+
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("Workout Complete")
+                        .font(.system(size: 16, weight: .bold))
+                        .foregroundColor(.gymBroNeutral900)
+
+                    HStack(spacing: 4) {
+                        if let duration = sessionDurationMinutes {
+                            Text("\(duration) MIN")
+                                .font(.system(size: 12, weight: .semibold))
+                                .foregroundColor(.gymBroTextSecondary)
+                        }
+                        Text("\u{2022}")
+                            .font(.system(size: 12))
+                            .foregroundColor(.gymBroTextSecondary)
+                        Text("\(viewModel.exercises.count) EXERCISE\(viewModel.exercises.count == 1 ? "" : "S")")
+                            .font(.system(size: 12, weight: .semibold))
+                            .foregroundColor(.gymBroTextSecondary)
+                    }
+                }
+                Spacer()
+            }
+
+            // Stat pills
+            HStack(spacing: 8) {
+                // Effort
+                statPill(
+                    label: "Effort",
+                    value: "\(viewModel.effortLevel)/10",
+                    color: .gymBroPrimary
+                )
+
+                // Energy
+                statPill(
+                    label: "Energy",
+                    value: energyEmoji(for: viewModel.energyLevel),
+                    color: Color(hex: "F5A623")
+                )
+
+                // Status
+                HStack(spacing: 4) {
+                    Image(systemName: "checkmark.circle.fill")
+                        .font(.system(size: 12))
+                        .foregroundColor(Color(hex: "30C08D"))
+                    Text("Done")
+                        .font(.system(size: 12, weight: .semibold))
+                        .foregroundColor(Color(hex: "30C08D"))
+                }
+                .padding(.horizontal, 10)
+                .padding(.vertical, 6)
+                .background(Color(hex: "30C08D").opacity(0.1))
+                .clipShape(RoundedRectangle(cornerRadius: 8))
+            }
+
+            // Exercises
+            if !viewModel.exercises.isEmpty {
+                VStack(alignment: .leading, spacing: 8) {
+                    Text("EXERCISES")
+                        .font(.system(size: 11, weight: .bold))
+                        .foregroundColor(.gymBroTextSecondary)
+                        .tracking(0.5)
+
+                    ForEach(viewModel.exercises) { exercise in
+                        let completedSets = exercise.sets.filter { $0.isCompleted }.count
+                        let totalReps = exercise.sets.filter { $0.isCompleted }.compactMap { $0.reps }.reduce(0, +)
+                        ExerciseRowView(
+                            name: exercise.name,
+                            sets: "\(completedSets) \u{00D7} \(totalReps)",
+                            step: exercise.stepNumber,
+                            accentColor: Color(hex: exercise.accentColor)
+                        )
+                    }
+                }
+            }
+        }
+        .padding(16)
+        .background(Color.white)
+        .clipShape(RoundedRectangle(cornerRadius: 24))
+        .overlay(
+            RoundedRectangle(cornerRadius: 24)
+                .stroke(
+                    LinearGradient(
+                        colors: [Color(hex: "30C08D").opacity(0.5), Color(hex: "28A677").opacity(0.3)],
+                        startPoint: .topLeading,
+                        endPoint: .bottomTrailing
+                    ),
+                    lineWidth: 2
+                )
+        )
+        .gymBroCardShadow()
+    }
+
+    // MARK: - User Info Row
+
+    private var userInfoRow: some View {
+        HStack(spacing: 10) {
+            // We don't have direct access to the current user here, so use a placeholder
+            Image(systemName: "person.circle.fill")
+                .font(.system(size: 32))
+                .foregroundColor(.gymBroPrimary)
+
+            VStack(alignment: .leading, spacing: 2) {
+                Text("Your Post")
+                    .font(.system(size: 14, weight: .semibold))
+                    .foregroundColor(.gymBroNeutral900)
+
+                Button {
+                    visibility = visibility == "global" ? "followers" : "global"
+                } label: {
+                    HStack(spacing: 4) {
+                        Image(systemName: visibility == "global" ? "globe" : "lock.fill")
+                            .font(.system(size: 10))
+                        Text("Sharing to \(visibility == "global" ? "Global Feed" : "Followers")")
+                            .font(.system(size: 12, weight: .medium))
+                    }
+                    .foregroundColor(.gymBroTextSecondary)
+                }
+                .buttonStyle(.plain)
+            }
+            Spacer()
+        }
+    }
+
+    // MARK: - Text Editor
+
+    private var textEditorSection: some View {
+        ZStack(alignment: .topLeading) {
+            TextEditor(text: $postContent)
+                .font(.system(size: 15))
+                .foregroundColor(.gymBroNeutral900)
+                .frame(height: 128)
+                .padding(8)
+                .scrollContentBackground(.hidden)
+                .background(Color.gymBroNeutral100)
+                .clipShape(RoundedRectangle(cornerRadius: 12))
+                .overlay(
+                    RoundedRectangle(cornerRadius: 12)
+                        .stroke(Color.gymBroNeutral200, lineWidth: 1)
+                )
+
+            if postContent.isEmpty {
+                Text("Share your experience... (optional)")
+                    .font(.system(size: 15))
+                    .foregroundColor(.gymBroNeutral400)
+                    .padding(.horizontal, 13)
+                    .padding(.vertical, 16)
+                    .allowsHitTesting(false)
+            }
+        }
+    }
+
+    // MARK: - Photo Section
+
+    private var photoSection: some View {
+        VStack(spacing: 10) {
+            // Photo preview
+            if let photoPreview {
+                ZStack(alignment: .topTrailing) {
+                    photoPreview
+                        .resizable()
+                        .scaledToFill()
+                        .frame(maxHeight: 160)
+                        .clipped()
+                        .clipShape(RoundedRectangle(cornerRadius: 12))
+
+                    Button {
+                        self.photoData = nil
+                        self.photoPreview = nil
+                        self.uploadedPhotoUrl = nil
+                    } label: {
+                        ZStack {
+                            Circle()
+                                .fill(Color.black.opacity(0.6))
+                                .frame(width: 28, height: 28)
+                            Image(systemName: "xmark")
+                                .font(.system(size: 10, weight: .bold))
+                                .foregroundColor(.white)
+                        }
+                    }
+                    .buttonStyle(.plain)
+                    .padding(8)
+                }
+            }
+
+            // Attach photo button
+            Button {
+                showImageSourcePicker = true
+            } label: {
+                HStack(spacing: 8) {
+                    Image(systemName: "photo.badge.plus")
+                        .font(.system(size: 16))
+                    Text("Attach Photo")
+                        .font(.system(size: 14, weight: .medium))
+                }
+                .foregroundColor(.gymBroTextSecondary)
+                .frame(maxWidth: .infinity)
+                .frame(height: 48)
+                .background(Color.clear)
+                .clipShape(RoundedRectangle(cornerRadius: 12))
+                .overlay(
+                    RoundedRectangle(cornerRadius: 12)
+                        .stroke(style: StrokeStyle(lineWidth: 1.5, dash: [6, 4]))
+                        .foregroundColor(.gymBroNeutral200)
+                )
+            }
+            .buttonStyle(.plain)
+
+            if isUploadingPhoto {
+                HStack(spacing: 6) {
+                    ProgressView()
+                        .scaleEffect(0.7)
+                    Text("Uploading photo...")
+                        .font(.system(size: 12))
+                        .foregroundColor(.gymBroTextSecondary)
+                }
+            }
+        }
+    }
+
+    // MARK: - Action Buttons
+
+    private var actionButtons: some View {
+        VStack(spacing: 12) {
+            if let error = errorMessage {
+                Text(error)
+                    .font(.system(size: 13))
+                    .foregroundColor(.gymBroPrimary)
+            }
+
+            HStack(spacing: 12) {
+                // Skip button
+                Button {
+                    onSkip()
+                    dismiss()
+                } label: {
+                    Text("Skip for Now")
+                        .font(.system(size: 15, weight: .semibold))
+                        .foregroundColor(.gymBroTextSecondary)
+                        .frame(maxWidth: .infinity)
+                        .frame(height: 50)
+                        .background(Color.gymBroNeutral100)
+                        .clipShape(RoundedRectangle(cornerRadius: 16))
+                }
+                .buttonStyle(.plain)
+
+                // Share button
+                Button {
+                    Task { await sharePost() }
+                } label: {
+                    HStack(spacing: 6) {
+                        if isSharing {
+                            ProgressView()
+                                .tint(.white)
+                                .scaleEffect(0.8)
+                        }
+                        Text("Share to Community")
+                            .font(.system(size: 15, weight: .bold))
+                        Image(systemName: "square.and.arrow.up")
+                            .font(.system(size: 14, weight: .semibold))
+                    }
+                    .foregroundColor(.white)
+                    .frame(maxWidth: .infinity)
+                    .frame(height: 50)
+                    .background(
+                        LinearGradient(
+                            colors: [Color(hex: "30C08D"), Color(hex: "28A677")],
+                            startPoint: .topLeading,
+                            endPoint: .bottomTrailing
+                        )
+                    )
+                    .clipShape(RoundedRectangle(cornerRadius: 16))
+                }
+                .buttonStyle(.plain)
+                .disabled(isSharing || isUploadingPhoto)
+            }
+        }
+    }
+
+    // MARK: - Actions
+
+    private func sharePost() async {
+        isSharing = true
+        errorMessage = nil
+
+        // If there's photo data but not yet uploaded, upload first
+        if photoData != nil && uploadedPhotoUrl == nil {
+            await uploadPhoto()
+        }
+
+        let content = postContent.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+            ? "Just completed a \(sessionDurationMinutes ?? 0) minute workout! \u{1F4AA}"
+            : postContent.trimmingCharacters(in: .whitespacesAndNewlines)
+
+        do {
+            let post = try await networkService.request(
+                CommunityRouter.createPost(
+                    content: content,
+                    visibility: visibility,
+                    workoutSessionId: viewModel.sessionId,
+                    photoUrl: uploadedPhotoUrl
+                ).endpoint,
+                responseType: CommunityPost.self
+            )
+            isSharing = false
+            onShare(post)
+            dismiss()
+        } catch {
+            print("❌ Share post failed: \(error)")
+            errorMessage = "Failed to share: \(error.localizedDescription)"
+            isSharing = false
+        }
+    }
+
+    private func handleImageData(_ data: Data) async {
+        photoData = data
+        if let uiImage = UIImage(data: data) {
+            photoPreview = Image(uiImage: uiImage)
+        }
+        await uploadPhoto()
+    }
+
+    private func uploadPhoto() async {
+        guard let data = photoData else { return }
+        guard let jpegData = UIImage(data: data)?.jpegData(compressionQuality: 0.7) else { return }
+
+        isUploadingPhoto = true
+
+        do {
+            let session = try await SupabaseConfig.client.auth.session
+            let userId = session.user.id.uuidString.lowercased()
+            let fileName = "\(userId)/\(UUID().uuidString.lowercased()).jpg"
+
+            _ = try await SupabaseConfig.client.storage
+                .from("post-photos")
+                .upload(fileName, data: jpegData, options: .init(contentType: "image/jpeg"))
+
+            let publicUrl = try SupabaseConfig.client.storage
+                .from("post-photos")
+                .getPublicURL(path: fileName)
+
+            uploadedPhotoUrl = publicUrl.absoluteString
+        } catch {
+            errorMessage = "Photo upload failed."
+        }
+
+        isUploadingPhoto = false
+    }
+
+    // MARK: - Helpers
+
+    private func energyEmoji(for level: Int) -> String {
+        switch level {
+        case 1: return "\u{1F629}"
+        case 2: return "\u{1F62E}\u{200D}\u{1F4A8}"
+        case 3: return "\u{1F610}"
+        case 4: return "\u{1F642}"
+        case 5: return "\u{1F929}"
+        default: return "\u{2753}"
+        }
+    }
+
+    private func statPill(label: String, value: String, color: Color) -> some View {
+        HStack(spacing: 4) {
+            Text(value)
+                .font(.system(size: 13, weight: .bold))
+                .foregroundColor(color)
+            Text(label)
+                .font(.system(size: 11, weight: .medium))
+                .foregroundColor(.gymBroTextSecondary)
+        }
+        .padding(.horizontal, 10)
+        .padding(.vertical, 6)
+        .background(color.opacity(0.1))
+        .clipShape(RoundedRectangle(cornerRadius: 8))
+    }
+}

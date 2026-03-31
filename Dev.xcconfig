@@ -1,0 +1,7 @@
+// Dev.xcconfig — Local development configuration
+// Assign to Debug build configuration in Xcode project settings
+
+API_BASE_URL = http:/$()/localhost:3001
+SUPABASE_URL = http:/$()/127.0.0.1:54321
+SUPABASE_ANON_KEY = YOUR_LOCAL_ANON_KEY
+SWIFT_ACTIVE_COMPILATION_CONDITIONS = $(inherited) DEBUG DEV
