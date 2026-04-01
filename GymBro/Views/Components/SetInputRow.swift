@@ -21,7 +21,7 @@ struct SetInputRow: View {
                     .foregroundColor(isCompleted ? coralAccent : .gymBroNeutral400)
 
                 if let prevWeight = previousWeight, let prevReps = previousReps {
-                    Text("Prev: \(Int(prevWeight))\(previousWeightUnit) \u{00D7} \(prevReps)")
+                    Text("Prev: \(prevWeight.truncatingRemainder(dividingBy: 1) == 0 ? "\(Int(prevWeight))" : String(format: "%.1f", prevWeight))\(previousWeightUnit) \u{00D7} \(prevReps)")
                         .font(.system(size: 11, weight: .medium))
                         .foregroundColor(.gymBroNeutral400)
                         .lineLimit(1)
@@ -65,7 +65,7 @@ struct SetInputRow: View {
                         .font(.system(size: 15, weight: .semibold))
                         .foregroundColor(.gymBroNeutral900)
                         .multilineTextAlignment(.center)
-                        .keyboardType(.numberPad)
+                        .keyboardType(.decimalPad)
                         .frame(minWidth: 44, maxWidth: 56, minHeight: 36)
                         .background(Color.white)
                         .clipShape(RoundedRectangle(cornerRadius: 14))

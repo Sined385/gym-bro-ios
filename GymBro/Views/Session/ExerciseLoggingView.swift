@@ -620,7 +620,7 @@ struct ExerciseLoggingView: View {
                     let prevSet = exLastSets.first { $0.setNumber == roundIndex + 1 }
 
                     if let prevWeight = prevSet?.weight {
-                        Text("Prev: \(Int(prevWeight))\(prevSet?.weightUnit ?? "kg") \u{00D7} \(prevSet?.reps ?? 0)")
+                        Text("Prev: \(prevWeight.truncatingRemainder(dividingBy: 1) == 0 ? "\(Int(prevWeight))" : String(format: "%.1f", prevWeight))\(prevSet?.weightUnit ?? "kg") \u{00D7} \(prevSet?.reps ?? 0)")
                             .font(.system(size: 11, weight: .medium))
                             .foregroundColor(.gymBroNeutral400)
                             .frame(width: 90, alignment: .leading)
@@ -755,7 +755,7 @@ struct ExerciseLoggingView: View {
                         .font(.system(size: 22, weight: .bold))
                         .foregroundColor(.gymBroNeutral900)
                         .multilineTextAlignment(.center)
-                        .keyboardType(.numberPad)
+                        .keyboardType(.decimalPad)
                         .frame(height: 52)
                         .background(Color.gymBroNeutral100)
                         .clipShape(RoundedRectangle(cornerRadius: 16))
