@@ -343,20 +343,28 @@ enum InjuryType: Codable, Equatable, Hashable {
 
 enum OnboardingStep: Int, CaseIterable {
     case authentication = 1
-    case primaryGoal = 2
-    case primarySport = 3
-    case experienceLevel = 4
-    case bodyMetrics = 5
-    case trainingFrequency = 6
-    case workoutDuration = 7
-    case restTime = 8
-    case equipment = 9
-    case injuries = 10
-    case completeProfile = 11
+    case showcaseTrack = 2
+    case showcasePlans = 3
+    case showcaseCoach = 4
+    case showcaseCommunity = 5
+    case primaryGoal = 6
+    case primarySport = 7
+    case experienceLevel = 8
+    case bodyMetrics = 9
+    case trainingFrequency = 10
+    case workoutDuration = 11
+    case restTime = 12
+    case equipment = 13
+    case injuries = 14
+    case completeProfile = 15
 
     var title: String {
         switch self {
         case .authentication: return "Create your account"
+        case .showcaseTrack: return "Track Every Rep"
+        case .showcasePlans: return "Personalized Plans"
+        case .showcaseCoach: return "AI Coach 24/7"
+        case .showcaseCommunity: return "Train Together"
         case .primaryGoal: return "What is your primary goal?"
         case .primarySport: return "What is your primary sport?"
         case .experienceLevel: return "What is your experience level?"
@@ -373,6 +381,10 @@ enum OnboardingStep: Int, CaseIterable {
     var iconName: String {
         switch self {
         case .authentication: return "person.circle.fill"
+        case .showcaseTrack: return "house.fill"
+        case .showcasePlans: return "calendar"
+        case .showcaseCoach: return "bubble.left.fill"
+        case .showcaseCommunity: return "person.3.fill"
         case .primaryGoal: return "target"
         case .primarySport: return "figure.run"
         case .experienceLevel: return "dumbbell.fill"

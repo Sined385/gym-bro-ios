@@ -10,36 +10,53 @@ import SwiftUI
 struct MainTabView: View {
     @EnvironmentObject var sessionManager: ActiveSessionManager
     @State private var hasAttemptedRestore = false
+    @State private var selectedTab = 0
+
+    private let analyticsService: AnalyticsTrackingServiceProtocol = {
+        DependencyContainer.shared.resolve(AnalyticsTrackingServiceProtocol.self)
+    }()
+
+    private let tabNames = ["Home", "Plan", "GymJam", "Community", "Profile"]
 
     var body: some View {
         ZStack(alignment: .bottom) {
-            TabView {
+            TabView(selection: $selectedTab) {
                 HomeView()
                     .tabItem {
                         Label("Home", systemImage: "house.fill")
                     }
+                    .tag(0)
 
                 TrainingPlanView()
                     .tabItem {
                         Label("Plan", systemImage: "calendar")
                     }
+                    .tag(1)
 
                 CoachChatView()
                     .tabItem {
                         Label("GymJam", systemImage: "bubble.left.and.text.bubble.right.fill")
                     }
+                    .tag(2)
 
                 CommunityFeedView()
                     .tabItem {
                         Label("Community", systemImage: "person.2.fill")
                     }
+                    .tag(3)
 
                 MyProfileView()
                     .tabItem {
                         Label("Profile", systemImage: "person.fill")
                     }
+                    .tag(4)
             }
             .tint(Color(hex: "E86A75"))
+            .onChange(of: selectedTab) { _, newTab in
+                if newTab < tabNames.count {
+                    analyticsService.trackTabSwitch(tab: tabNames[newTab])
+                }
+            }
             .toolbar(sessionManager.isExpanded ? .hidden : .visible, for: .tabBar)
             .safeAreaInset(edge: .bottom) {
                 if sessionManager.isCollapsed {

@@ -58,6 +58,12 @@ struct GymBroApp: App {
         DependencyContainer.shared.resolve(ActiveSessionManager.self)
     }()
 
+    @Environment(\.scenePhase) private var scenePhase
+
+    private let analyticsService: AnalyticsTrackingServiceProtocol = {
+        DependencyContainer.shared.resolve(AnalyticsTrackingServiceProtocol.self)
+    }()
+
     // MARK: - App Body
 
     var body: some Scene {
@@ -95,6 +101,17 @@ struct GymBroApp: App {
             }
             .task {
                 await coordinator.determineInitialRoute()
+            }
+            .onChange(of: scenePhase) { _, newPhase in
+                switch newPhase {
+                case .active:
+                    analyticsService.trackAppOpened()
+                case .background:
+                    analyticsService.trackAppBackgrounded()
+                    analyticsService.flush()
+                default:
+                    break
+                }
             }
         }
     }

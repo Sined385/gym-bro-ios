@@ -62,6 +62,13 @@ final class DependencyContainer {
             SupabaseAuthService()
         }.inObjectScope(.container)
 
+        // Analytics Tracking Service (singleton)
+        container.register(AnalyticsTrackingServiceProtocol.self) { resolver in
+            AnalyticsTrackingService(
+                networkService: resolver.resolve(NetworkServiceProtocol.self)!
+            )
+        }.inObjectScope(.container)
+
         // Push Notification Service (singleton)
         container.register(PushNotificationService.self) { resolver in
             PushNotificationService(

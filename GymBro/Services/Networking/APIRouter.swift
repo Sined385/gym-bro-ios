@@ -548,6 +548,24 @@ enum UserRouter: APIRouter {
     }
 }
 
+// MARK: - Analytics Router
+
+enum AnalyticsRouter: APIRouter {
+    case trackEvent(eventName: String, properties: [String: Any])
+
+    var path: String { "/api/v1/analytics/events" }
+    var method: HTTPMethod { .post }
+
+    var parameters: [String: Any]? {
+        switch self {
+        case .trackEvent(let eventName, let properties):
+            return ["event_name": eventName, "properties": properties]
+        }
+    }
+
+    var encoding: ParameterEncoding { .json }
+}
+
 // MARK: - Plan Router
 
 enum PlanRouter: APIRouter {

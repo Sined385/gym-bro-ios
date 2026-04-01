@@ -66,8 +66,9 @@ struct OnboardingContainerView: View {
     }
 
     private var progressLabel: String {
-        let stepNumber = viewModel.currentStep.rawValue - 1 // auth=0, profile=1, goal=2...
-        return "Step \(stepNumber) of 10"
+        let stepNumber = viewModel.currentStep.rawValue - 1 // auth=0, rest are 1-based visible steps
+        let totalVisible = OnboardingStep.allCases.count - 1 // exclude authentication
+        return "Step \(stepNumber) of \(totalVisible)"
     }
 
     private var progressPercentage: String {
@@ -84,6 +85,18 @@ struct OnboardingContainerView: View {
                 switch viewModel.currentStep {
                 case .authentication:
                     AuthenticationView(authViewModel: authViewModel)
+
+                case .showcaseTrack:
+                    FeatureShowcaseStepView(content: .trackEveryRep)
+
+                case .showcasePlans:
+                    FeatureShowcaseStepView(content: .personalizedPlans)
+
+                case .showcaseCoach:
+                    FeatureShowcaseStepView(content: .aiCoach)
+
+                case .showcaseCommunity:
+                    FeatureShowcaseStepView(content: .trainTogether)
 
                 case .primaryGoal:
                     PrimaryGoalView(viewModel: viewModel)
@@ -160,7 +173,7 @@ struct OnboardingContainerView: View {
     // MARK: - Helpers
 
     private var isFirstStep: Bool {
-        return viewModel.currentStep == .primaryGoal
+        return viewModel.currentStep == .showcaseTrack
     }
 
     private var continueButtonTitle: String {

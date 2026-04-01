@@ -15,7 +15,7 @@ final class OnboardingViewModel: ObservableObject {
 
     // MARK: - Published Properties
 
-    @Published var currentStep: OnboardingStep = .primaryGoal
+    @Published var currentStep: OnboardingStep = .showcaseTrack
     @Published var onboardingData: OnboardingData = OnboardingData()
     @Published var canContinue: Bool = false
     @Published var isSubmitting: Bool = false
@@ -446,6 +446,9 @@ final class OnboardingViewModel: ObservableObject {
             // Handled by AuthViewModel
             canContinue = false
 
+        case .showcaseTrack, .showcasePlans, .showcaseCoach, .showcaseCommunity:
+            canContinue = true
+
         case .primaryGoal:
             canContinue = !onboardingData.primaryGoals.isEmpty
 
@@ -510,6 +513,8 @@ final class OnboardingViewModel: ObservableObject {
         switch step {
         case .authentication:
             return true // We're past auth if we're in onboarding
+        case .showcaseTrack, .showcasePlans, .showcaseCoach, .showcaseCommunity:
+            return true
         case .primaryGoal:
             return !onboardingData.primaryGoals.isEmpty
         case .primarySport:
