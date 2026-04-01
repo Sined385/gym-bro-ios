@@ -100,7 +100,8 @@ final class DependencyContainer {
             HomeViewModel(
                 networkService: resolver.resolve(NetworkServiceProtocol.self)!,
                 sessionManager: resolver.resolve(ActiveSessionManager.self)!,
-                appDataState: resolver.resolve(AppDataState.self)!
+                appDataState: resolver.resolve(AppDataState.self)!,
+                healthKitService: resolver.resolve(HealthKitServiceProtocol.self)!
             )
         }.inObjectScope(.container)
 
@@ -144,6 +145,12 @@ final class DependencyContainer {
 
         container.register(NewPostViewModel.self) { resolver in
             NewPostViewModel(
+                networkService: resolver.resolve(NetworkServiceProtocol.self)!
+            )
+        }
+
+        container.register(EditProfileViewModel.self) { resolver in
+            EditProfileViewModel(
                 networkService: resolver.resolve(NetworkServiceProtocol.self)!
             )
         }

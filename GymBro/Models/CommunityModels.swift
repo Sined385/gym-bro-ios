@@ -35,6 +35,7 @@ struct CommunityPost: Decodable, Identifiable, Equatable {
 struct PostUser: Decodable, Equatable {
     let id: String
     let fullName: String
+    let username: String?
     let avatarUrl: String?
 }
 
@@ -151,6 +152,24 @@ struct PersonalRecord: Decodable, Identifiable {
     let reps: Int
     let date: String?
     var id: String { exerciseName }
+}
+
+// MARK: - Profile Workouts
+
+struct ProfileWorkoutsResponse: Decodable {
+    let workouts: [ProfileWorkout]
+    let nextCursor: String?
+    let hasMore: Bool
+}
+
+struct ProfileWorkout: Decodable, Identifiable {
+    let id: String
+    let title: String
+    let type: String
+    let durationMinutes: Int?
+    let calories: Int?
+    let completedAt: String
+    let exercises: [HistoryExercise]
 }
 
 // MARK: - AI Comparison

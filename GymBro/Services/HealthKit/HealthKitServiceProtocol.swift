@@ -57,6 +57,10 @@ protocol HealthKitServiceProtocol: AnyObject {
     /// - Returns: Average heart rate in beats per minute
     func fetchAverageHeartRate(from startDate: Date, to endDate: Date) async throws -> Double?
 
+    /// Fetches the most recent resting heart rate measurement
+    /// - Returns: Resting heart rate in bpm, or nil if unavailable
+    func fetchRestingHeartRate() async throws -> Double?
+
     // MARK: - Active Energy
 
     /// Fetches active energy burned within a date range
@@ -132,6 +136,36 @@ protocol HealthKitServiceProtocol: AnyObject {
     ///   - endDate: End date for the query
     /// - Returns: Array of lean body mass samples
     func fetchLeanBodyMass(from startDate: Date, to endDate: Date) async throws -> [HealthSample]
+
+    // MARK: - Dashboard Stats
+
+    /// Fetches the most recent body fat percentage
+    /// - Returns: Body fat percentage (0-100), or nil if unavailable
+    func fetchLatestBodyFat() async throws -> Double?
+
+    /// Fetches the most recent lean body mass
+    /// - Returns: Lean body mass in kg, or nil if unavailable
+    func fetchLatestLeanBodyMass() async throws -> Double?
+
+    /// Fetches today's total step count
+    /// - Returns: Number of steps, or nil if unavailable
+    func fetchTodayStepCount() async throws -> Double?
+
+    /// Fetches last night's sleep duration
+    /// - Returns: Hours of sleep, or nil if unavailable
+    func fetchLastNightSleepDuration() async throws -> Double?
+
+    /// Fetches the most recent HRV (Heart Rate Variability) measurement
+    /// - Returns: HRV in milliseconds, or nil if unavailable
+    func fetchLatestHRV() async throws -> Double?
+
+    /// Fetches the most recent VO2 Max measurement
+    /// - Returns: VO2 Max in mL/(kg·min), or nil if unavailable
+    func fetchLatestVO2Max() async throws -> Double?
+
+    /// Fetches today's total walking + running distance
+    /// - Returns: Distance in kilometers, or nil if unavailable
+    func fetchTodayWalkingDistance() async throws -> Double?
 }
 
 // MARK: - Supporting Data Models

@@ -11,6 +11,7 @@ import Combine
 struct CoachChatView: View {
     @StateObject private var viewModel: CoachChatViewModel = DependencyContainer.shared.resolve(CoachChatViewModel.self)
     @EnvironmentObject var sessionManager: ActiveSessionManager
+    @Environment(\.scenePhase) private var scenePhase
 
     var body: some View {
         VStack(spacing: 0) {
@@ -96,6 +97,11 @@ struct CoachChatView: View {
         .navigationBarTitleDisplayMode(.inline)
         .task {
             await viewModel.loadConversation()
+        }
+        .onChange(of: scenePhase) { _, newPhase in
+            if newPhase == .active {
+                Task { await viewModel.recoverFromBackground() }
+            }
         }
         .analyticsScreen("CoachChat")
     }

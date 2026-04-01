@@ -11,11 +11,38 @@ import SwiftUI
 
 // MARK: - Response Models
 
+struct PlannedWorkoutResponse: Decodable {
+    let type: String  // "training" or "rest"
+    let planDayId: String?
+    let sessionTitle: String?
+    let sessionType: String?
+    let muscleGroups: [String]?
+    let status: String?
+    let exercises: [PlannedExercise]?
+}
+
+struct PlannedExercise: Decodable, Identifiable {
+    let name: String
+    let muscleGroup: String
+    let setsDisplay: String
+    let libraryExerciseId: String?
+    let accentColor: String
+    let suggestedWeight: Double?
+    var id: String { name + setsDisplay }
+}
+
 struct DashboardResponse: Decodable {
     let user: DashboardUser
     let motivation: DashboardMotivation?
     let weekCompletedDays: [Int]
     let quickWorkout: DashboardSession?
+    let plannedWorkout: PlannedWorkoutResponse?
+    let weekWorkoutsTotal: Int?
+    let weekWorkoutsCompleted: Int?
+    let weekVolumeKg: Double?
+    let weekStreak: Int?
+    let weekAvgDurationMinutes: Int?
+    let weekTotalCalories: Int?
     let todayCompletedSession: SessionHistory?
 }
 
@@ -127,21 +154,46 @@ final class HomeViewModel: ObservableObject {
     @Published var isLoadingHistory: Bool = false
     @Published var completedDates: Set<Date> = []
     @Published var todayCompletedSession: SessionHistory?
+    @Published var plannedWorkout: PlannedWorkoutResponse?
+    @Published var weekWorkoutsTotal: Int = 0
+    @Published var weekWorkoutsCompleted: Int = 0
+    @Published var weekVolumeKg: Double?
+    @Published var weekStreak: Int?
+    @Published var weekAvgDurationMinutes: Int?
+    @Published var weekTotalCalories: Int?
+    @Published var latestWeightKg: Double?
+    @Published var restingHeartRate: Double?
+    @Published var todayActiveEnergy: Double?
+    @Published var latestBodyFat: Double?
+    @Published var latestLeanBodyMass: Double?
+    @Published var todayStepCount: Double?
+    @Published var lastNightSleep: Double?
+    @Published var latestHRV: Double?
+    @Published var latestVO2Max: Double?
+    @Published var todayWalkingDistance: Double?
+
+    // MARK: - Computed Properties (Plan)
+
+    var hasPlan: Bool { plannedWorkout != nil }
+    var isRestDay: Bool { plannedWorkout?.type == "rest" }
+    var isTrainingDay: Bool { plannedWorkout?.type == "training" }
 
     // MARK: - Dependencies
 
     private let networkService: NetworkServiceProtocol
     private let sessionManager: ActiveSessionManager
     private let appDataState: AppDataState
+    private let healthKitService: HealthKitServiceProtocol
     private(set) var hasLoaded = false
     private var cancellables = Set<AnyCancellable>()
 
     // MARK: - Initialization
 
-    init(networkService: NetworkServiceProtocol, sessionManager: ActiveSessionManager, appDataState: AppDataState) {
+    init(networkService: NetworkServiceProtocol, sessionManager: ActiveSessionManager, appDataState: AppDataState, healthKitService: HealthKitServiceProtocol) {
         self.networkService = networkService
         self.sessionManager = sessionManager
         self.appDataState = appDataState
+        self.healthKitService = healthKitService
 
         sessionManager.$presentationState
             .removeDuplicates()
@@ -212,8 +264,16 @@ final class HomeViewModel: ObservableObject {
             // Convert API day-of-week (0=Sunday) to Monday-first index: (apiDay + 6) % 7
             weekCompletedDays = Set(response.weekCompletedDays.map { ($0 + 6) % 7 })
             quickWorkout = response.quickWorkout
+            plannedWorkout = response.plannedWorkout
+            weekWorkoutsTotal = response.weekWorkoutsTotal ?? 0
+            weekWorkoutsCompleted = response.weekWorkoutsCompleted ?? 0
+            weekVolumeKg = response.weekVolumeKg
+            weekStreak = response.weekStreak
+            weekAvgDurationMinutes = response.weekAvgDurationMinutes
+            weekTotalCalories = response.weekTotalCalories
             todayCompletedSession = response.todayCompletedSession
             await loadCompletedDays()
+            await loadHealthKitData()
         } catch {
             // Mock fallback for development
             userName = "Denys"
@@ -331,6 +391,40 @@ final class HomeViewModel: ObservableObject {
         isStartingSession = false
     }
 
+    func startPlannedWorkout() async {
+        guard let planned = plannedWorkout, planned.type == "training",
+              let dayId = planned.planDayId else { return }
+        isStartingSession = true
+        errorMessage = nil
+
+        do {
+            let response = try await networkService.request(
+                PlanRouter.startPlanSession(dayId: dayId).endpoint,
+                responseType: SessionResponse.self
+            )
+            sessionManager.startSession(response)
+        } catch {
+            // Mock fallback for development
+            let mockResponse = SessionResponse(
+                id: UUID().uuidString,
+                title: planned.sessionTitle ?? "Training Session",
+                type: planned.sessionType ?? "strength",
+                status: "active",
+                startedAt: ISO8601DateFormatter().string(from: Date()),
+                completedAt: nil,
+                durationMinutes: nil,
+                calories: nil,
+                aiGenerated: true,
+                aiMessage: nil,
+                exercises: []
+            )
+            sessionManager.startSession(mockResponse)
+            errorMessage = nil
+        }
+
+        isStartingSession = false
+    }
+
     func completeSession() async {
         guard let session = activeSession else { return }
         errorMessage = nil
@@ -402,6 +496,40 @@ final class HomeViewModel: ObservableObject {
         } catch {
             // Silently fail — calendar will just not show dots
         }
+    }
+
+    private func loadHealthKitData() async {
+        guard healthKitService.isHealthDataAvailable else { return }
+        do {
+            try await healthKitService.requestAuthorization()
+        } catch {
+            return
+        }
+
+        let startOfToday = Calendar.current.startOfDay(for: Date())
+        let endOfToday = Calendar.current.date(byAdding: .day, value: 1, to: startOfToday) ?? Date()
+
+        async let weightResult = healthKitService.fetchLatestWeight()
+        async let hrResult = healthKitService.fetchRestingHeartRate()
+        async let energyResult = healthKitService.fetchTotalActiveEnergy(from: startOfToday, to: endOfToday)
+        async let bodyFatResult = healthKitService.fetchLatestBodyFat()
+        async let leanMassResult = healthKitService.fetchLatestLeanBodyMass()
+        async let stepsResult = healthKitService.fetchTodayStepCount()
+        async let sleepResult = healthKitService.fetchLastNightSleepDuration()
+        async let hrvResult = healthKitService.fetchLatestHRV()
+        async let vo2Result = healthKitService.fetchLatestVO2Max()
+        async let distanceResult = healthKitService.fetchTodayWalkingDistance()
+
+        latestWeightKg = try? await weightResult?.value
+        restingHeartRate = try? await hrResult
+        todayActiveEnergy = try? await energyResult
+        latestBodyFat = try? await bodyFatResult
+        latestLeanBodyMass = try? await leanMassResult
+        todayStepCount = try? await stepsResult
+        lastNightSleep = try? await sleepResult
+        latestHRV = try? await hrvResult
+        latestVO2Max = try? await vo2Result
+        todayWalkingDistance = try? await distanceResult
     }
 
     private static var mockSessionHistory: SessionHistory {

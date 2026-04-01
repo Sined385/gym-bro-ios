@@ -26,6 +26,14 @@ final class OnboardingViewModel: ObservableObject {
     @Published var heightText: String = ""
     @Published var healthKitLoaded: Bool = false
 
+    // Profile fields
+    @Published var displayName: String = ""
+    @Published var username: String = ""
+    @Published var avatarImageData: Data?
+    @Published var isCheckingUsername: Bool = false
+    @Published var usernameAvailable: Bool? = nil
+    @Published var usernameError: String? = nil
+
     // MARK: - Dependencies
 
     private let authService: AuthServiceProtocol
@@ -35,6 +43,7 @@ final class OnboardingViewModel: ObservableObject {
     // MARK: - Initialization
 
     private var cancellables = Set<AnyCancellable>()
+    private var usernameCheckTask: Task<Void, Never>?
 
     init(authService: AuthServiceProtocol, networkService: NetworkServiceProtocol, healthKitService: HealthKitServiceProtocol) {
         self.authService = authService
@@ -256,6 +265,140 @@ final class OnboardingViewModel: ObservableObject {
         validateCurrentStep()
     }
 
+    // MARK: - Profile Methods
+
+    /// Pre-fill display name from auth provider
+    func prefillFromAuth() async {
+        if let user = await authService.currentUser, let name = user.fullName, !name.isEmpty {
+            if displayName.isEmpty {
+                displayName = name
+                if username.isEmpty {
+                    username = generateUsernameFromName(name)
+                    debounceCheckUsername()
+                }
+                validateCurrentStep()
+            }
+        }
+    }
+
+    /// Update display name and auto-generate username
+    func updateDisplayName(_ name: String) {
+        displayName = name
+        if !name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+            username = generateUsernameFromName(name)
+            debounceCheckUsername()
+        }
+        validateCurrentStep()
+    }
+
+    /// Update username with validation and availability check
+    func updateUsername(_ newUsername: String) {
+        let sanitized = newUsername.lowercased().filter { $0.isLetter || $0.isNumber || $0 == "_" }
+        username = sanitized
+        usernameError = nil
+        usernameAvailable = nil
+
+        if sanitized.count < 3 {
+            usernameError = sanitized.isEmpty ? nil : "Username must be at least 3 characters"
+            validateCurrentStep()
+            return
+        }
+        if sanitized.count > 30 {
+            usernameError = "Username must be at most 30 characters"
+            validateCurrentStep()
+            return
+        }
+
+        debounceCheckUsername()
+        validateCurrentStep()
+    }
+
+    /// Set avatar image data
+    func setAvatarImage(_ data: Data) {
+        avatarImageData = data
+    }
+
+    /// Remove selected avatar
+    func removeAvatar() {
+        avatarImageData = nil
+    }
+
+    private func generateUsernameFromName(_ name: String) -> String {
+        name.lowercased()
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+            .replacingOccurrences(of: " ", with: "_")
+            .filter { $0.isLetter || $0.isNumber || $0 == "_" }
+    }
+
+    private func debounceCheckUsername() {
+        usernameCheckTask?.cancel()
+        let currentUsername = username
+        guard currentUsername.count >= 3 else { return }
+
+        isCheckingUsername = true
+        usernameCheckTask = Task {
+            try? await Task.sleep(nanoseconds: 500_000_000) // 0.5s debounce
+            guard !Task.isCancelled else { return }
+            await checkUsernameAvailability(currentUsername)
+        }
+    }
+
+    private func checkUsernameAvailability(_ username: String) async {
+        do {
+            let response = try await networkService.request(
+                UserRouter.checkUsername(username: username).endpoint,
+                responseType: UsernameCheckResponse.self
+            )
+            guard self.username == username else { return } // stale check
+            usernameAvailable = response.available
+            if !response.available {
+                usernameError = "Username is already taken"
+            } else {
+                usernameError = nil
+            }
+        } catch {
+            // Network error — don't block the user
+            usernameAvailable = true
+            usernameError = nil
+        }
+        isCheckingUsername = false
+        validateCurrentStep()
+    }
+
+    /// Save profile to backend (avatar upload + profile update)
+    private func saveProfile() async throws {
+        var avatarUrl: String? = nil
+
+        // Upload avatar if selected
+        if let imageData = avatarImageData {
+            let multipart = [
+                MultipartFormData(
+                    data: imageData,
+                    name: "file",
+                    fileName: "avatar.jpg",
+                    mimeType: "image/jpeg"
+                )
+            ]
+            let response = try await networkService.uploadMultipart(
+                UserRouter.uploadAvatar(imageData: imageData).endpoint,
+                multipartData: multipart,
+                responseType: AvatarUploadResponse.self
+            )
+            avatarUrl = response.avatarUrl
+        }
+
+        // Update profile
+        var body: [String: Any] = [
+            "full_name": displayName,
+            "username": username,
+        ]
+        if let url = avatarUrl {
+            body["avatar_url"] = url
+        }
+
+        try await networkService.request(UserRouter.updateProfile(body: body).endpoint)
+    }
+
     // MARK: - Submission
 
     /// Submit onboarding data to backend via API
@@ -269,6 +412,9 @@ final class OnboardingViewModel: ObservableObject {
         errorMessage = nil
 
         do {
+            // Save profile first (avatar + name + username)
+            try await saveProfile()
+
             var completedData = onboardingData
             completedData.completedAt = Date()
 
@@ -331,6 +477,12 @@ final class OnboardingViewModel: ObservableObject {
         case .injuries:
             // Injuries are optional, can always continue
             canContinue = true
+
+        case .completeProfile:
+            let hasName = !displayName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+            let hasValidUsername = username.count >= 3 && username.count <= 30 && usernameError == nil
+            let notTaken = usernameAvailable != false // allow nil (check pending) and true
+            canContinue = hasName && hasValidUsername && notTaken
         }
     }
 
@@ -376,6 +528,8 @@ final class OnboardingViewModel: ObservableObject {
             return onboardingData.availableEquipment != nil
         case .injuries:
             return true // Always considered complete as it's optional
+        case .completeProfile:
+            return !displayName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty && username.count >= 3
         }
     }
 
@@ -388,6 +542,6 @@ final class OnboardingViewModel: ObservableObject {
 
     /// Check if can submit (on final step with complete data)
     var canSubmit: Bool {
-        return currentStep == .injuries && onboardingData.isComplete
+        return currentStep == .completeProfile && onboardingData.isComplete
     }
 }

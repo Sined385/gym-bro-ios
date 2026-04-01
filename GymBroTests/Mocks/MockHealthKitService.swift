@@ -119,6 +119,15 @@ final class MockHealthKitService: HealthKitServiceProtocol {
         return total / Double(samples.count)
     }
 
+    var mockRestingHeartRate: Double?
+
+    func fetchRestingHeartRate() async throws -> Double? {
+        if shouldFail {
+            throw errorToThrow
+        }
+        return mockRestingHeartRate
+    }
+
     // MARK: - Active Energy
 
     func fetchActiveEnergy(from startDate: Date, to endDate: Date) async throws -> [HealthSample] {
@@ -233,6 +242,51 @@ final class MockHealthKitService: HealthKitServiceProtocol {
         return mockLeanMassSamples.filter { sample in
             sample.startDate >= startDate && sample.endDate <= endDate
         }
+    }
+
+    // MARK: - Dashboard Stats
+
+    var mockBodyFat: Double?
+    var mockLeanBodyMass: Double?
+    var mockStepCount: Double?
+    var mockSleepDuration: Double?
+    var mockHRV: Double?
+    var mockVO2Max: Double?
+    var mockWalkingDistance: Double?
+
+    func fetchLatestBodyFat() async throws -> Double? {
+        if shouldFail { throw errorToThrow }
+        return mockBodyFat
+    }
+
+    func fetchLatestLeanBodyMass() async throws -> Double? {
+        if shouldFail { throw errorToThrow }
+        return mockLeanBodyMass
+    }
+
+    func fetchTodayStepCount() async throws -> Double? {
+        if shouldFail { throw errorToThrow }
+        return mockStepCount
+    }
+
+    func fetchLastNightSleepDuration() async throws -> Double? {
+        if shouldFail { throw errorToThrow }
+        return mockSleepDuration
+    }
+
+    func fetchLatestHRV() async throws -> Double? {
+        if shouldFail { throw errorToThrow }
+        return mockHRV
+    }
+
+    func fetchLatestVO2Max() async throws -> Double? {
+        if shouldFail { throw errorToThrow }
+        return mockVO2Max
+    }
+
+    func fetchTodayWalkingDistance() async throws -> Double? {
+        if shouldFail { throw errorToThrow }
+        return mockWalkingDistance
     }
 
     // MARK: - Helper Methods

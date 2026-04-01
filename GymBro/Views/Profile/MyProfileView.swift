@@ -12,6 +12,7 @@ struct MyProfileView: View {
         DependencyContainer.shared.resolve(MyProfileViewModel.self)
     }()
     @State private var showSettings = false
+    @State private var showEditProfile = false
 
     var body: some View {
         NavigationStack {
@@ -27,6 +28,13 @@ struct MyProfileView: View {
                         followerRow(profile)
                         consistencySection(profile.consistencyStats)
                         statsGrid(profile.extendedStats)
+
+                        ProfileWorkoutsSection(
+                            workouts: viewModel.workouts,
+                            isLoading: viewModel.isLoadingWorkouts,
+                            hasMore: viewModel.hasMoreWorkouts,
+                            onLoadMore: { await viewModel.loadMoreWorkouts() }
+                        )
 
                         if !profile.extendedStats.personalRecords.isEmpty {
                             personalRecordsSection(profile.extendedStats.personalRecords)
@@ -61,6 +69,15 @@ struct MyProfileView: View {
             .navigationTitle("My Profile")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
+                ToolbarItem(placement: .navigationBarLeading) {
+                    Button {
+                        showEditProfile = true
+                    } label: {
+                        Image(systemName: "pencil.circle.fill")
+                            .font(.system(size: 18, weight: .medium))
+                            .foregroundColor(.gymBroPrimary)
+                    }
+                }
                 ToolbarItem(placement: .navigationBarTrailing) {
                     Button {
                         showSettings = true
@@ -74,8 +91,22 @@ struct MyProfileView: View {
             .sheet(isPresented: $showSettings) {
                 SettingsView()
             }
+            .sheet(isPresented: $showEditProfile) {
+                EditProfileView(
+                    initialName: viewModel.profile?.user.fullName ?? "",
+                    initialUsername: viewModel.profile?.user.username ?? "",
+                    initialAvatarUrl: viewModel.profile?.user.avatarUrl
+                )
+            }
+            .onChange(of: showEditProfile) { _, isPresented in
+                if !isPresented {
+                    // Reload profile after edit sheet is dismissed
+                    Task { await viewModel.loadProfile() }
+                }
+            }
             .task {
                 await viewModel.loadIfNeeded()
+                await viewModel.loadWorkouts()
             }
         }
         .analyticsScreen("Profile")
@@ -99,6 +130,12 @@ struct MyProfileView: View {
                 Text(profile.user.fullName)
                     .font(.system(size: 24, weight: .bold))
                     .foregroundColor(.gymBroNeutral900)
+
+                if let username = profile.user.username, !username.isEmpty {
+                    Text("@\(username)")
+                        .font(.system(size: 14, weight: .medium))
+                        .foregroundColor(.gymBroTextSecondary)
+                }
 
                 if let goals = profile.primaryGoals, !goals.isEmpty {
                     HStack(spacing: 4) {

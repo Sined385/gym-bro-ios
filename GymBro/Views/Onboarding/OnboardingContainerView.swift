@@ -66,8 +66,8 @@ struct OnboardingContainerView: View {
     }
 
     private var progressLabel: String {
-        let stepNumber = viewModel.currentStep.rawValue - 1 // auth=0, goal=1, sport=2...
-        return "Step \(stepNumber) of 9"
+        let stepNumber = viewModel.currentStep.rawValue - 1 // auth=0, profile=1, goal=2...
+        return "Step \(stepNumber) of 10"
     }
 
     private var progressPercentage: String {
@@ -111,6 +111,9 @@ struct OnboardingContainerView: View {
 
                 case .injuries:
                     InjuriesView(viewModel: viewModel)
+
+                case .completeProfile:
+                    CompleteProfileView(viewModel: viewModel)
                 }
             }
             .padding(.horizontal, 24)
@@ -161,7 +164,7 @@ struct OnboardingContainerView: View {
     }
 
     private var continueButtonTitle: String {
-        if viewModel.currentStep == .injuries {
+        if viewModel.currentStep == .completeProfile {
             return "Build My Plan"
         } else {
             return "Continue"
@@ -169,7 +172,7 @@ struct OnboardingContainerView: View {
     }
 
     private func handleContinue() {
-        if viewModel.currentStep == .injuries {
+        if viewModel.currentStep == .completeProfile {
             // Final step - submit onboarding
             Task {
                 do {

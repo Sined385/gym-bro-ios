@@ -32,6 +32,13 @@ struct UserProfileView: View {
                     profileHeader(profile)
                     consistencySection(profile.consistencyStats)
 
+                    ProfileWorkoutsSection(
+                        workouts: viewModel.workouts,
+                        isLoading: viewModel.isLoadingWorkouts,
+                        hasMore: viewModel.hasMoreWorkouts,
+                        onLoadMore: { await viewModel.loadMoreWorkouts() }
+                    )
+
                     if !profile.isOwnProfile {
                         aiComparisonSection
                     }
@@ -75,7 +82,9 @@ struct UserProfileView: View {
         }
         .task {
             await viewModel.loadProfile()
-            await viewModel.loadComparison()
+            async let workoutsTask: () = viewModel.loadWorkouts()
+            async let comparisonTask: () = viewModel.loadComparison()
+            _ = await (workoutsTask, comparisonTask)
         }
     }
 
@@ -116,6 +125,12 @@ struct UserProfileView: View {
                 Text(profile.user.fullName)
                     .font(.system(size: 24, weight: .bold))
                     .foregroundColor(.gymBroNeutral900)
+
+                if let username = profile.user.username, !username.isEmpty {
+                    Text("@\(username)")
+                        .font(.system(size: 14, weight: .medium))
+                        .foregroundColor(.gymBroTextSecondary)
+                }
 
                 if let goals = profile.primaryGoals, !goals.isEmpty {
                     HStack(spacing: 4) {

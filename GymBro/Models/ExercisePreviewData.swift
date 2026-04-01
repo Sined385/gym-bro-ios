@@ -38,4 +38,15 @@ struct ExercisePreviewData: Identifiable {
         self.accentColor = ex.accentColor ?? "E86A75"
         self.suggestedWeight = ex.suggestedWeight
     }
+
+    init(name: String, muscleGroup: String, setsDisplay: String, accentColor: String, suggestedWeight: Double?) {
+        self.id = UUID().uuidString
+        self.libraryExerciseId = nil
+        self.name = name
+        self.muscleGroup = muscleGroup
+        self.equipment = nil
+        self.setsDisplay = setsDisplay
+        self.accentColor = accentColor
+        self.suggestedWeight = suggestedWeight
+    }
 }

@@ -26,6 +26,9 @@ final class HealthKitService: HealthKitServiceProtocol {
         if let heartRate = HKObjectType.quantityType(forIdentifier: .heartRate) {
             types.insert(heartRate)
         }
+        if let restingHR = HKObjectType.quantityType(forIdentifier: .restingHeartRate) {
+            types.insert(restingHR)
+        }
 
         // Active Energy
         if let activeEnergy = HKObjectType.quantityType(forIdentifier: .activeEnergyBurned) {
@@ -47,6 +50,21 @@ final class HealthKitService: HealthKitServiceProtocol {
         }
         if let bioSex = HKObjectType.characteristicType(forIdentifier: .biologicalSex) {
             types.insert(bioSex)
+        }
+        if let steps = HKObjectType.quantityType(forIdentifier: .stepCount) {
+            types.insert(steps)
+        }
+        if let hrv = HKObjectType.quantityType(forIdentifier: .heartRateVariabilitySDNN) {
+            types.insert(hrv)
+        }
+        if let vo2 = HKObjectType.quantityType(forIdentifier: .vo2Max) {
+            types.insert(vo2)
+        }
+        if let distance = HKObjectType.quantityType(forIdentifier: .distanceWalkingRunning) {
+            types.insert(distance)
+        }
+        if let sleep = HKObjectType.categoryType(forIdentifier: .sleepAnalysis) {
+            types.insert(sleep)
         }
 
         return types
@@ -252,6 +270,41 @@ final class HealthKitService: HealthKitServiceProtocol {
         return total / Double(samples.count)
     }
 
+    func fetchRestingHeartRate() async throws -> Double? {
+        guard let restingHRType = HKQuantityType.quantityType(forIdentifier: .restingHeartRate) else {
+            return nil
+        }
+
+        let sortDescriptor = NSSortDescriptor(
+            key: HKSampleSortIdentifierStartDate,
+            ascending: false
+        )
+
+        return try await withCheckedThrowingContinuation { continuation in
+            let query = HKSampleQuery(
+                sampleType: restingHRType,
+                predicate: nil,
+                limit: 1,
+                sortDescriptors: [sortDescriptor]
+            ) { _, samples, error in
+                if let error = error {
+                    continuation.resume(throwing: HealthKitError.queryFailed(error))
+                    return
+                }
+
+                guard let sample = samples?.first as? HKQuantitySample else {
+                    continuation.resume(returning: nil)
+                    return
+                }
+
+                let bpm = sample.quantity.doubleValue(for: HKUnit.count().unitDivided(by: .minute()))
+                continuation.resume(returning: bpm)
+            }
+
+            healthStore.execute(query)
+        }
+    }
+
     // MARK: - Active Energy
 
     func fetchActiveEnergy(from startDate: Date, to endDate: Date) async throws -> [HealthSample] {
@@ -407,6 +460,151 @@ final class HealthKitService: HealthKitServiceProtocol {
             startDate: startDate,
             endDate: endDate
         )
+    }
+
+    // MARK: - Dashboard Stats
+
+    func fetchLatestBodyFat() async throws -> Double? {
+        let samples = try await fetchBodyFatPercentage(from: Date.distantPast, to: Date())
+        return samples.first?.value
+    }
+
+    func fetchLatestLeanBodyMass() async throws -> Double? {
+        let samples = try await fetchLeanBodyMass(from: Date.distantPast, to: Date())
+        return samples.first?.value
+    }
+
+    func fetchTodayStepCount() async throws -> Double? {
+        guard let stepType = HKQuantityType.quantityType(forIdentifier: .stepCount) else { return nil }
+        let start = Calendar.current.startOfDay(for: Date())
+        let end = Calendar.current.date(byAdding: .day, value: 1, to: start) ?? Date()
+        let samples = try await fetchQuantitySamples(type: stepType, unit: .count(), startDate: start, endDate: end)
+        let total = samples.reduce(0.0) { $0 + $1.value }
+        return total > 0 ? total : nil
+    }
+
+    func fetchLastNightSleepDuration() async throws -> Double? {
+        guard let sleepType = HKObjectType.categoryType(forIdentifier: .sleepAnalysis) else { return nil }
+
+        // Look at samples from yesterday 6pm to today noon
+        let cal = Calendar.current
+        let now = Date()
+        let todayStart = cal.startOfDay(for: now)
+        let queryStart = cal.date(byAdding: .hour, value: -30, to: todayStart) ?? todayStart
+        let queryEnd = cal.date(byAdding: .hour, value: 12, to: todayStart) ?? now
+
+        let predicate = HKQuery.predicateForSamples(withStart: queryStart, end: queryEnd, options: [.strictStartDate])
+        let sortDescriptor = NSSortDescriptor(key: HKSampleSortIdentifierStartDate, ascending: true)
+
+        return try await withCheckedThrowingContinuation { continuation in
+            let query = HKSampleQuery(
+                sampleType: sleepType,
+                predicate: predicate,
+                limit: HKObjectQueryNoLimit,
+                sortDescriptors: [sortDescriptor]
+            ) { _, samples, error in
+                if let error = error {
+                    continuation.resume(throwing: HealthKitError.queryFailed(error))
+                    return
+                }
+
+                guard let categorySamples = samples as? [HKCategorySample] else {
+                    continuation.resume(returning: nil)
+                    return
+                }
+
+                // Sum asleep durations (inBed=0, asleepUnspecified=1, asleepCore/Deep/REM=3,4,5)
+                let asleepValues: Set<Int> = [
+                    HKCategoryValueSleepAnalysis.asleepUnspecified.rawValue,
+                    HKCategoryValueSleepAnalysis.asleepCore.rawValue,
+                    HKCategoryValueSleepAnalysis.asleepDeep.rawValue,
+                    HKCategoryValueSleepAnalysis.asleepREM.rawValue,
+                ]
+
+                var totalSeconds: TimeInterval = 0
+                for sample in categorySamples {
+                    if asleepValues.contains(sample.value) {
+                        totalSeconds += sample.endDate.timeIntervalSince(sample.startDate)
+                    }
+                }
+
+                let hours = totalSeconds / 3600
+                continuation.resume(returning: hours > 0 ? hours : nil)
+            }
+
+            healthStore.execute(query)
+        }
+    }
+
+    func fetchLatestHRV() async throws -> Double? {
+        guard let hrvType = HKQuantityType.quantityType(forIdentifier: .heartRateVariabilitySDNN) else { return nil }
+
+        let sortDescriptor = NSSortDescriptor(key: HKSampleSortIdentifierStartDate, ascending: false)
+
+        return try await withCheckedThrowingContinuation { continuation in
+            let query = HKSampleQuery(
+                sampleType: hrvType,
+                predicate: nil,
+                limit: 1,
+                sortDescriptors: [sortDescriptor]
+            ) { _, samples, error in
+                if let error = error {
+                    continuation.resume(throwing: HealthKitError.queryFailed(error))
+                    return
+                }
+
+                guard let sample = samples?.first as? HKQuantitySample else {
+                    continuation.resume(returning: nil)
+                    return
+                }
+
+                let ms = sample.quantity.doubleValue(for: HKUnit.secondUnit(with: .milli))
+                continuation.resume(returning: ms)
+            }
+
+            healthStore.execute(query)
+        }
+    }
+
+    func fetchLatestVO2Max() async throws -> Double? {
+        guard let vo2Type = HKQuantityType.quantityType(forIdentifier: .vo2Max) else { return nil }
+
+        let sortDescriptor = NSSortDescriptor(key: HKSampleSortIdentifierStartDate, ascending: false)
+
+        return try await withCheckedThrowingContinuation { continuation in
+            let query = HKSampleQuery(
+                sampleType: vo2Type,
+                predicate: nil,
+                limit: 1,
+                sortDescriptors: [sortDescriptor]
+            ) { _, samples, error in
+                if let error = error {
+                    continuation.resume(throwing: HealthKitError.queryFailed(error))
+                    return
+                }
+
+                guard let sample = samples?.first as? HKQuantitySample else {
+                    continuation.resume(returning: nil)
+                    return
+                }
+
+                // mL/(kg·min)
+                let unit = HKUnit.literUnit(with: .milli).unitDivided(by: HKUnit.gramUnit(with: .kilo).unitMultiplied(by: .minute()))
+                let value = sample.quantity.doubleValue(for: unit)
+                continuation.resume(returning: value)
+            }
+
+            healthStore.execute(query)
+        }
+    }
+
+    func fetchTodayWalkingDistance() async throws -> Double? {
+        guard let distanceType = HKQuantityType.quantityType(forIdentifier: .distanceWalkingRunning) else { return nil }
+        let start = Calendar.current.startOfDay(for: Date())
+        let end = Calendar.current.date(byAdding: .day, value: 1, to: start) ?? Date()
+        let samples = try await fetchQuantitySamples(type: distanceType, unit: .meterUnit(with: .kilo), startDate: start, endDate: end)
+        let total = samples.reduce(0.0) { $0 + $1.value }
+        return total > 0 ? total : nil
     }
 
     // MARK: - Private Helpers

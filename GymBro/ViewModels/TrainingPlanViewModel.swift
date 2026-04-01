@@ -87,11 +87,8 @@ final class TrainingPlanViewModel: ObservableObject {
             days = response.days
             todayIndex = response.todayIndex
         } catch {
-            // Mock fallback for development
-            plan = Self.mockPlan
-            days = Self.mockDays
-            todayIndex = 0 // First day in partial week
-            errorMessage = nil
+            print("[TrainingPlanVM] loadPlan failed: \(error)")
+            errorMessage = "Failed to load plan"
         }
 
         isLoading = false
@@ -108,140 +105,11 @@ final class TrainingPlanViewModel: ObservableObject {
             )
             sessionManager.startSession(response)
         } catch {
-            // Mock fallback
-            let mockResponse = SessionResponse(
-                id: UUID().uuidString,
-                title: days.first(where: { $0.id == dayId })?.sessionTitle ?? "Training Session",
-                type: "strength",
-                status: "active",
-                startedAt: ISO8601DateFormatter().string(from: Date()),
-                completedAt: nil,
-                durationMinutes: nil,
-                calories: nil,
-                aiGenerated: true,
-                aiMessage: nil,
-                exercises: mockExercisesForDay(dayId)
-            )
-            sessionManager.startSession(mockResponse)
-            errorMessage = nil
+            print("[TrainingPlanVM] startPlanSession failed: \(error)")
+            errorMessage = "Failed to start session"
         }
 
         isStartingSession = false
     }
 
-    private func mockExercisesForDay(_ dayId: String) -> [DashboardExercise] {
-        guard let day = days.first(where: { $0.id == dayId }),
-              let exercises = day.exercises else { return [] }
-        return exercises.enumerated().map { index, ex in
-            DashboardExercise(
-                id: UUID().uuidString,
-                name: ex.name,
-                stepNumber: index + 1,
-                setsDisplay: ex.setsDisplay,
-                accentColor: ex.accentColor ?? "#E86A75",
-                libraryExerciseId: ex.libraryExerciseId,
-                muscleGroup: ex.muscleGroup,
-                equipment: nil,
-                suggestedWeight: ex.suggestedWeight
-            )
-        }
-    }
-
-    // MARK: - Mock Data
-
-    private static var mockPlan: TrainingPlanData {
-        TrainingPlanData(
-            id: "mock-plan",
-            weekNumber: 4,
-            primaryGoals: ["build_muscle"],
-            experienceLevel: "intermediate"
-        )
-    }
-
-    private static var mockDays: [PlanDayData] {
-        // Partial week mock: Wed-Sun (as if plan was generated on Wednesday)
-        [
-            PlanDayData(
-                id: "day-2",
-                dayOfWeek: 2,
-                dayLabel: "Wed",
-                dayType: "training",
-                status: "pending",
-                sessionTitle: "Push Day",
-                sessionType: "strength",
-                muscleGroups: ["Chest", "Shoulders", "Triceps"],
-                exercises: [
-                    PlanExercise(name: "Incline Dumbbell Press", muscleGroup: "Chest", setsDisplay: "4 \u{00D7} 10", libraryExerciseId: nil, accentColor: "#E86A75"),
-                    PlanExercise(name: "Lateral Raises", muscleGroup: "Shoulders", setsDisplay: "3 \u{00D7} 12", libraryExerciseId: nil, accentColor: "#30C08D"),
-                    PlanExercise(name: "Cable Flyes", muscleGroup: "Chest", setsDisplay: "3 \u{00D7} 12", libraryExerciseId: nil, accentColor: "#7A82F6"),
-                    PlanExercise(name: "Tricep Pushdowns", muscleGroup: "Triceps", setsDisplay: "3 \u{00D7} 12", libraryExerciseId: nil, accentColor: "#F5A623"),
-                    PlanExercise(name: "Dips", muscleGroup: "Chest", setsDisplay: "3 \u{00D7} 10", libraryExerciseId: nil, accentColor: "#E86A75"),
-                ],
-                workoutSession: nil,
-                aiNotes: nil
-            ),
-            PlanDayData(
-                id: "day-3",
-                dayOfWeek: 3,
-                dayLabel: "Thu",
-                dayType: "rest",
-                status: "pending",
-                sessionTitle: nil,
-                sessionType: nil,
-                muscleGroups: nil,
-                exercises: nil,
-                workoutSession: nil,
-                aiNotes: nil
-            ),
-            PlanDayData(
-                id: "day-4",
-                dayOfWeek: 4,
-                dayLabel: "Fri",
-                dayType: "training",
-                status: "pending",
-                sessionTitle: "Pull Day",
-                sessionType: "strength",
-                muscleGroups: ["Back", "Biceps", "Core"],
-                exercises: [
-                    PlanExercise(name: "Deadlift", muscleGroup: "Back", setsDisplay: "4 \u{00D7} 6", libraryExerciseId: nil, accentColor: "#E86A75"),
-                    PlanExercise(name: "Lat Pulldown", muscleGroup: "Back", setsDisplay: "3 \u{00D7} 10", libraryExerciseId: nil, accentColor: "#30C08D"),
-                    PlanExercise(name: "Barbell Curl", muscleGroup: "Biceps", setsDisplay: "3 \u{00D7} 10", libraryExerciseId: nil, accentColor: "#7A82F6"),
-                    PlanExercise(name: "Face Pulls", muscleGroup: "Shoulders", setsDisplay: "3 \u{00D7} 15", libraryExerciseId: nil, accentColor: "#F5A623"),
-                ],
-                workoutSession: nil,
-                aiNotes: nil
-            ),
-            PlanDayData(
-                id: "day-5",
-                dayOfWeek: 5,
-                dayLabel: "Sat",
-                dayType: "training",
-                status: "pending",
-                sessionTitle: "Full Body",
-                sessionType: "strength",
-                muscleGroups: ["Chest", "Back", "Legs"],
-                exercises: [
-                    PlanExercise(name: "Bench Press", muscleGroup: "Chest", setsDisplay: "3 \u{00D7} 10", libraryExerciseId: nil, accentColor: "#E86A75"),
-                    PlanExercise(name: "Barbell Row", muscleGroup: "Back", setsDisplay: "3 \u{00D7} 10", libraryExerciseId: nil, accentColor: "#30C08D"),
-                    PlanExercise(name: "Leg Press", muscleGroup: "Legs", setsDisplay: "3 \u{00D7} 12", libraryExerciseId: nil, accentColor: "#7A82F6"),
-                    PlanExercise(name: "Dumbbell Shoulder Press", muscleGroup: "Shoulders", setsDisplay: "3 \u{00D7} 10", libraryExerciseId: nil, accentColor: "#F5A623"),
-                ],
-                workoutSession: nil,
-                aiNotes: nil
-            ),
-            PlanDayData(
-                id: "day-6",
-                dayOfWeek: 6,
-                dayLabel: "Sun",
-                dayType: "rest",
-                status: "pending",
-                sessionTitle: nil,
-                sessionType: nil,
-                muscleGroups: nil,
-                exercises: nil,
-                workoutSession: nil,
-                aiNotes: nil
-            ),
-        ]
-    }
 }

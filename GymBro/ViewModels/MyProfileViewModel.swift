@@ -18,6 +18,10 @@ final class MyProfileViewModel: ObservableObject {
     @Published var errorMessage: String?
     @Published var expandedComments: Set<String> = []
     @Published var commentsMap: [String: [PostComment]] = [:]
+    @Published var workouts: [ProfileWorkout] = []
+    @Published var isLoadingWorkouts: Bool = false
+    @Published var hasMoreWorkouts: Bool = false
+    private var workoutCursor: String?
 
     // MARK: - Properties
 
@@ -69,6 +73,42 @@ final class MyProfileViewModel: ObservableObject {
         }
 
         isLoading = false
+    }
+
+    // MARK: - Workout History
+
+    func loadWorkouts() async {
+        guard !isLoadingWorkouts else { return }
+        isLoadingWorkouts = true
+
+        do {
+            let response = try await networkService.request(
+                CommunityRouter.myWorkouts(cursor: nil, limit: 10).endpoint,
+                responseType: ProfileWorkoutsResponse.self
+            )
+            workouts = response.workouts
+            workoutCursor = response.nextCursor
+            hasMoreWorkouts = response.hasMore
+        } catch { }
+
+        isLoadingWorkouts = false
+    }
+
+    func loadMoreWorkouts() async {
+        guard hasMoreWorkouts, !isLoadingWorkouts, let cursor = workoutCursor else { return }
+        isLoadingWorkouts = true
+
+        do {
+            let response = try await networkService.request(
+                CommunityRouter.myWorkouts(cursor: cursor, limit: 10).endpoint,
+                responseType: ProfileWorkoutsResponse.self
+            )
+            workouts.append(contentsOf: response.workouts)
+            workoutCursor = response.nextCursor
+            hasMoreWorkouts = response.hasMore
+        } catch { }
+
+        isLoadingWorkouts = false
     }
 
     // MARK: - Post Interactions

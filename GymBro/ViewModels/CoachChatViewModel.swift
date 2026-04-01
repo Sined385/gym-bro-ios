@@ -210,6 +210,11 @@ final class CoachChatViewModel: ObservableObject {
         await streamChat(content: content)
 
         isStreaming = false
+
+        // Auto-recover if stream was interrupted (e.g. app backgrounded)
+        if !streamCompleted, conversationId != nil {
+            await reloadMessages()
+        }
     }
 
     func handleQuickAction(_ action: String) async {
@@ -248,10 +253,44 @@ final class CoachChatViewModel: ObservableObject {
         await sendMessage("Regenerate the workout — give me a different option")
     }
 
+    // MARK: - Background Recovery
+
+    private var streamCompleted = false
+
+    func recoverFromBackground() async {
+        guard !streamCompleted, !isStreaming else { return }
+        await reloadMessages()
+    }
+
+    private func reloadMessages() async {
+        guard let convId = conversationId else { return }
+
+        do {
+            let response = try await networkService.request(
+                CoachRouter.getMessages(conversationId: convId, limit: 50, before: nil).endpoint,
+                responseType: ConversationMessagesResponse.self
+            )
+            hasMoreMessages = response.hasMore
+            messages = response.messages.map { apiMsg in
+                CoachMessageResponse(
+                    id: apiMsg.id,
+                    role: apiMsg.role,
+                    content: apiMsg.content,
+                    session: apiMsg.session,
+                    createdAt: ISO8601DateFormatter().date(from: apiMsg.createdAt) ?? Date()
+                )
+            }
+        } catch {
+            // Keep whatever partial content we have
+        }
+    }
+
     // MARK: - SSE Streaming
 
     private func streamChat(content: String) async {
         guard let url = URL(string: "\(baseURL)/api/v1/coach/chat") else { return }
+
+        streamCompleted = false
 
         var request = URLRequest(url: url)
         request.httpMethod = "POST"
@@ -303,8 +342,12 @@ final class CoachChatViewModel: ObservableObject {
                             appDataState.triggerReload()
                         }
 
+                    case "plan_modified":
+                        appDataState.triggerReload()
+
                     case "done":
                         if let done = try? decoder.decode(SSEDone.self, from: data) {
+                            streamCompleted = true
                             conversationId = done.conversationId
                             // Update the assistant message ID to the real one
                             if var lastMsg = messages.last, lastMsg.isAssistant {
@@ -327,7 +370,13 @@ final class CoachChatViewModel: ObservableObject {
                 }
             }
         } catch {
-            updateLastAssistantMessage(content: "Connection failed. Please check your internet and try again.")
+            // Connection dropped (e.g. app backgrounded) — don't overwrite partial content
+            if !streamCompleted {
+                // Only show error if we have no content at all
+                if let lastMsg = messages.last, lastMsg.isAssistant, lastMsg.content.isEmpty {
+                    updateLastAssistantMessage(content: "Connection lost. Recovering…")
+                }
+            }
         }
     }
 

@@ -15,6 +15,7 @@ struct StartSessionButton: View {
 
     // MARK: - Properties
 
+    var label: String = "Start custom workout"
     var action: () -> Void = {}
 
     var body: some View {
@@ -31,7 +32,7 @@ struct StartSessionButton: View {
                         .foregroundColor(.white)
                 }
 
-                Text("Start your session")
+                Text(label)
                     .font(.system(size: 18, weight: .bold))
                     .tracking(-0.44)
                     .foregroundColor(.white)

@@ -352,6 +352,7 @@ enum OnboardingStep: Int, CaseIterable {
     case restTime = 8
     case equipment = 9
     case injuries = 10
+    case completeProfile = 11
 
     var title: String {
         switch self {
@@ -365,6 +366,7 @@ enum OnboardingStep: Int, CaseIterable {
         case .restTime: return "Preferred rest between sets?"
         case .equipment: return "Available equipment?"
         case .injuries: return "Any current injuries?"
+        case .completeProfile: return "Complete Your Profile"
         }
     }
 
@@ -380,6 +382,7 @@ enum OnboardingStep: Int, CaseIterable {
         case .restTime: return "timer"
         case .equipment: return "dumbbell.fill"
         case .injuries: return "exclamationmark.triangle.fill"
+        case .completeProfile: return "person.crop.circle.fill"
         }
     }
 

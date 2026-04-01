@@ -62,8 +62,44 @@ struct HomeView: View {
                     ResumeSessionButton {
                         sessionManager.expand()
                     }
+                } else if viewModel.isRestDay {
+                    // Rest day — start session + recovery card
+                    StartSessionButton {
+                        Task { await viewModel.startCustomSession() }
+                    }
+
+                    RestDayCard(
+                        weekWorkoutsCompleted: viewModel.weekWorkoutsCompleted,
+                        weekWorkoutsTotal: viewModel.weekWorkoutsTotal,
+                        weekVolumeKg: viewModel.weekVolumeKg,
+                        weekStreak: viewModel.weekStreak,
+                        personalRecords: viewModel.motivation?.personalRecords ?? [],
+                        restingHeartRate: viewModel.restingHeartRate,
+                        latestWeightKg: viewModel.latestWeightKg,
+                        todayActiveEnergy: viewModel.todayActiveEnergy,
+                        latestBodyFat: viewModel.latestBodyFat,
+                        latestLeanBodyMass: viewModel.latestLeanBodyMass,
+                        todayStepCount: viewModel.todayStepCount,
+                        lastNightSleep: viewModel.lastNightSleep,
+                        latestHRV: viewModel.latestHRV,
+                        latestVO2Max: viewModel.latestVO2Max,
+                        todayWalkingDistance: viewModel.todayWalkingDistance,
+                        weekAvgDurationMinutes: viewModel.weekAvgDurationMinutes,
+                        weekTotalCalories: viewModel.weekTotalCalories
+                    )
+                } else if viewModel.isTrainingDay, let planned = viewModel.plannedWorkout {
+                    // Training day — show start button + planned workout
+                    StartSessionButton {
+                        Task { await viewModel.startCustomSession() }
+                    }
+
+                    PlannedWorkoutCard(
+                        plannedWorkout: planned,
+                        onStart: { Task { await viewModel.startPlannedWorkout() } },
+                        isStarting: viewModel.isStartingSession
+                    )
                 } else {
-                    // Default: start button + quick workout
+                    // No plan — start button + quick workout fallback
                     StartSessionButton {
                         Task { await viewModel.startCustomSession() }
                     }
