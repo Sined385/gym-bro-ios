@@ -29,6 +29,7 @@ struct ShareSessionView: View {
     @Environment(\.dismiss) private var dismiss
 
     private let networkService: NetworkServiceProtocol = DependencyContainer.shared.resolve(NetworkServiceProtocol.self)
+    private let analytics: AnalyticsTrackingServiceProtocol = DependencyContainer.shared.resolve(AnalyticsTrackingServiceProtocol.self)
 
     var body: some View {
         NavigationStack {
@@ -175,8 +176,7 @@ struct ShareSessionView: View {
                             sets: "\(completedSets) \u{00D7} \(totalReps)",
                             step: exercise.stepNumber,
                             accentColor: Color(hex: exercise.accentColor),
-                            imageUrl: exercise.imageUrl,
-                            showChevron: false
+                            imageUrl: exercise.imageUrl
                         )
                     }
                 }
@@ -410,6 +410,7 @@ struct ShareSessionView: View {
                 ).endpoint,
                 responseType: CommunityPost.self
             )
+            analytics.track("post_shared_after_workout", properties: ["session_id": viewModel.sessionId])
             isSharing = false
             onShare(post)
             dismiss()

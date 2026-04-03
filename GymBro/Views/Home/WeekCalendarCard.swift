@@ -17,6 +17,7 @@ struct WeekCalendarCard: View {
     private let dayNumberColor = Color(hex: "525252")
     private let completedColor = Color(hex: "30C08D")
     private let borderColor = Color.gymBroNeutral100
+    private let analytics: AnalyticsTrackingServiceProtocol = DependencyContainer.shared.resolve(AnalyticsTrackingServiceProtocol.self)
     private let calendar = Calendar.current
 
     // MARK: - Data
@@ -183,6 +184,7 @@ struct WeekCalendarCard: View {
             withAnimation(.easeInOut(duration: 0.3)) {
                 isExpanded.toggle()
             }
+            analytics.track(isExpanded ? "calendar_expanded" : "calendar_collapsed", properties: [:])
         } label: {
             Image(systemName: isExpanded ? "chevron.up" : "chevron.down")
                 .font(.system(size: 14, weight: .semibold))
@@ -376,6 +378,8 @@ struct WeekCalendarCard: View {
         } else {
             // Tapping a different completed day: select it
             selectedDate = date
+            let formatter = ISO8601DateFormatter()
+            analytics.track("calendar_day_changed", properties: ["date": formatter.string(from: date)])
             onDayTapped?(date)
         }
     }

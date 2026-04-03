@@ -94,6 +94,7 @@ final class CoachChatViewModel: ObservableObject {
     private let networkService: NetworkServiceProtocol
     private let sessionManager: ActiveSessionManager
     private let appDataState: AppDataState
+    private let analyticsService: AnalyticsTrackingServiceProtocol
 
     // MARK: - Quick Actions
 
@@ -107,10 +108,11 @@ final class CoachChatViewModel: ObservableObject {
 
     // MARK: - Initialization
 
-    init(networkService: NetworkServiceProtocol, sessionManager: ActiveSessionManager, appDataState: AppDataState) {
+    init(networkService: NetworkServiceProtocol, sessionManager: ActiveSessionManager, appDataState: AppDataState, analyticsService: AnalyticsTrackingServiceProtocol) {
         self.networkService = networkService
         self.sessionManager = sessionManager
         self.appDataState = appDataState
+        self.analyticsService = analyticsService
     }
 
     // MARK: - Load History
@@ -218,6 +220,7 @@ final class CoachChatViewModel: ObservableObject {
     }
 
     func handleQuickAction(_ action: String) async {
+        analyticsService.track("coach_quick_action", properties: ["action": action])
         await sendMessage(action)
     }
 
@@ -230,6 +233,7 @@ final class CoachChatViewModel: ObservableObject {
                 responseType: SessionResponse.self
             )
             sessionManager.openSession(response)
+            analyticsService.track("coach_workout_started", properties: ["session_id": session.id])
         } catch {
             // Fallback: create mock session response from card data
             let mockResponse = SessionResponse(
@@ -340,10 +344,12 @@ final class CoachChatViewModel: ObservableObject {
                         if let sessionEvent = try? decoder.decode(SSESessionCreated.self, from: data) {
                             setSessionOnLastAssistantMessage(sessionEvent.session)
                             appDataState.triggerReload()
+                            analyticsService.track("coach_tool_used", properties: ["tool_type": "session_created"])
                         }
 
-                    case "plan_modified":
+                    case "plan_modified", "plan_generated":
                         appDataState.triggerReload()
+                        analyticsService.track("coach_tool_used", properties: ["tool_type": currentEvent])
 
                     case "done":
                         if let done = try? decoder.decode(SSEDone.self, from: data) {

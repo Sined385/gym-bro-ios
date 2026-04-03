@@ -31,12 +31,14 @@ final class CommunityFeedViewModel: ObservableObject {
     // MARK: - Dependencies
 
     private let networkService: NetworkServiceProtocol
+    private let analyticsService: AnalyticsTrackingServiceProtocol
     private var hasLoaded = false
 
     // MARK: - Initialization
 
-    init(networkService: NetworkServiceProtocol) {
+    init(networkService: NetworkServiceProtocol, analyticsService: AnalyticsTrackingServiceProtocol) {
         self.networkService = networkService
+        self.analyticsService = analyticsService
     }
 
     // MARK: - Load If Needed
@@ -125,6 +127,9 @@ final class CommunityFeedViewModel: ObservableObject {
         if let index = posts.firstIndex(where: { $0.id == postId }) {
             let post = posts[index]
             let newIsLiked = !post.isLiked
+            if newIsLiked {
+                analyticsService.track("post_liked", properties: ["post_id": postId])
+            }
             let newCount = newIsLiked ? post.likeCount + 1 : max(0, post.likeCount - 1)
             posts[index] = CommunityPost(
                 id: post.id,
@@ -208,6 +213,7 @@ final class CommunityFeedViewModel: ObservableObject {
             var existing = commentsMap[postId] ?? []
             existing.insert(comment, at: 0)
             commentsMap[postId] = existing
+            analyticsService.track("post_commented", properties: ["post_id": postId])
 
             // Update comment count
             if let index = posts.firstIndex(where: { $0.id == postId }) {

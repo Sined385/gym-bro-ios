@@ -51,6 +51,7 @@ struct SessionFlowContainer: View {
             networkService: DependencyContainer.shared.resolve(NetworkServiceProtocol.self),
             sessionManager: DependencyContainer.shared.resolve(ActiveSessionManager.self),
             healthKitService: DependencyContainer.shared.resolve(HealthKitServiceProtocol.self),
+            analyticsService: DependencyContainer.shared.resolve(AnalyticsTrackingServiceProtocol.self),
             initialExercises: initialExercises,
             restoredExercises: restoredExercises,
             restoredFeedback: restoredFeedback

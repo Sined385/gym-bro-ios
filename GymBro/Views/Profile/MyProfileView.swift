@@ -13,6 +13,12 @@ struct MyProfileView: View {
     }()
     @State private var showSettings = false
     @State private var showEditProfile = false
+    @State private var isSharingWorkout = false
+    @State private var shareURL: URL?
+
+    private let networkService: NetworkServiceProtocol = DependencyContainer.shared.resolve(NetworkServiceProtocol.self)
+    private let analytics: AnalyticsTrackingServiceProtocol = DependencyContainer.shared.resolve(AnalyticsTrackingServiceProtocol.self)
+    @State private var profileAppearTime: Date?
 
     var body: some View {
         NavigationStack {
@@ -33,7 +39,10 @@ struct MyProfileView: View {
                             workouts: viewModel.workouts,
                             isLoading: viewModel.isLoadingWorkouts,
                             hasMore: viewModel.hasMoreWorkouts,
-                            onLoadMore: { await viewModel.loadMoreWorkouts() }
+                            onLoadMore: { await viewModel.loadMoreWorkouts() },
+                            onShare: { workout in
+                                Task { await shareWorkout(workout) }
+                            }
                         )
 
                         if !profile.extendedStats.personalRecords.isEmpty {
@@ -108,8 +117,46 @@ struct MyProfileView: View {
                 await viewModel.loadIfNeeded()
                 await viewModel.loadWorkouts()
             }
+            .sheet(isPresented: Binding(
+                get: { shareURL != nil },
+                set: { if !$0 { shareURL = nil } }
+            )) {
+                if let url = shareURL {
+                    ActivityViewController(activityItems: [url])
+                }
+            }
         }
         .analyticsScreen("Profile")
+        .onAppear { profileAppearTime = Date() }
+        .onDisappear {
+            if let start = profileAppearTime {
+                let seconds = Int(Date().timeIntervalSince(start))
+                if seconds > 0 {
+                    analytics.track("profile_time_spent", properties: ["seconds": seconds])
+                }
+            }
+        }
+    }
+
+    // MARK: - Share Workout
+
+    private func shareWorkout(_ workout: ProfileWorkout) async {
+        guard !isSharingWorkout else { return }
+        isSharingWorkout = true
+        do {
+            let template = try await networkService.request(
+                TemplateRouter.create(name: workout.title, sessionIds: [workout.id]).endpoint,
+                responseType: WorkoutTemplate.self
+            )
+            let response = try await networkService.request(
+                TemplateRouter.share(templateId: template.id).endpoint,
+                responseType: ShareTemplateResponse.self
+            )
+            isSharingWorkout = false
+            shareURL = URL(string: response.shareUrl)
+        } catch {
+            isSharingWorkout = false
+        }
     }
 
     // MARK: - Header Card
@@ -416,7 +463,10 @@ struct MyProfileView: View {
                             onDelete: {
                                 Task { await viewModel.deletePost(post.id) }
                             },
-                            isCommentsExpanded: viewModel.expandedComments.contains(post.id)
+                            isCommentsExpanded: viewModel.expandedComments.contains(post.id),
+                            onShare: {
+                                shareURL = URL(string: "https://gyymjaam.com/p/\(post.id)")
+                            }
                         )
 
                         if viewModel.expandedComments.contains(post.id) {

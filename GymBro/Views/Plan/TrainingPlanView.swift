@@ -12,6 +12,7 @@ struct TrainingPlanView: View {
     @StateObject private var viewModel: TrainingPlanViewModel = {
         DependencyContainer.shared.resolve(TrainingPlanViewModel.self)
     }()
+    private let analytics: AnalyticsTrackingServiceProtocol = DependencyContainer.shared.resolve(AnalyticsTrackingServiceProtocol.self)
 
     var body: some View {
         ZStack {
@@ -35,6 +36,7 @@ struct TrainingPlanView: View {
             }
         }
         .task {
+            analytics.track("plan_opened", properties: [:])
             await viewModel.loadIfNeeded()
         }
         .analyticsScreen("TrainingPlan")

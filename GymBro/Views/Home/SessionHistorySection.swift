@@ -22,6 +22,7 @@ struct SessionHistorySection: View {
     @State private var shareURL: URL?
 
     private let networkService: NetworkServiceProtocol = DependencyContainer.shared.resolve(NetworkServiceProtocol.self)
+    private let analytics: AnalyticsTrackingServiceProtocol = DependencyContainer.shared.resolve(AnalyticsTrackingServiceProtocol.self)
 
     var body: some View {
         VStack(alignment: .leading, spacing: 20) {
@@ -141,6 +142,7 @@ struct SessionHistorySection: View {
             )
             isSharingCommunity = false
             communityShareSuccess = true
+            analytics.track("workout_shared_as_post", properties: ["session_id": session.id])
         } catch {
             isSharingCommunity = false
         }
@@ -161,6 +163,7 @@ struct SessionHistorySection: View {
             )
             isSharingLink = false
             shareURL = URL(string: response.shareUrl)
+            analytics.track("workout_shared_as_link", properties: ["session_id": session.id])
         } catch {
             isSharingLink = false
         }

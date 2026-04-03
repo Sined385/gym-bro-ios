@@ -188,16 +188,18 @@ final class HomeViewModel: ObservableObject {
     private let sessionManager: ActiveSessionManager
     private let appDataState: AppDataState
     private let healthKitService: HealthKitServiceProtocol
+    private let analyticsService: AnalyticsTrackingServiceProtocol
     private(set) var hasLoaded = false
     private var cancellables = Set<AnyCancellable>()
 
     // MARK: - Initialization
 
-    init(networkService: NetworkServiceProtocol, sessionManager: ActiveSessionManager, appDataState: AppDataState, healthKitService: HealthKitServiceProtocol) {
+    init(networkService: NetworkServiceProtocol, sessionManager: ActiveSessionManager, appDataState: AppDataState, healthKitService: HealthKitServiceProtocol, analyticsService: AnalyticsTrackingServiceProtocol) {
         self.networkService = networkService
         self.sessionManager = sessionManager
         self.appDataState = appDataState
         self.healthKitService = healthKitService
+        self.analyticsService = analyticsService
 
         sessionManager.$presentationState
             .removeDuplicates()
@@ -309,6 +311,7 @@ final class HomeViewModel: ObservableObject {
     // MARK: - Session Actions
 
     func startCustomSession() async {
+        analyticsService.track("custom_workout_screen_opened", properties: [:])
         isStartingSession = true
         errorMessage = nil
 
@@ -371,6 +374,7 @@ final class HomeViewModel: ObservableObject {
             )
             activeSession = response
             sessionManager.openSession(response)
+            analyticsService.track("proposed_workout_started", properties: ["session_type": "quick"])
             quickWorkout = nil
         } catch {
             // Mock fallback — open session flow with quick workout data
@@ -407,6 +411,7 @@ final class HomeViewModel: ObservableObject {
                 responseType: SessionResponse.self
             )
             sessionManager.openSession(response)
+            analyticsService.track("planned_workout_started", properties: ["day_id": dayId])
         } catch {
             // Mock fallback for development
             let mockResponse = SessionResponse(

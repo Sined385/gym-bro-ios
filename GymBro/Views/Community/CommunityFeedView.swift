@@ -7,9 +7,17 @@
 
 import SwiftUI
 
+enum CommunityDestination: Hashable {
+    case userProfile(userId: String)
+    case postDetail(postId: String)
+}
+
 struct CommunityFeedView: View {
     @StateObject private var viewModel: CommunityFeedViewModel = DependencyContainer.shared.resolve(CommunityFeedViewModel.self)
+    @EnvironmentObject var deepLinkRouter: DeepLinkRouter
     @State private var navigationPath = NavigationPath()
+    @State private var shareURL: URL?
+    private let analytics: AnalyticsTrackingServiceProtocol = DependencyContainer.shared.resolve(AnalyticsTrackingServiceProtocol.self)
 
     var body: some View {
         NavigationStack(path: $navigationPath) {
@@ -41,7 +49,7 @@ struct CommunityFeedView: View {
                                         onLike: { viewModel.toggleLike(postId: post.id) },
                                         onComment: { viewModel.toggleComments(postId: post.id) },
                                         onUserTap: { userId in
-                                            navigationPath.append(userId)
+                                            navigationPath.append(CommunityDestination.userProfile(userId: userId))
                                         },
                                         onFollow: post.isOwnPost ? nil : {
                                             viewModel.toggleFollow(userId: post.user.id)
@@ -50,8 +58,16 @@ struct CommunityFeedView: View {
                                             let postId = post.id
                                             Task { await viewModel.deletePost(postId) }
                                         } : nil,
-                                        isCommentsExpanded: viewModel.expandedComments.contains(post.id)
+                                        isCommentsExpanded: viewModel.expandedComments.contains(post.id),
+                                        onShare: {
+                                            shareURL = URL(string: "https://gyymjaam.com/p/\(post.id)")
+                                            analytics.track("post_shared", properties: ["post_id": post.id])
+                                        }
                                     )
+                                    .onTapGesture {
+                                        analytics.track("post_opened", properties: ["post_id": post.id])
+                                        navigationPath.append(CommunityDestination.postDetail(postId: post.id))
+                                    }
 
                                     // Inline comments
                                     if viewModel.expandedComments.contains(post.id) {
@@ -63,7 +79,7 @@ struct CommunityFeedView: View {
                                                 }
                                             },
                                             onUserTap: { userId in
-                                                navigationPath.append(userId)
+                                                navigationPath.append(CommunityDestination.userProfile(userId: userId))
                                             }
                                         )
                                         .padding(.horizontal, 16)
@@ -107,8 +123,27 @@ struct CommunityFeedView: View {
                     viewModel.onPostCreated(post)
                 }
             }
-            .navigationDestination(for: String.self) { userId in
-                UserProfileView(userId: userId)
+            .sheet(isPresented: Binding(
+                get: { shareURL != nil },
+                set: { if !$0 { shareURL = nil } }
+            )) {
+                if let url = shareURL {
+                    ActivityViewController(activityItems: [url])
+                }
+            }
+            .navigationDestination(for: CommunityDestination.self) { destination in
+                switch destination {
+                case .userProfile(let userId):
+                    UserProfileView(userId: userId)
+                case .postDetail(let postId):
+                    PostDetailView(postId: postId)
+                }
+            }
+            .onChange(of: deepLinkRouter.pendingPostId) { _, postId in
+                if let postId {
+                    navigationPath.append(CommunityDestination.postDetail(postId: postId))
+                    deepLinkRouter.pendingPostId = nil
+                }
             }
         }
         .analyticsScreen("Community")

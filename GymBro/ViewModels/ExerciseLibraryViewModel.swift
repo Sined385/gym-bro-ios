@@ -22,6 +22,7 @@ final class ExerciseLibraryViewModel: ObservableObject {
     // MARK: - Dependencies
 
     private let networkService: NetworkServiceProtocol
+    private let analyticsService: AnalyticsTrackingServiceProtocol
 
     // MARK: - Computed Properties
 
@@ -41,8 +42,9 @@ final class ExerciseLibraryViewModel: ObservableObject {
 
     // MARK: - Initialization
 
-    init(networkService: NetworkServiceProtocol) {
+    init(networkService: NetworkServiceProtocol, analyticsService: AnalyticsTrackingServiceProtocol) {
         self.networkService = networkService
+        self.analyticsService = analyticsService
     }
 
     // MARK: - Data Loading
@@ -73,6 +75,7 @@ final class ExerciseLibraryViewModel: ObservableObject {
                 responseType: ExerciseLibraryItem.self
             )
             exercises.append(item)
+            analyticsService.track("custom_exercise_created", properties: ["name": name, "muscle_group": muscleGroup])
             isLoading = false
             return item
         } catch {

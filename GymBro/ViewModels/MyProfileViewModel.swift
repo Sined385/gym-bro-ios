@@ -27,15 +27,17 @@ final class MyProfileViewModel: ObservableObject {
 
     private let networkService: NetworkServiceProtocol
     private let appDataState: AppDataState
+    private let analyticsService: AnalyticsTrackingServiceProtocol
     private var hasLoaded = false
     private var cancellables = Set<AnyCancellable>()
     private var likeInFlight: Set<String> = []
 
     // MARK: - Initialization
 
-    init(networkService: NetworkServiceProtocol, appDataState: AppDataState) {
+    init(networkService: NetworkServiceProtocol, appDataState: AppDataState, analyticsService: AnalyticsTrackingServiceProtocol) {
         self.networkService = networkService
         self.appDataState = appDataState
+        self.analyticsService = analyticsService
 
         appDataState.$reloadVersion
             .dropFirst()
@@ -58,6 +60,7 @@ final class MyProfileViewModel: ObservableObject {
     // MARK: - Data Loading
 
     func loadProfile() async {
+        analyticsService.track("profile_opened", properties: [:])
         isLoading = true
         errorMessage = nil
 

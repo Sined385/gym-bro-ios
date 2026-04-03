@@ -56,6 +56,7 @@ final class ActiveSessionManager: ObservableObject {
     // MARK: - Reload Trigger
 
     private let appDataState: AppDataState
+    private let analyticsService: AnalyticsTrackingServiceProtocol = DependencyContainer.shared.resolve(AnalyticsTrackingServiceProtocol.self)
 
     // MARK: - Persistence
 
@@ -150,12 +151,18 @@ final class ActiveSessionManager: ObservableObject {
     func collapse() {
         UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
         presentationState = .collapsed
+        analyticsService.track("session_collapsed", properties: [:])
     }
 
     func endSession() {
+        let wasActive = isWorkoutStarted
+        let exerciseCount = lastSavedExercises?.count ?? 0
         stopTimer()
         skipRestTimer()
         cancelStillThereNotification()
+        if wasActive {
+            analyticsService.track("workout_cancelled", properties: ["exercise_count": exerciseCount])
+        }
         presentationState = .hidden
         sessionId = nil
         sessionTitle = nil

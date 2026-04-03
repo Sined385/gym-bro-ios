@@ -11,6 +11,7 @@ struct NotificationsView: View {
 
     @StateObject private var viewModel: NotificationsViewModel = DependencyContainer.shared.resolve(NotificationsViewModel.self)
     @Environment(\.dismiss) private var dismiss
+    private let analytics: AnalyticsTrackingServiceProtocol = DependencyContainer.shared.resolve(AnalyticsTrackingServiceProtocol.self)
 
     var body: some View {
         VStack(spacing: 0) {
@@ -43,6 +44,7 @@ struct NotificationsView: View {
         }
         .background(Color.gymBroBackground.ignoresSafeArea())
         .task {
+            analytics.track("notifications_opened", properties: [:])
             await viewModel.loadNotifications()
         }
         .analyticsScreen("Notifications")

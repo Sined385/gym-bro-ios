@@ -113,7 +113,8 @@ final class DependencyContainer {
                 networkService: resolver.resolve(NetworkServiceProtocol.self)!,
                 sessionManager: resolver.resolve(ActiveSessionManager.self)!,
                 appDataState: resolver.resolve(AppDataState.self)!,
-                healthKitService: resolver.resolve(HealthKitServiceProtocol.self)!
+                healthKitService: resolver.resolve(HealthKitServiceProtocol.self)!,
+                analyticsService: resolver.resolve(AnalyticsTrackingServiceProtocol.self)!
             )
         }.inObjectScope(.container)
 
@@ -123,7 +124,8 @@ final class DependencyContainer {
                 sessionTitle: sessionTitle,
                 networkService: resolver.resolve(NetworkServiceProtocol.self)!,
                 sessionManager: resolver.resolve(ActiveSessionManager.self)!,
-                healthKitService: resolver.resolve(HealthKitServiceProtocol.self)!
+                healthKitService: resolver.resolve(HealthKitServiceProtocol.self)!,
+                analyticsService: resolver.resolve(AnalyticsTrackingServiceProtocol.self)!
             )
         }
 
@@ -131,13 +133,15 @@ final class DependencyContainer {
             CoachChatViewModel(
                 networkService: resolver.resolve(NetworkServiceProtocol.self)!,
                 sessionManager: resolver.resolve(ActiveSessionManager.self)!,
-                appDataState: resolver.resolve(AppDataState.self)!
+                appDataState: resolver.resolve(AppDataState.self)!,
+                analyticsService: resolver.resolve(AnalyticsTrackingServiceProtocol.self)!
             )
         }
 
         container.register(ExerciseLibraryViewModel.self) { resolver in
             ExerciseLibraryViewModel(
-                networkService: resolver.resolve(NetworkServiceProtocol.self)!
+                networkService: resolver.resolve(NetworkServiceProtocol.self)!,
+                analyticsService: resolver.resolve(AnalyticsTrackingServiceProtocol.self)!
             )
         }
 
@@ -151,13 +155,15 @@ final class DependencyContainer {
 
         container.register(CommunityFeedViewModel.self) { resolver in
             CommunityFeedViewModel(
-                networkService: resolver.resolve(NetworkServiceProtocol.self)!
+                networkService: resolver.resolve(NetworkServiceProtocol.self)!,
+                analyticsService: resolver.resolve(AnalyticsTrackingServiceProtocol.self)!
             )
         }
 
         container.register(NewPostViewModel.self) { resolver in
             NewPostViewModel(
-                networkService: resolver.resolve(NetworkServiceProtocol.self)!
+                networkService: resolver.resolve(NetworkServiceProtocol.self)!,
+                analyticsService: resolver.resolve(AnalyticsTrackingServiceProtocol.self)!
             )
         }
 
@@ -170,7 +176,8 @@ final class DependencyContainer {
         container.register(MyProfileViewModel.self) { resolver in
             MyProfileViewModel(
                 networkService: resolver.resolve(NetworkServiceProtocol.self)!,
-                appDataState: resolver.resolve(AppDataState.self)!
+                appDataState: resolver.resolve(AppDataState.self)!,
+                analyticsService: resolver.resolve(AnalyticsTrackingServiceProtocol.self)!
             )
         }
 
@@ -205,7 +212,8 @@ final class DependencyContainer {
         container.register(WorkoutTemplatesViewModel.self) { resolver in
             WorkoutTemplatesViewModel(
                 networkService: resolver.resolve(NetworkServiceProtocol.self)!,
-                sessionManager: resolver.resolve(ActiveSessionManager.self)!
+                sessionManager: resolver.resolve(ActiveSessionManager.self)!,
+                analyticsService: resolver.resolve(AnalyticsTrackingServiceProtocol.self)!
             )
         }
 

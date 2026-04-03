@@ -18,6 +18,7 @@ struct ExercisePreviewSheet: View {
     @State private var showExpandedGallery = false
     @State private var expandedGalleryUrls: [URL] = []
     @State private var expandedGalleryIndex: Int = 0
+    private let analytics: AnalyticsTrackingServiceProtocol = DependencyContainer.shared.resolve(AnalyticsTrackingServiceProtocol.self)
 
     var body: some View {
         ScrollView {
@@ -34,6 +35,7 @@ struct ExercisePreviewSheet: View {
         .presentationDragIndicator(.visible)
         .presentationCornerRadius(28)
         .task {
+            analytics.track("exercise_preview_opened", properties: ["exercise_name": exercise.name])
             if let libId = exercise.libraryExerciseId {
                 await viewModel.loadData(for: libId)
             }

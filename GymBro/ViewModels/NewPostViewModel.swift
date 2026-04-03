@@ -26,11 +26,13 @@ final class NewPostViewModel: ObservableObject {
     // MARK: - Dependencies
 
     private let networkService: NetworkServiceProtocol
+    private let analyticsService: AnalyticsTrackingServiceProtocol
 
     // MARK: - Initialization
 
-    init(networkService: NetworkServiceProtocol) {
+    init(networkService: NetworkServiceProtocol, analyticsService: AnalyticsTrackingServiceProtocol) {
         self.networkService = networkService
+        self.analyticsService = analyticsService
     }
 
     // MARK: - Computed
@@ -61,6 +63,7 @@ final class NewPostViewModel: ObservableObject {
                 ).endpoint,
                 responseType: CommunityPost.self
             )
+            analyticsService.track("post_created", properties: [:])
             isPosting = false
             return post
         } catch {

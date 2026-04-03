@@ -32,6 +32,7 @@ final class SessionFlowViewModel: ObservableObject {
     private let networkService: NetworkServiceProtocol
     private let sessionManager: ActiveSessionManager
     private let healthKitService: HealthKitServiceProtocol
+    private let analyticsService: AnalyticsTrackingServiceProtocol
 
     // MARK: - Computed Properties
 
@@ -65,12 +66,13 @@ final class SessionFlowViewModel: ObservableObject {
 
     // MARK: - Initialization
 
-    init(sessionId: String, sessionTitle: String, networkService: NetworkServiceProtocol, sessionManager: ActiveSessionManager, healthKitService: HealthKitServiceProtocol, initialExercises: [DashboardExercise] = [], restoredExercises: [ActiveSessionExercise]? = nil, restoredFeedback: (effort: Int, energy: Int, pain: String)? = nil) {
+    init(sessionId: String, sessionTitle: String, networkService: NetworkServiceProtocol, sessionManager: ActiveSessionManager, healthKitService: HealthKitServiceProtocol, analyticsService: AnalyticsTrackingServiceProtocol, initialExercises: [DashboardExercise] = [], restoredExercises: [ActiveSessionExercise]? = nil, restoredFeedback: (effort: Int, energy: Int, pain: String)? = nil) {
         self.sessionId = sessionId
         self.sessionTitle = sessionTitle
         self.networkService = networkService
         self.sessionManager = sessionManager
         self.healthKitService = healthKitService
+        self.analyticsService = analyticsService
 
         if let restored = restoredExercises {
             _exercises = Published(wrappedValue: restored)
@@ -193,7 +195,7 @@ final class SessionFlowViewModel: ObservableObject {
                 exercises.append(activeEx)
             }
 
-            Analytics.logEvent("exercise_added", parameters: [
+            analyticsService.track("exercise_added", properties: [
                 "exercise_name": item.name,
                 "muscle_group": item.muscleGroup
             ])
@@ -254,6 +256,7 @@ final class SessionFlowViewModel: ObservableObject {
                 )
                 exercises.append(activeEx)
             }
+            analyticsService.track("superset_created", properties: ["exercise_count": response.exercises.count])
         } catch {
             // Mock: won't add superset on error for now
             errorMessage = nil
@@ -309,6 +312,7 @@ final class SessionFlowViewModel: ObservableObject {
                 )
                 exercises.append(activeEx)
             }
+            analyticsService.track("superset_created", properties: ["exercise_count": items.count])
         } catch {
             // Mock fallback
             let groupId = UUID().uuidString
@@ -540,10 +544,9 @@ final class SessionFlowViewModel: ObservableObject {
                 responseType: SessionResponse.self
             )
 
-            Analytics.logEvent("workout_completed", parameters: [
+            analyticsService.track("workout_completed", properties: [
                 "duration_minutes": response.durationMinutes ?? 0,
                 "calories": response.calories ?? 0,
-                "effort_level": effortLevel,
                 "exercise_count": exercises.count
             ] as [String: Any])
 

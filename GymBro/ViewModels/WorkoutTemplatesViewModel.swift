@@ -23,10 +23,12 @@ final class WorkoutTemplatesViewModel: ObservableObject {
 
     private let networkService: NetworkServiceProtocol
     private let sessionManager: ActiveSessionManager
+    private let analyticsService: AnalyticsTrackingServiceProtocol
 
-    init(networkService: NetworkServiceProtocol, sessionManager: ActiveSessionManager) {
+    init(networkService: NetworkServiceProtocol, sessionManager: ActiveSessionManager, analyticsService: AnalyticsTrackingServiceProtocol) {
         self.networkService = networkService
         self.sessionManager = sessionManager
+        self.analyticsService = analyticsService
     }
 
     func loadTemplates() async {
@@ -89,6 +91,7 @@ final class WorkoutTemplatesViewModel: ObservableObject {
                 responseType: ShareTemplateResponse.self
             )
             shareURL = URL(string: response.shareUrl)
+            analyticsService.track("exercise_shared_as_link", properties: ["template_id": template.id])
         } catch {
             // Error sharing
         }
