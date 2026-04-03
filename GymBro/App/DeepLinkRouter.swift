@@ -10,11 +10,13 @@ import Combine
 
 enum DeepLink: Equatable {
     case sharedTemplate(code: String)
+    case post(postId: String)
 }
 
 @MainActor
 final class DeepLinkRouter: ObservableObject {
     @Published var pendingDeepLink: DeepLink?
+    @Published var pendingPostId: String?
 
     private static let allowedHosts: Set<String> = [
         "gyymjaam.com",
@@ -23,9 +25,19 @@ final class DeepLinkRouter: ObservableObject {
 
     func handle(url: URL) -> Bool {
         guard let host = url.host, Self.allowedHosts.contains(host),
-              url.pathComponents.count == 3,
-              url.pathComponents[1] == "s" else { return false }
-        pendingDeepLink = .sharedTemplate(code: url.pathComponents[2])
+              url.pathComponents.count == 3 else { return false }
+
+        let prefix = url.pathComponents[1]
+        let value = url.pathComponents[2]
+
+        switch prefix {
+        case "s":
+            pendingDeepLink = .sharedTemplate(code: value)
+        case "p":
+            pendingDeepLink = .post(postId: value)
+        default:
+            return false
+        }
         return true
     }
 

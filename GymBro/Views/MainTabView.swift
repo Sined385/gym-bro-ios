@@ -21,6 +21,19 @@ struct MainTabView: View {
 
     private let tabNames = ["Home", "Plan", "GymJam", "Community", "Profile"]
 
+    private func handleDeepLink(_ link: DeepLink?) {
+        guard let link else { return }
+        switch link {
+        case .sharedTemplate(let code):
+            sharedTemplateCode = code
+            showSharedTemplateSheet = true
+        case .post(let postId):
+            selectedTab = 3
+            deepLinkRouter.pendingPostId = postId
+        }
+        deepLinkRouter.clearDeepLink()
+    }
+
     var body: some View {
         ZStack(alignment: .bottom) {
             TabView(selection: $selectedTab) {
@@ -102,18 +115,10 @@ struct MainTabView: View {
             sessionManager.restoreSessionIfNeeded()
         }
         .onAppear {
-            if case .sharedTemplate(let code) = deepLinkRouter.pendingDeepLink {
-                sharedTemplateCode = code
-                showSharedTemplateSheet = true
-                deepLinkRouter.clearDeepLink()
-            }
+            handleDeepLink(deepLinkRouter.pendingDeepLink)
         }
         .onChange(of: deepLinkRouter.pendingDeepLink) { _, newValue in
-            if case .sharedTemplate(let code) = newValue {
-                sharedTemplateCode = code
-                showSharedTemplateSheet = true
-                deepLinkRouter.clearDeepLink()
-            }
+            handleDeepLink(newValue)
         }
         .sheet(isPresented: $showSharedTemplateSheet) {
             if let code = sharedTemplateCode {

@@ -9,6 +9,7 @@ import SwiftUI
 
 struct ProfileWorkoutCard: View {
     let workout: ProfileWorkout
+    var onShare: (() -> Void)?
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
@@ -63,11 +64,11 @@ struct ProfileWorkoutCard: View {
                 .font(.system(size: 11, weight: .medium))
                 .foregroundColor(.gymBroTextSecondary)
 
-            // Exercises with weights
+            // Exercises (compact)
             if !workout.exercises.isEmpty {
                 VStack(spacing: 0) {
                     ForEach(Array(workout.exercises.prefix(4).enumerated()), id: \.element.id) { index, exercise in
-                        ExerciseHistoryRow(exercise: exercise)
+                        compactExerciseRow(exercise)
 
                         if index < min(workout.exercises.count, 4) - 1 {
                             Divider()
@@ -84,6 +85,26 @@ struct ProfileWorkoutCard: View {
                     }
                 }
             }
+
+            // Share button
+            if let onShare {
+                Button {
+                    onShare()
+                } label: {
+                    HStack(spacing: 6) {
+                        Image(systemName: "square.and.arrow.up")
+                            .font(.system(size: 13, weight: .bold))
+                        Text("Share")
+                            .font(.system(size: 13, weight: .semibold))
+                    }
+                    .foregroundColor(.gymBroPrimary)
+                    .frame(maxWidth: .infinity)
+                    .frame(height: 36)
+                    .background(Color.gymBroPrimary.opacity(0.1))
+                    .clipShape(RoundedRectangle(cornerRadius: 10))
+                }
+                .buttonStyle(.plain)
+            }
         }
         .padding(14)
         .frame(width: 300)
@@ -94,6 +115,48 @@ struct ProfileWorkoutCard: View {
                 .stroke(Color(hex: "F5F5F5"), lineWidth: 1)
         )
         .shadow(color: .black.opacity(0.04), radius: 8, x: 0, y: 2)
+    }
+
+    private func compactExerciseRow(_ exercise: HistoryExercise) -> some View {
+        HStack(spacing: 8) {
+            RoundedRectangle(cornerRadius: 2)
+                .fill(Color(hex: exercise.accentColor))
+                .frame(width: 4, height: 28)
+
+            VStack(alignment: .leading, spacing: 1) {
+                Text(exercise.name)
+                    .font(.system(size: 13, weight: .semibold))
+                    .foregroundColor(.gymBroNeutral900)
+                    .lineLimit(1)
+
+                if let muscleGroup = exercise.muscleGroup {
+                    Text(muscleGroup.uppercased())
+                        .font(.system(size: 9, weight: .bold))
+                        .tracking(0.5)
+                        .foregroundColor(.gymBroTextSecondary)
+                }
+            }
+
+            Spacer(minLength: 4)
+
+            Text(exerciseSummary(exercise))
+                .font(.system(size: 12, weight: .medium))
+                .foregroundColor(.gymBroTextSecondary)
+                .lineLimit(1)
+        }
+        .padding(.vertical, 4)
+    }
+
+    private func exerciseSummary(_ exercise: HistoryExercise) -> String {
+        let sets = exercise.sets.count
+        let totalReps = exercise.sets.reduce(0) { $0 + $1.reps }
+        let maxWeight = exercise.sets.compactMap(\.weight).max()
+
+        if let weight = maxWeight, weight > 0 {
+            let unit = exercise.sets.first?.weightUnit ?? "kg"
+            return "\(sets)×\(totalReps / max(sets, 1)) · \(Int(weight)) \(unit)"
+        }
+        return "\(sets)×\(totalReps / max(sets, 1))"
     }
 
     private func timeAgo(from isoString: String) -> String {

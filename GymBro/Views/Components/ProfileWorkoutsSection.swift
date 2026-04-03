@@ -12,6 +12,7 @@ struct ProfileWorkoutsSection: View {
     let isLoading: Bool
     let hasMore: Bool
     let onLoadMore: () async -> Void
+    var onShare: ((ProfileWorkout) -> Void)?
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
@@ -31,9 +32,12 @@ struct ProfileWorkoutsSection: View {
                 emptyState
             } else {
                 ScrollView(.horizontal, showsIndicators: false) {
-                    LazyHStack(spacing: 12) {
+                    HStack(alignment: .top, spacing: 12) {
                         ForEach(workouts) { workout in
-                            ProfileWorkoutCard(workout: workout)
+                            ProfileWorkoutCard(
+                                workout: workout,
+                                onShare: onShare != nil ? { onShare?(workout) } : nil
+                            )
                                 .onAppear {
                                     if workout.id == workouts.last?.id, hasMore {
                                         Task { await onLoadMore() }
@@ -47,8 +51,9 @@ struct ProfileWorkoutsSection: View {
                                 .frame(width: 60)
                         }
                     }
+                    .padding(.vertical, 8)
+                    .padding(.horizontal, 4)
                 }
-                .scrollClipDisabled()
             }
         }
     }

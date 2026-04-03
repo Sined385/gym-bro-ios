@@ -11,6 +11,10 @@ struct UserProfileView: View {
     let userId: String
     @StateObject private var viewModel: UserProfileViewModel
     @Environment(\.dismiss) private var dismiss
+    @State private var isSharingWorkout = false
+    @State private var shareURL: URL?
+
+    private let networkService: NetworkServiceProtocol = DependencyContainer.shared.resolve(NetworkServiceProtocol.self)
 
     init(userId: String) {
         self.userId = userId
@@ -41,7 +45,10 @@ struct UserProfileView: View {
                         workouts: viewModel.workouts,
                         isLoading: viewModel.isLoadingWorkouts,
                         hasMore: viewModel.hasMoreWorkouts,
-                        onLoadMore: { await viewModel.loadMoreWorkouts() }
+                        onLoadMore: { await viewModel.loadMoreWorkouts() },
+                        onShare: { workout in
+                            Task { await shareWorkout(workout) }
+                        }
                     )
 
                     if let stats = profile.extendedStats, !stats.personalRecords.isEmpty {
@@ -94,6 +101,35 @@ struct UserProfileView: View {
             async let workoutsTask: () = viewModel.loadWorkouts()
             async let comparisonTask: () = viewModel.loadComparison()
             _ = await (workoutsTask, comparisonTask)
+        }
+        .sheet(isPresented: Binding(
+            get: { shareURL != nil },
+            set: { if !$0 { shareURL = nil } }
+        )) {
+            if let url = shareURL {
+                ActivityViewController(activityItems: [url])
+            }
+        }
+    }
+
+    // MARK: - Share Workout
+
+    private func shareWorkout(_ workout: ProfileWorkout) async {
+        guard !isSharingWorkout else { return }
+        isSharingWorkout = true
+        do {
+            let template = try await networkService.request(
+                TemplateRouter.create(name: workout.title, sessionIds: [workout.id]).endpoint,
+                responseType: WorkoutTemplate.self
+            )
+            let response = try await networkService.request(
+                TemplateRouter.share(templateId: template.id).endpoint,
+                responseType: ShareTemplateResponse.self
+            )
+            isSharingWorkout = false
+            shareURL = URL(string: response.shareUrl)
+        } catch {
+            isSharingWorkout = false
         }
     }
 
@@ -783,7 +819,10 @@ struct UserProfileView: View {
                         onLike: { viewModel.toggleLike(postId: post.id) },
                         onComment: { viewModel.toggleComments(postId: post.id) },
                         onUserTap: { _ in },
-                        isCommentsExpanded: viewModel.expandedComments.contains(post.id)
+                        isCommentsExpanded: viewModel.expandedComments.contains(post.id),
+                        onShare: {
+                            shareURL = URL(string: "https://gyymjaam.com/p/\(post.id)")
+                        }
                     )
 
                     if viewModel.expandedComments.contains(post.id) {

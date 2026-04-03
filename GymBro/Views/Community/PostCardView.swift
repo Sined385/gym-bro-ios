@@ -15,6 +15,7 @@ struct PostCardView: View {
     var onFollow: (() -> Void)?
     var onDelete: (() -> Void)?
     var isCommentsExpanded: Bool = false
+    var onShare: (() -> Void)?
 
     @State private var isTextExpanded: Bool = false
     @State private var isPhotoExpanded: Bool = false
@@ -200,6 +201,19 @@ struct PostCardView: View {
                 .buttonStyle(.plain)
 
                 Spacer()
+
+                if let onShare {
+                    Button {
+                        onShare()
+                    } label: {
+                        Image(systemName: "square.and.arrow.up")
+                            .font(.system(size: 17, weight: .medium))
+                            .foregroundColor(.gymBroNeutral400)
+                            .padding(.horizontal, 12)
+                            .padding(.vertical, 6)
+                    }
+                    .buttonStyle(.plain)
+                }
             }
         }
         .padding(16)
@@ -276,8 +290,7 @@ struct PostCardView: View {
                         sets: exercise.setsDisplay ?? "\(exercise.totalSets) \u{00D7} \(exercise.totalReps)",
                         step: exercise.stepNumber ?? (index + 1),
                         accentColor: Color(hex: exercise.accentColor ?? "#E86A75"),
-                        imageUrl: exercise.imageUrl,
-                        showChevron: false
+                        imageUrl: exercise.imageUrl
                     )
                 }
             }

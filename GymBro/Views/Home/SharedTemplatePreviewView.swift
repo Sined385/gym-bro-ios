@@ -87,8 +87,7 @@ struct SharedTemplatePreviewView: View {
                                 muscleGroup: exercise.muscleGroup,
                                 setsDisplay: exercise.setsDisplay,
                                 accentColor: accentColors[index % accentColors.count],
-                                imageUrl: exercise.imageUrl,
-                                showChevron: false
+                                imageUrl: exercise.imageUrl
                             )
                         }
                     }

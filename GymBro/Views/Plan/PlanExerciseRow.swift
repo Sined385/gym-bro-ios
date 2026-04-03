@@ -14,7 +14,6 @@ struct PlanExerciseRow: View {
     let setsDisplay: String
     let accentColor: Color
     var imageUrl: String? = nil
-    var showChevron: Bool = true
 
     var body: some View {
         HStack(spacing: 16) {
@@ -60,13 +59,6 @@ struct PlanExerciseRow: View {
             }
 
             Spacer()
-
-            if showChevron {
-                // Chevron
-                Image(systemName: "chevron.right")
-                    .font(.system(size: 14, weight: .medium))
-                    .foregroundColor(Color(hex: "D4D4D4"))
-            }
         }
         .padding(.horizontal, 21)
         .padding(.vertical, 1)

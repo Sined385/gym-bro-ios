@@ -13,14 +13,14 @@ struct CoachMessageBubble: View {
     let onRegenerate: () -> Void
 
     var body: some View {
-        HStack(alignment: .top, spacing: 0) {
-            if message.isUser {
-                Spacer(minLength: 60)
-            }
+        VStack(alignment: .leading, spacing: 8) {
+            // Text content
+            if !message.content.isEmpty {
+                HStack(alignment: .top, spacing: 0) {
+                    if message.isUser {
+                        Spacer(minLength: 60)
+                    }
 
-            VStack(alignment: message.isUser ? .trailing : .leading, spacing: 8) {
-                // Text content
-                if !message.content.isEmpty {
                     Text(message.content)
                         .font(.gymBroSmall)
                         .foregroundColor(message.isUser ? .white : .gymBroTextPrimary)
@@ -40,20 +40,20 @@ struct CoachMessageBubble: View {
                             x: 0,
                             y: 2
                         )
-                }
 
-                // Embedded workout card
-                if let session = message.session {
-                    CoachWorkoutCard(
-                        session: session,
-                        onStartWorkout: onStartWorkout,
-                        onRegenerate: onRegenerate
-                    )
+                    if message.isAssistant {
+                        Spacer(minLength: 60)
+                    }
                 }
             }
 
-            if message.isAssistant {
-                Spacer(minLength: 60)
+            // Workout card — full width, outside bubble constraints
+            if let session = message.session {
+                CoachWorkoutCard(
+                    session: session,
+                    onStartWorkout: onStartWorkout,
+                    onRegenerate: onRegenerate
+                )
             }
         }
     }
