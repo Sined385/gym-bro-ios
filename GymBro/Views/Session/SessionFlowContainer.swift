@@ -31,9 +31,11 @@ struct SessionFlowContainer: View {
     let onCollapse: () -> Void
     let onDismiss: () -> Void
 
+    @EnvironmentObject var sessionManager: ActiveSessionManager
     @StateObject private var viewModel: SessionFlowViewModel
     @StateObject private var libraryViewModel: ExerciseLibraryViewModel = DependencyContainer.shared.resolve(ExerciseLibraryViewModel.self)
     @State private var navigationPath = NavigationPath()
+    @State private var showSaveTemplate = false
 
     init(sessionId: String, sessionTitle: String, initialExercises: [DashboardExercise] = [], restoredExercises: [ActiveSessionExercise]? = nil, restoredFeedback: (effort: Int, energy: Int, pain: String)? = nil, onCollapse: @escaping () -> Void, onDismiss: @escaping () -> Void) {
         self.sessionId = sessionId
@@ -70,12 +72,15 @@ struct SessionFlowContainer: View {
                             navigationPath.append(SessionRoute.supersetLogging(groupId: groupId))
                         },
                         onEndWorkout: { navigationPath.append(SessionRoute.workoutFeedback) },
-                        onCancelWorkout: onDismiss
+                        onCancelWorkout: onDismiss,
+                        onStartWorkout: { Task { await startWorkout() } },
+                        onSaveTemplate: { showSaveTemplate = true }
                     )
                 } else {
                     SessionStartedView(
                         viewModel: viewModel,
-                        onStartExercise: { navigationPath.append(SessionRoute.exerciseLibrary) },
+                        onAddExercise: { navigationPath.append(SessionRoute.exerciseLibrary) },
+                        onCancelWorkout: onDismiss,
                         onDismiss: onCollapse
                     )
                 }
@@ -90,12 +95,8 @@ struct SessionFlowContainer: View {
                         onExerciseSelected: { item in
                             Task {
                                 await viewModel.addExercise(item)
-                                let addedExercise = viewModel.exercises.last
                                 guard !navigationPath.isEmpty else { return }
                                 navigationPath.removeLast()
-                                if let ex = addedExercise {
-                                    navigationPath.append(SessionRoute.exerciseLogging(exerciseId: ex.id))
-                                }
                             }
                         },
                         onStartSuperset: {
@@ -144,5 +145,32 @@ struct SessionFlowContainer: View {
                 }
             }
         }
+        .sheet(isPresented: $showSaveTemplate) {
+            SaveTemplateSheet(
+                defaultName: sessionTitle,
+                onSave: { name in
+                    let vm: WorkoutTemplatesViewModel = DependencyContainer.shared.resolve(WorkoutTemplatesViewModel.self)
+                    Task {
+                        let _ = await vm.saveTemplate(name: name, sessionId: sessionId)
+                    }
+                }
+            )
+        }
+    }
+
+    // MARK: - Start Workout
+
+    private func startWorkout() async {
+        guard let sessionId = sessionManager.sessionId else { return }
+        let networkService = DependencyContainer.shared.resolve(NetworkServiceProtocol.self)
+        do {
+            _ = try await networkService.request(
+                HomeRouter.startSession(sessionId: sessionId).endpoint,
+                responseType: SessionResponse.self
+            )
+        } catch {
+            // Continue anyway — server state can be reconciled later
+        }
+        sessionManager.beginWorkout()
     }
 }

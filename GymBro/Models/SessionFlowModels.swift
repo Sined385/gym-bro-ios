@@ -72,6 +72,7 @@ struct ActiveSessionExercise: Identifiable, Equatable, Codable {
     var supersetOrder: String?  // "A", "B", "C"
     var targetSets: Int
     var targetReps: Int
+    var imageUrl: String?
 
     static func == (lhs: Self, rhs: Self) -> Bool {
         lhs.id == rhs.id
@@ -160,6 +161,7 @@ struct SessionExerciseResponse: Decodable, Identifiable {
     let supersetGroupId: String?
     let supersetOrder: String?
     let sets: [SetResponse]?
+    let imageUrl: String?
 }
 
 // MARK: - Exercise Detail (on-demand image fetch)

@@ -16,6 +16,7 @@ struct HomeView: View {
     @EnvironmentObject var sessionManager: ActiveSessionManager
     @Environment(\.scenePhase) private var scenePhase
     @State private var showNotifications = false
+    @State private var showWorkoutLibrary = false
 
     var body: some View {
         ScrollView(.vertical, showsIndicators: false) {
@@ -56,6 +57,12 @@ struct HomeView: View {
                         .frame(maxWidth: .infinity)
                         .padding(.vertical, 40)
                 } else if let completed = viewModel.todayCompletedSession {
+                    StartSessionButton {
+                        Task { await viewModel.startCustomSession() }
+                    }
+
+                    MyWorkoutsButton { showWorkoutLibrary = true }
+
                     SessionHistorySection(session: completed, dayLabel: "Today")
                 } else if sessionManager.isSessionActive {
                     // Session in progress — show resume button
@@ -67,6 +74,8 @@ struct HomeView: View {
                     StartSessionButton {
                         Task { await viewModel.startCustomSession() }
                     }
+
+                    MyWorkoutsButton { showWorkoutLibrary = true }
 
                     RestDayCard(
                         weekWorkoutsCompleted: viewModel.weekWorkoutsCompleted,
@@ -93,6 +102,8 @@ struct HomeView: View {
                         Task { await viewModel.startCustomSession() }
                     }
 
+                    MyWorkoutsButton { showWorkoutLibrary = true }
+
                     PlannedWorkoutCard(
                         plannedWorkout: planned,
                         onStart: { Task { await viewModel.startPlannedWorkout() } },
@@ -104,6 +115,8 @@ struct HomeView: View {
                         Task { await viewModel.startCustomSession() }
                     }
 
+                    MyWorkoutsButton { showWorkoutLibrary = true }
+
                     quickWorkoutSection
                 }
 
@@ -114,6 +127,10 @@ struct HomeView: View {
             .padding(.horizontal, 20)
         }
         .background(Color.gymBroBackground.ignoresSafeArea())
+        .sheet(isPresented: $showWorkoutLibrary) {
+            WorkoutLibraryView()
+                .environmentObject(sessionManager)
+        }
         .overlay {
             if viewModel.isLoading {
                 ProgressView()
@@ -226,6 +243,42 @@ struct HomeView: View {
                 isStarting: viewModel.isStartingSession
             )
         }
+    }
+}
+
+// MARK: - My Workouts Button
+
+private struct MyWorkoutsButton: View {
+    var action: () -> Void
+
+    var body: some View {
+        Button(action: action) {
+            HStack(spacing: 14) {
+                ZStack {
+                    Circle()
+                        .fill(Color.gymBroPrimary.opacity(0.10))
+                        .frame(width: 32, height: 32)
+
+                    Image(systemName: "bookmark.fill")
+                        .font(.system(size: 12, weight: .bold))
+                        .foregroundColor(.gymBroPrimary)
+                }
+
+                Text("Library")
+                    .font(.system(size: 18, weight: .bold))
+                    .tracking(-0.44)
+                    .foregroundColor(.gymBroNeutral900)
+            }
+            .frame(maxWidth: .infinity)
+            .frame(height: 64)
+            .background(Color.white)
+            .clipShape(RoundedRectangle(cornerRadius: 24))
+            .overlay(
+                RoundedRectangle(cornerRadius: 24)
+                    .stroke(Color.gymBroNeutral200, lineWidth: 1)
+            )
+        }
+        .buttonStyle(.plain)
     }
 }
 

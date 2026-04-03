@@ -61,34 +61,31 @@ struct ExercisePreviewSheet: View {
                 TabView {
                     ForEach(viewModel.images, id: \.self) { imgStr in
                         if let imgUrl = URL(string: imgStr) {
-                            AsyncImage(url: imgUrl) { phase in
-                                switch phase {
-                                case .success(let image):
-                                    image
-                                        .resizable()
-                                        .aspectRatio(contentMode: .fill)
-                                        .frame(height: 220)
-                                        .clipped()
-                                        .contentShape(Rectangle())
-                                        .onTapGesture {
-                                            let allUrls = viewModel.images.compactMap { URL(string: $0) }
-                                            expandedGalleryUrls = allUrls
-                                            expandedGalleryIndex = allUrls.firstIndex(of: imgUrl) ?? 0
-                                            showExpandedGallery = true
-                                        }
-                                case .failure:
-                                    RoundedRectangle(cornerRadius: 0)
-                                        .fill(Color.gymBroNeutral100)
-                                        .frame(height: 220)
-                                        .overlay(
-                                            Image(systemName: "photo")
-                                                .font(.system(size: 32))
-                                                .foregroundColor(.gymBroNeutral400)
-                                        )
-                                default:
-                                    ShimmerView()
-                                        .frame(height: 220)
-                                }
+                            CachedAsyncImage(url: imgUrl) { image in
+                                image
+                                    .resizable()
+                                    .aspectRatio(contentMode: .fill)
+                                    .frame(height: 220)
+                                    .clipped()
+                                    .contentShape(Rectangle())
+                                    .onTapGesture {
+                                        let allUrls = viewModel.images.compactMap { URL(string: $0) }
+                                        expandedGalleryUrls = allUrls
+                                        expandedGalleryIndex = allUrls.firstIndex(of: imgUrl) ?? 0
+                                        showExpandedGallery = true
+                                    }
+                            } placeholder: {
+                                ShimmerView()
+                                    .frame(height: 220)
+                            } failure: {
+                                RoundedRectangle(cornerRadius: 0)
+                                    .fill(Color.gymBroNeutral100)
+                                    .frame(height: 220)
+                                    .overlay(
+                                        Image(systemName: "photo")
+                                            .font(.system(size: 32))
+                                            .foregroundColor(.gymBroNeutral400)
+                                    )
                             }
                         }
                     }

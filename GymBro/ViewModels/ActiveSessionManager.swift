@@ -30,6 +30,7 @@ final class ActiveSessionManager: ObservableObject {
     @Published var sessionExercises: [DashboardExercise] = []
     @Published var elapsedSeconds: Int = 0
     @Published var restTimeRemaining: Int?
+    @Published var isWorkoutStarted: Bool = false
 
     // MARK: - Restored Session Data
 
@@ -42,7 +43,7 @@ final class ActiveSessionManager: ObservableObject {
     private var restTimerCancellable: AnyCancellable?
     private static let restNotificationId = "gym-bro-rest-complete"
     private static let stillThereNotificationId = "gym-bro-still-there"
-    private static let stillThereDelaySeconds: TimeInterval = 300 // 5 minutes
+    private static let stillThereDelaySeconds: TimeInterval = 600 // 10 minutes
 
     // MARK: - Date-Anchored Timer State
 
@@ -113,19 +114,33 @@ final class ActiveSessionManager: ObservableObject {
 
     // MARK: - Session Lifecycle
 
-    func startSession(_ session: SessionResponse) {
+    func openSession(_ session: SessionResponse) {
         sessionId = session.id
         sessionTitle = session.title
         sessionExercises = session.exercises
         elapsedSeconds = 0
-        sessionStartDate = Date()
+        isWorkoutStarted = false
+        sessionStartDate = nil
         presentationState = .expanded
-        startTimer()
 
-        Analytics.logEvent("workout_started", parameters: [
+        Analytics.logEvent("workout_opened", parameters: [
             "session_type": session.type,
             "is_ai_generated": (session.aiGenerated ?? false) ? "true" : "false"
         ])
+    }
+
+    func beginWorkout() {
+        isWorkoutStarted = true
+        sessionStartDate = Date()
+        startTimer()
+        scheduleStillThereNotification()
+
+        Analytics.logEvent("workout_started", parameters: [:])
+    }
+
+    func refreshInactivityTimer() {
+        cancelStillThereNotification()
+        scheduleStillThereNotification()
     }
 
     func expand() {
@@ -146,6 +161,7 @@ final class ActiveSessionManager: ObservableObject {
         sessionTitle = nil
         sessionExercises = []
         sessionStartDate = nil
+        isWorkoutStarted = false
         lastSavedExercises = nil
         lastSavedFeedback = nil
         restoredExercises = nil
@@ -294,7 +310,7 @@ final class ActiveSessionManager: ObservableObject {
     struct CachedSession: Codable {
         let sessionId: String
         let sessionTitle: String
-        let sessionStartDate: Date
+        let sessionStartDate: Date?
         let exercises: [ActiveSessionExercise]
         let sessionExercises: [DashboardExercise]
         let presentationState: String
@@ -303,10 +319,11 @@ final class ActiveSessionManager: ObservableObject {
         let painDiscomfort: String
         let restStartDate: Date?
         let restDurationSeconds: Int
+        let isWorkoutStarted: Bool
     }
 
     func saveSession(exercises: [ActiveSessionExercise], effortLevel: Int, energyLevel: Int, painDiscomfort: String) {
-        guard let sessionId, let sessionTitle, let sessionStartDate else { return }
+        guard let sessionId, let sessionTitle else { return }
 
         lastSavedExercises = exercises
         lastSavedFeedback = (effortLevel, energyLevel, painDiscomfort)
@@ -329,7 +346,8 @@ final class ActiveSessionManager: ObservableObject {
             energyLevel: energyLevel,
             painDiscomfort: painDiscomfort,
             restStartDate: restStartDate,
-            restDurationSeconds: restDurationSeconds
+            restDurationSeconds: restDurationSeconds,
+            isWorkoutStarted: isWorkoutStarted
         )
 
         if let data = try? JSONEncoder().encode(cached) {
@@ -345,6 +363,7 @@ final class ActiveSessionManager: ObservableObject {
         sessionTitle = cached.sessionTitle
         sessionStartDate = cached.sessionStartDate
         sessionExercises = cached.sessionExercises
+        isWorkoutStarted = cached.isWorkoutStarted
 
         switch cached.presentationState {
         case "expanded": presentationState = .expanded
@@ -352,8 +371,10 @@ final class ActiveSessionManager: ObservableObject {
         default: presentationState = .expanded
         }
 
-        recalculateElapsedTime()
-        startTimer()
+        if isWorkoutStarted {
+            recalculateElapsedTime()
+            startTimer()
+        }
 
         // Restore rest timer only if still within time window
         if let restStart = cached.restStartDate {

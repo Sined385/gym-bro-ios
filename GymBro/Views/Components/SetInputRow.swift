@@ -9,6 +9,7 @@ struct SetInputRow: View {
     @Binding var reps: String
     let isCompleted: Bool
     var onComplete: () -> Void
+    var onTapCompleted: (() -> Void)? = nil
 
     private let coralAccent = Color(hex: "E86A75")
 
@@ -134,5 +135,11 @@ struct SetInputRow: View {
                     lineWidth: 1
                 )
         )
+        .contentShape(Rectangle())
+        .onTapGesture {
+            if isCompleted {
+                onTapCompleted?()
+            }
+        }
     }
 }

@@ -41,15 +41,17 @@ struct PlanExercise: Decodable, Identifiable {
     let libraryExerciseId: String?
     let accentColor: String?
     let suggestedWeight: Double?
+    let imageUrl: String?
     var id: String { name + setsDisplay }
 
-    init(name: String, muscleGroup: String, setsDisplay: String, libraryExerciseId: String? = nil, accentColor: String? = nil, suggestedWeight: Double? = nil) {
+    init(name: String, muscleGroup: String, setsDisplay: String, libraryExerciseId: String? = nil, accentColor: String? = nil, suggestedWeight: Double? = nil, imageUrl: String? = nil) {
         self.name = name
         self.muscleGroup = muscleGroup
         self.setsDisplay = setsDisplay
         self.libraryExerciseId = libraryExerciseId
         self.accentColor = accentColor
         self.suggestedWeight = suggestedWeight
+        self.imageUrl = imageUrl
     }
 }
 

@@ -59,6 +59,7 @@ struct AttachmentExercise: Decodable, Equatable, Identifiable {
     let accentColor: String?
     let totalSets: Int
     let totalReps: Int
+    let imageUrl: String?
     var id: String { name }
 }
 
@@ -106,7 +107,11 @@ struct UserProfile: Decodable {
     let primaryGoals: [String]?
     let experienceLevel: String?
     let bodyWeightKg: Double?
+    let memberSince: String?
     let consistencyStats: ConsistencyStats
+    let extendedStats: ExtendedStats?
+    let followerCount: Int?
+    let followingCount: Int?
     let isFollowing: Bool
     let followsMe: Bool
     let recentPosts: [CommunityPost]

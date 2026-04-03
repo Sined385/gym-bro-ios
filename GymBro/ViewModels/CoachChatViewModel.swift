@@ -229,7 +229,7 @@ final class CoachChatViewModel: ObservableObject {
                 CoachRouter.startSessionFromChat(sessionId: session.id).endpoint,
                 responseType: SessionResponse.self
             )
-            sessionManager.startSession(response)
+            sessionManager.openSession(response)
         } catch {
             // Fallback: create mock session response from card data
             let mockResponse = SessionResponse(
@@ -245,7 +245,7 @@ final class CoachChatViewModel: ObservableObject {
                 aiMessage: nil,
                 exercises: session.exercises
             )
-            sessionManager.startSession(mockResponse)
+            sessionManager.openSession(mockResponse)
         }
     }
 

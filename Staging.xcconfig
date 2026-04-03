@@ -1,0 +1,7 @@
+// Staging.xcconfig — Staging environment configuration
+// Assign to Staging build configuration in Xcode project settings
+
+API_BASE_URL = https:/$()/gym-bro-api-staging.up.railway.app
+SUPABASE_URL = https:/$()/pzyjxzhdnamkljjeayno.supabase.co
+SUPABASE_ANON_KEY = sb_publishable_dRg8kfSg53w385Z205QITA_dlRWDEiF
+SWIFT_ACTIVE_COMPILATION_CONDITIONS = $(inherited) DEBUG STAGING

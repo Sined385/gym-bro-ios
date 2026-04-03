@@ -14,17 +14,16 @@ struct AvatarView: View {
 
     var body: some View {
         if let urlString = avatarUrl, let url = URL(string: urlString) {
-            AsyncImage(url: url) { phase in
-                switch phase {
-                case .success(let image):
-                    image
-                        .resizable()
-                        .scaledToFill()
-                        .frame(width: size, height: size)
-                        .clipShape(Circle())
-                default:
-                    initialsView
-                }
+            CachedAsyncImage(url: url) { image in
+                image
+                    .resizable()
+                    .scaledToFill()
+                    .frame(width: size, height: size)
+                    .clipShape(Circle())
+            } placeholder: {
+                initialsView
+            } failure: {
+                initialsView
             }
         } else {
             initialsView

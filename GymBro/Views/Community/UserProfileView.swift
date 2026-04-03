@@ -30,7 +30,12 @@ struct UserProfileView: View {
                         .padding(.vertical, 60)
                 } else if let profile = viewModel.profile {
                     profileHeader(profile)
+                    followerRow(profile)
                     consistencySection(profile.consistencyStats)
+
+                    if let stats = profile.extendedStats {
+                        statsGrid(stats)
+                    }
 
                     ProfileWorkoutsSection(
                         workouts: viewModel.workouts,
@@ -38,6 +43,10 @@ struct UserProfileView: View {
                         hasMore: viewModel.hasMoreWorkouts,
                         onLoadMore: { await viewModel.loadMoreWorkouts() }
                     )
+
+                    if let stats = profile.extendedStats, !stats.personalRecords.isEmpty {
+                        personalRecordsSection(stats.personalRecords)
+                    }
 
                     if !profile.isOwnProfile {
                         aiComparisonSection
@@ -219,6 +228,156 @@ struct UserProfileView: View {
         )
         .cornerRadius(24)
         .shadow(color: .black.opacity(0.04), radius: 8, x: 0, y: 2)
+    }
+
+    // MARK: - Follower/Following Row
+
+    private func followerRow(_ profile: UserProfile) -> some View {
+        HStack(spacing: 0) {
+            VStack(spacing: 2) {
+                Text("\(profile.followerCount ?? 0)")
+                    .font(.system(size: 20, weight: .bold))
+                    .foregroundColor(.gymBroNeutral900)
+                Text("Followers")
+                    .font(.system(size: 12, weight: .medium))
+                    .foregroundColor(.gymBroTextSecondary)
+            }
+            .frame(maxWidth: .infinity)
+
+            Divider()
+                .frame(height: 32)
+
+            VStack(spacing: 2) {
+                Text("\(profile.followingCount ?? 0)")
+                    .font(.system(size: 20, weight: .bold))
+                    .foregroundColor(.gymBroNeutral900)
+                Text("Following")
+                    .font(.system(size: 12, weight: .medium))
+                    .foregroundColor(.gymBroTextSecondary)
+            }
+            .frame(maxWidth: .infinity)
+        }
+        .padding(.vertical, 16)
+        .background(Color.gymBroCardBackground)
+        .overlay(
+            RoundedRectangle(cornerRadius: 24)
+                .stroke(Color(hex: "F5F5F5"), lineWidth: 1)
+        )
+        .cornerRadius(24)
+        .shadow(color: .black.opacity(0.04), radius: 8, x: 0, y: 2)
+    }
+
+    // MARK: - Stats Grid
+
+    private func statsGrid(_ stats: ExtendedStats) -> some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Text("Stats")
+                .font(.system(size: 20, weight: .bold))
+                .foregroundColor(.gymBroNeutral900)
+
+            LazyVGrid(columns: [
+                GridItem(.flexible(), spacing: 12),
+                GridItem(.flexible(), spacing: 12)
+            ], spacing: 12) {
+                statCard(
+                    icon: "flame.fill",
+                    iconColor: Color(hex: "E86A75"),
+                    label: "Total Duration",
+                    value: "\(stats.totalDurationMinutes / 60)h \(stats.totalDurationMinutes % 60)m"
+                )
+                statCard(
+                    icon: "bolt.fill",
+                    iconColor: Color(hex: "F5A623"),
+                    label: "Total Calories",
+                    value: formatNumber(stats.totalCalories)
+                )
+                statCard(
+                    icon: "clock.fill",
+                    iconColor: Color(hex: "30C08D"),
+                    label: "Avg Session",
+                    value: "\(stats.avgSessionDuration) min"
+                )
+                statCard(
+                    icon: "scalemass.fill",
+                    iconColor: Color(hex: "5B8DEF"),
+                    label: "Total Weight",
+                    value: formatWeight(stats.totalWeightLifted)
+                )
+            }
+        }
+    }
+
+    private func statCard(icon: String, iconColor: Color, label: String, value: String) -> some View {
+        VStack(spacing: 8) {
+            Image(systemName: icon)
+                .font(.system(size: 22, weight: .medium))
+                .foregroundColor(iconColor)
+
+            Text(value)
+                .font(.system(size: 18, weight: .bold))
+                .foregroundColor(.white)
+                .lineLimit(1)
+                .minimumScaleFactor(0.7)
+
+            Text(label)
+                .font(.system(size: 11, weight: .medium))
+                .foregroundColor(.white.opacity(0.6))
+        }
+        .frame(maxWidth: .infinity)
+        .padding(.vertical, 20)
+        .background(Color(hex: "2D3240"))
+        .overlay(
+            RoundedRectangle(cornerRadius: 24)
+                .stroke(Color.white.opacity(0.08), lineWidth: 1)
+        )
+        .cornerRadius(24)
+        .shadow(color: .black.opacity(0.08), radius: 8, x: 0, y: 2)
+    }
+
+    // MARK: - Personal Records
+
+    private func personalRecordsSection(_ records: [PersonalRecord]) -> some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Text("Personal Records")
+                .font(.system(size: 20, weight: .bold))
+                .foregroundColor(.gymBroNeutral900)
+
+            VStack(spacing: 0) {
+                ForEach(Array(records.enumerated()), id: \.element.id) { index, record in
+                    HStack(spacing: 12) {
+                        Image(systemName: "trophy.fill")
+                            .font(.system(size: 16, weight: .medium))
+                            .foregroundColor(Color(hex: "F5A623"))
+
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text(record.exerciseName)
+                                .font(.system(size: 15, weight: .semibold))
+                                .foregroundColor(.gymBroNeutral900)
+
+                            Text("\(Int(record.weight)) \(record.weightUnit) x \(record.reps) reps")
+                                .font(.system(size: 13, weight: .medium))
+                                .foregroundColor(.gymBroTextSecondary)
+                        }
+
+                        Spacer()
+                    }
+                    .padding(.vertical, 12)
+                    .padding(.horizontal, 16)
+
+                    if index < records.count - 1 {
+                        Divider()
+                            .padding(.leading, 44)
+                    }
+                }
+            }
+            .background(Color.gymBroCardBackground)
+            .overlay(
+                RoundedRectangle(cornerRadius: 24)
+                    .stroke(Color(hex: "F5F5F5"), lineWidth: 1)
+            )
+            .cornerRadius(24)
+            .shadow(color: .black.opacity(0.04), radius: 8, x: 0, y: 2)
+        }
     }
 
     // MARK: - Comparison
@@ -654,5 +813,19 @@ struct UserProfileView: View {
         goal.split(separator: ",")
             .map { $0.replacingOccurrences(of: "_", with: " ").capitalized }
             .joined(separator: ", ")
+    }
+
+    private func formatNumber(_ value: Int) -> String {
+        if value >= 1000 {
+            return String(format: "%.1fk", Double(value) / 1000.0)
+        }
+        return "\(value)"
+    }
+
+    private func formatWeight(_ value: Double) -> String {
+        if value >= 1000 {
+            return String(format: "%.1fk kg", value / 1000.0)
+        }
+        return "\(Int(value)) kg"
     }
 }

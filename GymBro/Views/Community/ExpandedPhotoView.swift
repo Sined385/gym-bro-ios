@@ -1,4 +1,5 @@
 import SwiftUI
+import SDWebImageSwiftUI
 
 struct ExpandedPhotoView: View {
     let url: URL
@@ -18,7 +19,7 @@ struct ExpandedPhotoView: View {
             Color.black.ignoresSafeArea()
                 .opacity(max(0.4, 1.0 - Double(abs(dragOffset.height)) / 400.0))
 
-            AsyncImage(url: url) { phase in
+            WebImage(url: url) { phase in
                 switch phase {
                 case .success(let image):
                     image
@@ -58,7 +59,7 @@ struct ExpandedPhotoView: View {
                     Image(systemName: "photo")
                         .font(.system(size: 48))
                         .foregroundColor(.white.opacity(0.4))
-                default:
+                case .empty:
                     ProgressView()
                         .tint(.white)
                 }

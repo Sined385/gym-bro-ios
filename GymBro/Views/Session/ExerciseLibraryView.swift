@@ -111,17 +111,14 @@ struct ExerciseLibraryView: View {
         HStack(spacing: 12) {
             // Exercise image or fallback icon
             if let imageUrl = item.images?.first, let url = URL(string: imageUrl) {
-                AsyncImage(url: url) { phase in
-                    switch phase {
-                    case .success(let image):
-                        image
-                            .resizable()
-                            .aspectRatio(contentMode: .fill)
-                    case .failure:
-                        exercisePlaceholder(isAdded: isAdded)
-                    default:
-                        ShimmerView()
-                    }
+                CachedAsyncImage(url: url) { image in
+                    image
+                        .resizable()
+                        .aspectRatio(contentMode: .fill)
+                } placeholder: {
+                    ShimmerView()
+                } failure: {
+                    exercisePlaceholder(isAdded: isAdded)
                 }
                 .frame(width: 52, height: 52)
                 .clipShape(RoundedRectangle(cornerRadius: 10))

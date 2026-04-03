@@ -174,7 +174,9 @@ struct ShareSessionView: View {
                             name: exercise.name,
                             sets: "\(completedSets) \u{00D7} \(totalReps)",
                             step: exercise.stepNumber,
-                            accentColor: Color(hex: exercise.accentColor)
+                            accentColor: Color(hex: exercise.accentColor),
+                            imageUrl: exercise.imageUrl,
+                            showChevron: false
                         )
                     }
                 }

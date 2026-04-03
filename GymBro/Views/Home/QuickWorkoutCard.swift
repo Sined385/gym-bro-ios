@@ -169,7 +169,8 @@ struct QuickWorkoutCard: View {
                             name: exercise.name,
                             sets: exercise.setsDisplay,
                             step: exercise.stepNumber,
-                            accentColor: Color(hex: exercise.accentColor)
+                            accentColor: Color(hex: exercise.accentColor),
+                            imageUrl: exercise.imageUrl
                         )
                     }
                     .buttonStyle(.plain)

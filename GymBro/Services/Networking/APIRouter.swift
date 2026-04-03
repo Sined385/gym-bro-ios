@@ -607,3 +607,76 @@ enum PlanRouter: APIRouter {
         }
     }
 }
+
+// MARK: - Template Router
+
+enum TemplateRouter: APIRouter {
+    case list
+    case create(name: String, sessionIds: [String])
+    case rename(templateId: String, name: String)
+    case delete(templateId: String)
+    case start(templateId: String)
+    case share(templateId: String)
+    case saveShared(code: String)
+
+    var path: String {
+        switch self {
+        case .list, .create:
+            return "/api/v1/home/templates"
+        case .rename(let templateId, _):
+            return "/api/v1/home/templates/\(templateId)"
+        case .delete(let templateId):
+            return "/api/v1/home/templates/\(templateId)"
+        case .start(let templateId):
+            return "/api/v1/home/templates/\(templateId)/start"
+        case .share(let templateId):
+            return "/api/v1/home/templates/\(templateId)/share"
+        case .saveShared(let code):
+            return "/api/v1/home/templates/save-shared/\(code)"
+        }
+    }
+
+    var method: HTTPMethod {
+        switch self {
+        case .list: return .get
+        case .create, .start, .share, .saveShared: return .post
+        case .rename: return .patch
+        case .delete: return .delete
+        }
+    }
+
+    var parameters: [String: Any]? {
+        switch self {
+        case .list, .delete, .start, .share, .saveShared:
+            return nil
+        case .create(let name, let sessionIds):
+            return ["name": name, "session_ids": sessionIds]
+        case .rename(_, let name):
+            return ["name": name]
+        }
+    }
+
+    var encoding: ParameterEncoding {
+        switch self {
+        case .list, .delete: return .url
+        case .create, .rename, .start, .share, .saveShared: return .json
+        }
+    }
+}
+
+// MARK: - Shared Template Router (Public, no auth)
+
+enum SharedRouter: APIRouter {
+    case getShared(code: String)
+
+    var path: String {
+        switch self {
+        case .getShared(let code):
+            return "/api/v1/shared/templates/\(code)"
+        }
+    }
+
+    var method: HTTPMethod { .get }
+    var parameters: [String: Any]? { nil }
+    var encoding: ParameterEncoding { .url }
+}

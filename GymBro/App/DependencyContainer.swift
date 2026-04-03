@@ -69,6 +69,11 @@ final class DependencyContainer {
             )
         }.inObjectScope(.container)
 
+        // Deep Link Router (singleton)
+        container.register(DeepLinkRouter.self) { _ in
+            DeepLinkRouter()
+        }.inObjectScope(.container)
+
         // Push Notification Service (singleton)
         container.register(PushNotificationService.self) { resolver in
             PushNotificationService(
@@ -194,6 +199,13 @@ final class DependencyContainer {
             NotificationsViewModel(
                 networkService: resolver.resolve(NetworkServiceProtocol.self)!,
                 pushService: resolver.resolve(PushNotificationService.self)!
+            )
+        }
+
+        container.register(WorkoutTemplatesViewModel.self) { resolver in
+            WorkoutTemplatesViewModel(
+                networkService: resolver.resolve(NetworkServiceProtocol.self)!,
+                sessionManager: resolver.resolve(ActiveSessionManager.self)!
             )
         }
 

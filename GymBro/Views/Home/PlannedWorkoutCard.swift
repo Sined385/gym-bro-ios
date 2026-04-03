@@ -90,7 +90,8 @@ struct PlannedWorkoutCard: View {
                                     name: exercise.name,
                                     sets: exercise.setsDisplay,
                                     step: index + 1,
-                                    accentColor: Color(hex: exercise.accentColor)
+                                    accentColor: Color(hex: exercise.accentColor),
+                                    imageUrl: exercise.imageUrl
                                 )
                             }
                             .buttonStyle(.plain)
@@ -171,8 +172,8 @@ struct PlannedWorkoutCard: View {
             muscleGroups: ["Chest", "Back"],
             status: "pending",
             exercises: [
-                PlannedExercise(name: "Bench Press", muscleGroup: "Chest", setsDisplay: "4 \u{00D7} 8", libraryExerciseId: nil, accentColor: "#E86A75", suggestedWeight: 185),
-                PlannedExercise(name: "Pull-ups", muscleGroup: "Back", setsDisplay: "3 \u{00D7} 10", libraryExerciseId: nil, accentColor: "#30C08D", suggestedWeight: nil),
+                PlannedExercise(name: "Bench Press", muscleGroup: "Chest", setsDisplay: "4 \u{00D7} 8", libraryExerciseId: nil, accentColor: "#E86A75", suggestedWeight: 185, imageUrl: nil),
+                PlannedExercise(name: "Pull-ups", muscleGroup: "Back", setsDisplay: "3 \u{00D7} 10", libraryExerciseId: nil, accentColor: "#30C08D", suggestedWeight: nil, imageUrl: nil),
             ]
         )
     )

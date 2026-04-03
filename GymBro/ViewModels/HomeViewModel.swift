@@ -28,6 +28,7 @@ struct PlannedExercise: Decodable, Identifiable {
     let libraryExerciseId: String?
     let accentColor: String
     let suggestedWeight: Double?
+    let imageUrl: String?
     var id: String { name + setsDisplay }
 }
 
@@ -92,6 +93,7 @@ struct DashboardExercise: Codable, Identifiable {
     let muscleGroup: String?
     let equipment: String?
     let suggestedWeight: Double?
+    let imageUrl: String?
 }
 
 // MARK: - History Response Models
@@ -103,6 +105,7 @@ struct SessionHistoryResponse: Decodable {
 
 struct SessionHistory: Decodable, Identifiable {
     let id: String
+    let sessionIds: [String]?
     let title: String
     let type: String
     let durationMinutes: Int?
@@ -117,6 +120,7 @@ struct HistoryExercise: Decodable, Identifiable {
     let muscleGroup: String?
     let accentColor: String
     let stepNumber: Int
+    var imageUrl: String? = nil
     let sets: [ExerciseSetData]
 }
 
@@ -294,10 +298,10 @@ final class HomeViewModel: ObservableObject {
             durationMinutes: 25,
             aiMessage: "Since you don't have a plan today, I generated a light mobility session to keep you moving and aid recovery.",
             exercises: [
-                DashboardExercise(id: UUID().uuidString, name: "Cat-Cow Stretches", stepNumber: 1, setsDisplay: "2 \u{00D7} 10", accentColor: "#E86A75", libraryExerciseId: nil, muscleGroup: "Core", equipment: "Bodyweight", suggestedWeight: nil),
-                DashboardExercise(id: UUID().uuidString, name: "Thoracic Rotations", stepNumber: 2, setsDisplay: "2 \u{00D7} 8", accentColor: "#30C08D", libraryExerciseId: nil, muscleGroup: "Back", equipment: "Bodyweight", suggestedWeight: nil),
-                DashboardExercise(id: UUID().uuidString, name: "Hip Flexor Stretch", stepNumber: 3, setsDisplay: "2 \u{00D7} 30", accentColor: "#7A82F6", libraryExerciseId: nil, muscleGroup: "Legs", equipment: "Bodyweight", suggestedWeight: nil),
-                DashboardExercise(id: UUID().uuidString, name: "90/90 Stretches", stepNumber: 4, setsDisplay: "2 \u{00D7} 10", accentColor: "#F5A623", libraryExerciseId: nil, muscleGroup: "Legs", equipment: "Bodyweight", suggestedWeight: nil),
+                DashboardExercise(id: UUID().uuidString, name: "Cat-Cow Stretches", stepNumber: 1, setsDisplay: "2 \u{00D7} 10", accentColor: "#E86A75", libraryExerciseId: nil, muscleGroup: "Core", equipment: "Bodyweight", suggestedWeight: nil, imageUrl: nil),
+                DashboardExercise(id: UUID().uuidString, name: "Thoracic Rotations", stepNumber: 2, setsDisplay: "2 \u{00D7} 8", accentColor: "#30C08D", libraryExerciseId: nil, muscleGroup: "Back", equipment: "Bodyweight", suggestedWeight: nil, imageUrl: nil),
+                DashboardExercise(id: UUID().uuidString, name: "Hip Flexor Stretch", stepNumber: 3, setsDisplay: "2 \u{00D7} 30", accentColor: "#7A82F6", libraryExerciseId: nil, muscleGroup: "Legs", equipment: "Bodyweight", suggestedWeight: nil, imageUrl: nil),
+                DashboardExercise(id: UUID().uuidString, name: "90/90 Stretches", stepNumber: 4, setsDisplay: "2 \u{00D7} 10", accentColor: "#F5A623", libraryExerciseId: nil, muscleGroup: "Legs", equipment: "Bodyweight", suggestedWeight: nil, imageUrl: nil),
             ]
         )
     }
@@ -313,7 +317,7 @@ final class HomeViewModel: ObservableObject {
                 HomeRouter.createSession(title: "Custom Session", type: "custom").endpoint,
                 responseType: SessionResponse.self
             )
-            sessionManager.startSession(response)
+            sessionManager.openSession(response)
         } catch {
             // Mock fallback for development
             let mockResponse = SessionResponse(
@@ -329,7 +333,7 @@ final class HomeViewModel: ObservableObject {
                 aiMessage: nil,
                 exercises: []
             )
-            sessionManager.startSession(mockResponse)
+            sessionManager.openSession(mockResponse)
             errorMessage = nil
         }
 
@@ -355,7 +359,7 @@ final class HomeViewModel: ObservableObject {
                 aiMessage: nil,
                 exercises: []
             )
-            sessionManager.startSession(mockResponse)
+            sessionManager.openSession(mockResponse)
             isStartingSession = false
             return
         }
@@ -366,7 +370,7 @@ final class HomeViewModel: ObservableObject {
                 responseType: SessionResponse.self
             )
             activeSession = response
-            sessionManager.startSession(response)
+            sessionManager.openSession(response)
             quickWorkout = nil
         } catch {
             // Mock fallback — open session flow with quick workout data
@@ -383,7 +387,7 @@ final class HomeViewModel: ObservableObject {
                 aiMessage: session.aiMessage,
                 exercises: session.exercises
             )
-            sessionManager.startSession(mockResponse)
+            sessionManager.openSession(mockResponse)
             quickWorkout = nil
             errorMessage = nil
         }
@@ -402,7 +406,7 @@ final class HomeViewModel: ObservableObject {
                 PlanRouter.startPlanSession(dayId: dayId).endpoint,
                 responseType: SessionResponse.self
             )
-            sessionManager.startSession(response)
+            sessionManager.openSession(response)
         } catch {
             // Mock fallback for development
             let mockResponse = SessionResponse(
@@ -418,7 +422,7 @@ final class HomeViewModel: ObservableObject {
                 aiMessage: nil,
                 exercises: []
             )
-            sessionManager.startSession(mockResponse)
+            sessionManager.openSession(mockResponse)
             errorMessage = nil
         }
 
@@ -535,6 +539,7 @@ final class HomeViewModel: ObservableObject {
     private static var mockSessionHistory: SessionHistory {
         SessionHistory(
             id: "mock-1",
+            sessionIds: ["mock-1"],
             title: "Mon's Session",
             type: "strength",
             durationMinutes: 52,

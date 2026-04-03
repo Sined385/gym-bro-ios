@@ -158,7 +158,8 @@ struct PlanDayCard: View {
                                 name: exercise.name,
                                 muscleGroup: exercise.muscleGroup,
                                 setsDisplay: exercise.setsDisplay,
-                                accentColor: Color(hex: exercise.accentColor ?? "E86A75")
+                                accentColor: Color(hex: exercise.accentColor ?? "E86A75"),
+                                imageUrl: exercise.imageUrl
                             )
                         }
                         .buttonStyle(.plain)

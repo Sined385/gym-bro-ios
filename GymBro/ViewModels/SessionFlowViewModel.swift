@@ -109,7 +109,8 @@ final class SessionFlowViewModel: ObservableObject {
                     supersetGroupId: nil,
                     supersetOrder: nil,
                     targetSets: targetSets,
-                    targetReps: targetReps
+                    targetReps: targetReps,
+                    imageUrl: dashEx.imageUrl
                 )
             }
             if !converted.isEmpty {
@@ -186,7 +187,8 @@ final class SessionFlowViewModel: ObservableObject {
                     supersetGroupId: nil,
                     supersetOrder: nil,
                     targetSets: 0,
-                    targetReps: 0
+                    targetReps: 0,
+                    imageUrl: ex.imageUrl
                 )
                 exercises.append(activeEx)
             }
@@ -209,7 +211,8 @@ final class SessionFlowViewModel: ObservableObject {
                 supersetGroupId: nil,
                 supersetOrder: nil,
                 targetSets: 0,
-                targetReps: 0
+                targetReps: 0,
+                imageUrl: item.images?.first
             )
             exercises.append(mockExercise)
             errorMessage = nil  // Suppress while using mock
@@ -246,7 +249,8 @@ final class SessionFlowViewModel: ObservableObject {
                     supersetGroupId: groupId,
                     supersetOrder: ex.supersetOrder,
                     targetSets: 0,
-                    targetReps: 0
+                    targetReps: 0,
+                    imageUrl: ex.imageUrl
                 )
                 exercises.append(activeEx)
             }
@@ -300,7 +304,8 @@ final class SessionFlowViewModel: ObservableObject {
                     supersetGroupId: groupId,
                     supersetOrder: ex.supersetOrder,
                     targetSets: 0,
-                    targetReps: 0
+                    targetReps: 0,
+                    imageUrl: ex.imageUrl
                 )
                 exercises.append(activeEx)
             }
@@ -321,7 +326,8 @@ final class SessionFlowViewModel: ObservableObject {
                     supersetGroupId: groupId,
                     supersetOrder: index < orders.count ? orders[index] : "\(index)",
                     targetSets: 0,
-                    targetReps: 0
+                    targetReps: 0,
+                    imageUrl: item.images?.first
                 )
                 exercises.append(mockExercise)
             }

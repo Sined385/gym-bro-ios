@@ -58,6 +58,10 @@ struct GymBroApp: App {
         DependencyContainer.shared.resolve(ActiveSessionManager.self)
     }()
 
+    @StateObject private var deepLinkRouter: DeepLinkRouter = {
+        DependencyContainer.shared.resolve(DeepLinkRouter.self)
+    }()
+
     @Environment(\.scenePhase) private var scenePhase
 
     private let analyticsService: AnalyticsTrackingServiceProtocol = {
@@ -92,12 +96,19 @@ struct GymBroApp: App {
                     MainTabView()
                         .environmentObject(sessionManager)
                         .environmentObject(coordinator)
+                        .environmentObject(deepLinkRouter)
                 }
             }
             .inject(dependencies: dependencies)
             .modelContainer(modelContainer)
             .onOpenURL { url in
-                GIDSignIn.sharedInstance.handle(url)
+                if !deepLinkRouter.handle(url: url) {
+                    GIDSignIn.sharedInstance.handle(url)
+                }
+            }
+            .onContinueUserActivity(NSUserActivityTypeBrowsingWeb) { activity in
+                guard let url = activity.webpageURL else { return }
+                _ = deepLinkRouter.handle(url: url)
             }
             .task {
                 await coordinator.determineInitialRoute()

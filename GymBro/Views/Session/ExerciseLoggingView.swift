@@ -23,6 +23,9 @@ struct ExerciseLoggingView: View {
     @State private var addSetWeight: String = ""
     @State private var addSetReps: String = ""
 
+    // Edit mode: when non-nil, the modal edits an existing set instead of adding
+    @State private var editingSetInfo: (exerciseId: String, setId: String)?
+
     // Expanded gallery viewer
     @State private var showExpandedGallery: Bool = false
     @State private var expandedGalleryUrls: [URL] = []
@@ -88,6 +91,8 @@ struct ExerciseLoggingView: View {
         .navigationBarTitleDisplayMode(.inline)
         .toolbar(.hidden, for: .navigationBar)
         .sheet(isPresented: $showAddSetSheet) {
+            editingSetInfo = nil
+        } content: {
             addSetModal
                 .presentationDetents([.height(isSupersetModal ? 360 : 280)])
                 .presentationDragIndicator(.visible)
@@ -166,35 +171,32 @@ struct ExerciseLoggingView: View {
                 TabView {
                     ForEach(images, id: \.self) { imgStr in
                         if let imgUrl = URL(string: imgStr) {
-                            AsyncImage(url: imgUrl) { phase in
-                                switch phase {
-                                case .success(let image):
-                                    image
-                                        .resizable()
-                                        .aspectRatio(contentMode: .fill)
-                                        .frame(height: 200)
-                                        .clipShape(RoundedRectangle(cornerRadius: 16))
-                                        .contentShape(Rectangle())
-                                        .onTapGesture {
-                                            let allUrls = images.compactMap { URL(string: $0) }
-                                            expandedGalleryUrls = allUrls
-                                            expandedGalleryIndex = allUrls.firstIndex(of: imgUrl) ?? 0
-                                            showExpandedGallery = true
-                                        }
-                                case .failure:
-                                    RoundedRectangle(cornerRadius: 16)
-                                        .fill(Color.gymBroNeutral100)
-                                        .frame(height: 200)
-                                        .overlay(
-                                            Image(systemName: "photo")
-                                                .font(.system(size: 32))
-                                                .foregroundColor(.gymBroNeutral400)
-                                        )
-                                default:
-                                    ShimmerView()
-                                        .frame(height: 200)
-                                        .clipShape(RoundedRectangle(cornerRadius: 16))
-                                }
+                            CachedAsyncImage(url: imgUrl) { image in
+                                image
+                                    .resizable()
+                                    .aspectRatio(contentMode: .fill)
+                                    .frame(height: 200)
+                                    .clipShape(RoundedRectangle(cornerRadius: 16))
+                                    .contentShape(Rectangle())
+                                    .onTapGesture {
+                                        let allUrls = images.compactMap { URL(string: $0) }
+                                        expandedGalleryUrls = allUrls
+                                        expandedGalleryIndex = allUrls.firstIndex(of: imgUrl) ?? 0
+                                        showExpandedGallery = true
+                                    }
+                            } placeholder: {
+                                ShimmerView()
+                                    .frame(height: 200)
+                                    .clipShape(RoundedRectangle(cornerRadius: 16))
+                            } failure: {
+                                RoundedRectangle(cornerRadius: 16)
+                                    .fill(Color.gymBroNeutral100)
+                                    .frame(height: 200)
+                                    .overlay(
+                                        Image(systemName: "photo")
+                                            .font(.system(size: 32))
+                                            .foregroundColor(.gymBroNeutral400)
+                                    )
                             }
                             .padding(.horizontal, 4)
                         }
@@ -401,6 +403,12 @@ struct ExerciseLoggingView: View {
                         )
                     }
                     sessionManager.startRestTimer()
+                },
+                onTapCompleted: {
+                    editingSetInfo = (exerciseId: exercise.id, setId: set.id)
+                    addSetWeight = set.weight.map { "\(Int($0))" } ?? ""
+                    addSetReps = set.reps.map { "\($0)" } ?? ""
+                    showAddSetSheet = true
                 }
             )
         } onDelete: {
@@ -453,6 +461,7 @@ struct ExerciseLoggingView: View {
 
             // Add Set dashed button
             addSetDashedButton {
+                editingSetInfo = nil
                 // Pre-fill: last completed today's set → previous session set
                 let lastCompleted = exercise.sets.filter { $0.isCompleted }.last
                 if let lc = lastCompleted, (lc.weight != nil || lc.reps != nil) {
@@ -726,7 +735,7 @@ struct ExerciseLoggingView: View {
                         .foregroundColor(.gymBroNeutral900)
                 }
             } else {
-                Text("Log Set")
+                Text(editingSetInfo != nil ? "Edit Set" : "Log Set")
                     .font(.system(size: 20, weight: .bold))
                     .foregroundColor(.gymBroNeutral900)
                     .padding(.top, 8)
@@ -796,6 +805,11 @@ struct ExerciseLoggingView: View {
                             .font(.system(size: 18))
                         Text("Next Exercise")
                             .font(.system(size: 17, weight: .bold))
+                    } else if editingSetInfo != nil {
+                        Image(systemName: "checkmark.circle.fill")
+                            .font(.system(size: 18))
+                        Text("Update Set")
+                            .font(.system(size: 17, weight: .bold))
                     } else {
                         Image(systemName: "checkmark.circle.fill")
                             .font(.system(size: 18))
@@ -826,6 +840,23 @@ struct ExerciseLoggingView: View {
     private func submitNewSet() {
         let weight = Double(addSetWeight)
         let reps = Int(addSetReps) ?? 0
+
+        // Edit existing set
+        if let editing = editingSetInfo {
+            Task {
+                await viewModel.updateSet(
+                    exerciseId: editing.exerciseId,
+                    setId: editing.setId,
+                    weight: weight,
+                    weightUnit: nil,
+                    reps: reps,
+                    isCompleted: nil
+                )
+            }
+            showAddSetSheet = false
+            editingSetInfo = nil
+            return
+        }
 
         if isSupersetModal {
             // Store entry for current exercise

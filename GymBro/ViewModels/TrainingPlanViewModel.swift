@@ -103,7 +103,7 @@ final class TrainingPlanViewModel: ObservableObject {
                 PlanRouter.startPlanSession(dayId: dayId).endpoint,
                 responseType: SessionResponse.self
             )
-            sessionManager.startSession(response)
+            sessionManager.openSession(response)
         } catch {
             print("[TrainingPlanVM] startPlanSession failed: \(error)")
             errorMessage = "Failed to start session"

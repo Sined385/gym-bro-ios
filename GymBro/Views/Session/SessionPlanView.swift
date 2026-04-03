@@ -9,6 +9,12 @@ struct SessionPlanView: View {
     var onTapSuperset: (String) -> Void
     var onEndWorkout: () -> Void
     var onCancelWorkout: () -> Void
+    var onStartWorkout: () -> Void
+    var onSaveTemplate: () -> Void
+
+    private var isStarted: Bool {
+        sessionManager.isWorkoutStarted
+    }
 
     private var hasLoggedSets: Bool {
         viewModel.exercises.contains { exercise in
@@ -21,8 +27,8 @@ struct SessionPlanView: View {
         VStack(spacing: 0) {
             // Top bar
             HStack(spacing: 14) {
-                // Back button
-                Button { onCollapse() } label: {
+                // Back button — collapse if started, dismiss if not
+                Button { isStarted ? onCollapse() : onCancelWorkout() } label: {
                     ZStack {
                         Circle()
                             .fill(Color.white)
@@ -46,7 +52,27 @@ struct SessionPlanView: View {
 
                 Spacer()
 
-                TimerBadge(time: sessionManager.formattedTime)
+                Button { onSaveTemplate() } label: {
+                    ZStack {
+                        Circle()
+                            .fill(Color.white)
+                            .frame(width: 44, height: 44)
+                            .overlay(
+                                Circle()
+                                    .stroke(Color.gymBroNeutral100, lineWidth: 1)
+                            )
+                            .shadow(color: .black.opacity(0.04), radius: 4, y: 2)
+
+                        Image(systemName: "bookmark")
+                            .font(.system(size: 16, weight: .semibold))
+                            .foregroundColor(.gymBroNeutral900)
+                    }
+                }
+                .buttonStyle(.plain)
+
+                if sessionManager.isWorkoutStarted {
+                    TimerBadge(time: sessionManager.formattedTime)
+                }
             }
             .padding(.horizontal, 20)
             .padding(.top, 16)
@@ -77,23 +103,17 @@ struct SessionPlanView: View {
             // Bottom bar
             VStack(spacing: 0) {
                 HStack(spacing: 12) {
-                    // Add Exercise button
+                    // Add Exercise button — round when exercises exist
                     Button(action: onAddExercise) {
-                        HStack(spacing: 10) {
-                            ZStack {
-                                Circle()
-                                    .fill(Color.white.opacity(0.25))
-                                    .frame(width: 28, height: 28)
-                                Image(systemName: "plus")
-                                    .font(.system(size: 13, weight: .bold))
-                                    .foregroundColor(.white)
-                            }
-                            Text("Add Exercise")
-                                .font(.system(size: 16, weight: .bold))
+                        ZStack {
+                            Circle()
+                                .fill(Color.white.opacity(0.25))
+                                .frame(width: 28, height: 28)
+                            Image(systemName: "plus")
+                                .font(.system(size: 13, weight: .bold))
+                                .foregroundColor(.white)
                         }
-                        .foregroundColor(.white)
-                        .frame(maxWidth: .infinity)
-                        .frame(height: 64)
+                        .frame(width: 64, height: 64)
                         .background(
                             LinearGradient(
                                 colors: [.gymBroPrimary, .gymBroPrimaryDark],
@@ -101,18 +121,35 @@ struct SessionPlanView: View {
                                 endPoint: .bottomTrailing
                             )
                         )
-                        .clipShape(RoundedRectangle(cornerRadius: 24))
+                        .clipShape(Circle())
                         .shadow(color: Color.gymBroPrimary.opacity(0.3), radius: 8, y: 4)
                     }
                     .buttonStyle(.plain)
 
-                    if hasLoggedSets {
-                        // End Workout button
+                    if !isStarted {
+                        // Start Workout button
+                        Button(action: onStartWorkout) {
+                            HStack(spacing: 8) {
+                                Image(systemName: "play.fill")
+                                    .font(.system(size: 14, weight: .bold))
+                                Text("Start Workout")
+                                    .font(.system(size: 16, weight: .bold))
+                            }
+                            .foregroundColor(.white)
+                            .frame(maxWidth: .infinity)
+                            .frame(height: 64)
+                            .background(Color(hex: "2D3240"))
+                            .clipShape(RoundedRectangle(cornerRadius: 24))
+                            .shadow(color: Color.black.opacity(0.15), radius: 8, y: 4)
+                        }
+                        .buttonStyle(.plain)
+                    } else if hasLoggedSets {
+                        // Complete Workout button
                         Button(action: onEndWorkout) {
                             HStack(spacing: 8) {
                                 Image(systemName: "flag.fill")
                                     .font(.system(size: 14, weight: .bold))
-                                Text("End Workout")
+                                Text("Complete Workout")
                                     .font(.system(size: 16, weight: .bold))
                             }
                             .foregroundColor(.white)
@@ -179,22 +216,21 @@ struct SessionPlanView: View {
     // MARK: - Exercise Card Content
 
     private func exerciseCardContent(_ exercise: ActiveSessionExercise) -> some View {
-        HStack(spacing: 14) {
-            // Numbered circle
-            ZStack {
-                Circle()
-                    .fill(Color(hex: "FAFAFA"))
-                    .frame(width: 48, height: 48)
+        HStack(spacing: 16) {
+            // Accent bar
+            RoundedRectangle(cornerRadius: 100)
+                .fill(Color(hex: exercise.accentColor))
+                .frame(width: 6, height: 56)
 
-                Text("\(exercise.stepNumber)")
-                    .font(.system(size: 18, weight: .bold))
-                    .foregroundColor(Color(hex: "737373"))
-            }
+            // Exercise image
+            exerciseImage(exercise.imageUrl)
 
-            VStack(alignment: .leading, spacing: 6) {
+            VStack(alignment: .leading, spacing: 4) {
                 Text(exercise.name)
                     .font(.system(size: 16, weight: .bold))
                     .foregroundColor(.gymBroNeutral900)
+                    .lineLimit(1)
+                    .tracking(-0.3)
 
                 // Sets badge
                 let completedSets = exercise.sets.filter { $0.isCompleted }.count
@@ -202,12 +238,12 @@ struct SessionPlanView: View {
                 let allDone = completedSets >= target
                 Text("\(completedSets) / \(target) SETS")
                     .font(.system(size: 11, weight: .semibold))
-                    .tracking(0.5)
+                    .tracking(0.6)
                     .foregroundColor(allDone ? Color(hex: "30C08D") : Color(hex: "737373"))
-                    .padding(.horizontal, 10)
-                    .padding(.vertical, 4)
+                    .padding(.horizontal, 8)
+                    .padding(.vertical, 2.5)
                     .background(allDone ? Color(hex: "30C08D").opacity(0.1) : Color(hex: "F5F5F5"))
-                    .clipShape(Capsule())
+                    .clipShape(RoundedRectangle(cornerRadius: 8))
             }
 
             Spacer()
@@ -218,14 +254,46 @@ struct SessionPlanView: View {
                     .foregroundColor(Color(hex: "30C08D"))
             } else {
                 Image(systemName: "chevron.right")
-                    .font(.system(size: 14, weight: .semibold))
-                    .foregroundColor(.gymBroNeutral400)
+                    .font(.system(size: 14, weight: .medium))
+                    .foregroundColor(Color(hex: "D4D4D4"))
             }
         }
-        .padding(16)
+        .padding(.horizontal, 21)
+        .padding(.vertical, 1)
+        .frame(minHeight: 72)
         .background(Color.white)
         .clipShape(RoundedRectangle(cornerRadius: 24))
-        .shadow(color: .black.opacity(0.04), radius: 4, y: 2)
+        .shadow(color: .black.opacity(0.03), radius: 10, x: 0, y: 4)
+    }
+
+    @ViewBuilder
+    private func exerciseImage(_ imageUrl: String?) -> some View {
+        if let imageUrl, let url = URL(string: imageUrl) {
+            CachedAsyncImage(url: url) { image in
+                image
+                    .resizable()
+                    .aspectRatio(contentMode: .fill)
+            } placeholder: {
+                exercisePlaceholder
+            } failure: {
+                exercisePlaceholder
+            }
+            .frame(width: 56, height: 56)
+            .clipShape(RoundedRectangle(cornerRadius: 16))
+        } else {
+            exercisePlaceholder
+        }
+    }
+
+    private var exercisePlaceholder: some View {
+        RoundedRectangle(cornerRadius: 16)
+            .fill(Color(hex: "F5F5F5"))
+            .frame(width: 56, height: 56)
+            .overlay(
+                Image(systemName: "dumbbell.fill")
+                    .font(.system(size: 20))
+                    .foregroundColor(Color(hex: "D4D4D4"))
+            )
     }
 
     // MARK: - Superset Card

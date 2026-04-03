@@ -120,33 +120,30 @@ struct PostCardView: View {
 
             // Photo
             if let photoUrl = post.photoUrl, let url = URL(string: photoUrl) {
-                AsyncImage(url: url) { phase in
-                    switch phase {
-                    case .success(let image):
-                        image
-                            .resizable()
-                            .aspectRatio(contentMode: .fill)
-                            .frame(maxWidth: .infinity)
-                            .frame(height: 200)
-                            .clipShape(RoundedRectangle(cornerRadius: 12))
-                            .contentShape(Rectangle())
-                            .onTapGesture { isPhotoExpanded = true }
-                    case .failure:
-                        RoundedRectangle(cornerRadius: 12)
-                            .fill(Color.gymBroNeutral100)
-                            .frame(maxWidth: .infinity)
-                            .frame(height: 200)
-                            .overlay(
-                                Image(systemName: "photo")
-                                    .font(.system(size: 32))
-                                    .foregroundColor(.gymBroNeutral400)
-                            )
-                    default:
-                        ShimmerView()
-                            .frame(maxWidth: .infinity)
-                            .frame(height: 200)
-                            .clipShape(RoundedRectangle(cornerRadius: 12))
-                    }
+                CachedAsyncImage(url: url) { image in
+                    image
+                        .resizable()
+                        .aspectRatio(contentMode: .fill)
+                        .frame(maxWidth: .infinity)
+                        .frame(height: 200)
+                        .clipShape(RoundedRectangle(cornerRadius: 12))
+                        .contentShape(Rectangle())
+                        .onTapGesture { isPhotoExpanded = true }
+                } placeholder: {
+                    ShimmerView()
+                        .frame(maxWidth: .infinity)
+                        .frame(height: 200)
+                        .clipShape(RoundedRectangle(cornerRadius: 12))
+                } failure: {
+                    RoundedRectangle(cornerRadius: 12)
+                        .fill(Color.gymBroNeutral100)
+                        .frame(maxWidth: .infinity)
+                        .frame(height: 200)
+                        .overlay(
+                            Image(systemName: "photo")
+                                .font(.system(size: 32))
+                                .foregroundColor(.gymBroNeutral400)
+                        )
                 }
                 .background(
                     ExpandedGalleryView(
@@ -278,7 +275,9 @@ struct PostCardView: View {
                         name: exercise.name,
                         sets: exercise.setsDisplay ?? "\(exercise.totalSets) \u{00D7} \(exercise.totalReps)",
                         step: exercise.stepNumber ?? (index + 1),
-                        accentColor: Color(hex: exercise.accentColor ?? "#E86A75")
+                        accentColor: Color(hex: exercise.accentColor ?? "#E86A75"),
+                        imageUrl: exercise.imageUrl,
+                        showChevron: false
                     )
                 }
             }

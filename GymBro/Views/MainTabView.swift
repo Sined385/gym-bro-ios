@@ -9,8 +9,11 @@ import SwiftUI
 
 struct MainTabView: View {
     @EnvironmentObject var sessionManager: ActiveSessionManager
+    @EnvironmentObject var deepLinkRouter: DeepLinkRouter
     @State private var hasAttemptedRestore = false
     @State private var selectedTab = 0
+    @State private var showSharedTemplateSheet = false
+    @State private var sharedTemplateCode: String?
 
     private let analyticsService: AnalyticsTrackingServiceProtocol = {
         DependencyContainer.shared.resolve(AnalyticsTrackingServiceProtocol.self)
@@ -97,6 +100,26 @@ struct MainTabView: View {
             guard !hasAttemptedRestore else { return }
             hasAttemptedRestore = true
             sessionManager.restoreSessionIfNeeded()
+        }
+        .onAppear {
+            if case .sharedTemplate(let code) = deepLinkRouter.pendingDeepLink {
+                sharedTemplateCode = code
+                showSharedTemplateSheet = true
+                deepLinkRouter.clearDeepLink()
+            }
+        }
+        .onChange(of: deepLinkRouter.pendingDeepLink) { _, newValue in
+            if case .sharedTemplate(let code) = newValue {
+                sharedTemplateCode = code
+                showSharedTemplateSheet = true
+                deepLinkRouter.clearDeepLink()
+            }
+        }
+        .sheet(isPresented: $showSharedTemplateSheet) {
+            if let code = sharedTemplateCode {
+                SharedTemplatePreviewView(shareCode: code)
+                    .environmentObject(sessionManager)
+            }
         }
     }
 }
