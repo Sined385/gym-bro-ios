@@ -147,6 +147,7 @@ final class CoachChatViewModel: ObservableObject {
         }
     }
 
+
     func loadMoreMessages() async {
         guard let convId = conversationId, hasMoreMessages, !isLoadingHistory else { return }
         guard let oldestId = messages.first?.id else { return }

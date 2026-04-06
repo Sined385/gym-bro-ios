@@ -120,13 +120,14 @@ final class NetworkService: NetworkServiceProtocol {
         responseType: T.Type
     ) async throws -> T {
         let url = try buildURL(for: endpoint)
+        let mergedHeaders = await buildHeaders(for: endpoint)
 
         return try await withCheckedThrowingContinuation { continuation in
             session.upload(
                 data,
                 to: url,
                 method: convertMethod(endpoint.method),
-                headers: convertHeaders(endpoint.headers)
+                headers: convertHeaders(mergedHeaders)
             )
             .validate()
             .responseData { [weak self] response in
@@ -158,6 +159,7 @@ final class NetworkService: NetworkServiceProtocol {
         responseType: T.Type
     ) async throws -> T {
         let url = try buildURL(for: endpoint)
+        let mergedHeaders = await buildHeaders(for: endpoint)
 
         return try await withCheckedThrowingContinuation { continuation in
             session.upload(
@@ -177,7 +179,7 @@ final class NetworkService: NetworkServiceProtocol {
                 },
                 to: url,
                 method: convertMethod(endpoint.method),
-                headers: convertHeaders(endpoint.headers)
+                headers: convertHeaders(mergedHeaders)
             )
             .validate()
             .responseData { [weak self] response in

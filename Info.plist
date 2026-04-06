@@ -32,5 +32,9 @@
 	</array>
 	<key>UIUserInterfaceStyle</key>
 	<string>Light</string>
+	<key>NSCameraUsageDescription</key>
+	<string>GymJam needs camera access to take a profile photo.</string>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>GymJam needs photo library access to choose a profile photo.</string>
 </dict>
 </plist>
