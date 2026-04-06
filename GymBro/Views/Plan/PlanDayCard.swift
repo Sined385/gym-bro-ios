@@ -28,6 +28,8 @@ struct PlanDayCard: View {
                 futureCard
             case .rest:
                 restCard
+            case .skipped:
+                skippedCard
             }
         }
     }
@@ -220,29 +222,27 @@ struct PlanDayCard: View {
                 }
 
                 Spacer()
-
-                Image(systemName: "lock.fill")
-                    .font(.system(size: 14))
-                    .foregroundColor(Color(hex: "D4D4D4"))
             }
 
-            // Placeholder bars
-            VStack(spacing: 8) {
-                ForEach(0..<3, id: \.self) { _ in
-                    HStack(spacing: 10) {
-                        RoundedRectangle(cornerRadius: 3)
-                            .fill(Color(hex: "E5E5E5"))
-                            .frame(width: 6, height: 20)
-                        RoundedRectangle(cornerRadius: 6)
-                            .fill(Color(hex: "F5F5F5"))
-                            .frame(height: 20)
-                        RoundedRectangle(cornerRadius: 6)
-                            .fill(Color(hex: "F5F5F5"))
-                            .frame(width: 50, height: 20)
+            // Exercise list
+            if let exercises = day.exercises, !exercises.isEmpty {
+                VStack(spacing: 8) {
+                    ForEach(exercises) { exercise in
+                        Button {
+                            selectedExercise = ExercisePreviewData(from: exercise)
+                        } label: {
+                            PlanExerciseRow(
+                                name: exercise.name,
+                                muscleGroup: exercise.muscleGroup,
+                                setsDisplay: exercise.setsDisplay,
+                                accentColor: Color(hex: exercise.accentColor ?? "E86A75"),
+                                imageUrl: exercise.imageUrl
+                            )
+                        }
+                        .buttonStyle(.plain)
                     }
                 }
             }
-            .opacity(0.6)
         }
         .padding(16)
         .background(Color.white)
@@ -251,7 +251,10 @@ struct PlanDayCard: View {
             RoundedRectangle(cornerRadius: 20)
                 .stroke(Color.gymBroNeutral100, lineWidth: 1)
         )
-        .opacity(0.7)
+        .opacity(0.85)
+        .sheet(item: $selectedExercise) { exercise in
+            ExercisePreviewSheet(exercise: exercise)
+        }
     }
 
     // MARK: - Rest Card
@@ -272,6 +275,45 @@ struct PlanDayCard: View {
             }
 
             Spacer()
+        }
+        .padding(16)
+        .background(Color.white)
+        .clipShape(RoundedRectangle(cornerRadius: 20))
+        .overlay(
+            RoundedRectangle(cornerRadius: 20)
+                .stroke(Color.gymBroNeutral100, lineWidth: 1)
+        )
+        .opacity(0.7)
+    }
+
+    // MARK: - Skipped Card
+
+    private var skippedCard: some View {
+        HStack(spacing: 12) {
+            Image(systemName: "arrow.uturn.forward")
+                .font(.system(size: 16))
+                .foregroundColor(Color(hex: "A1A1A1"))
+
+            VStack(alignment: .leading, spacing: 2) {
+                Text(day.sessionTitle ?? "Training")
+                    .font(.system(size: 15, weight: .semibold))
+                    .foregroundColor(.gymBroNeutral900)
+                    .strikethrough(true, color: Color(hex: "A1A1A1"))
+                Text("Redistributed to later this week")
+                    .font(.system(size: 12, weight: .medium))
+                    .foregroundColor(Color(hex: "A1A1A1"))
+            }
+
+            Spacer()
+
+            Text("SKIPPED")
+                .font(.system(size: 10, weight: .bold))
+                .tracking(0.5)
+                .foregroundColor(Color(hex: "A1A1A1"))
+                .padding(.horizontal, 8)
+                .padding(.vertical, 4)
+                .background(Color(hex: "A1A1A1").opacity(0.1))
+                .clipShape(RoundedRectangle(cornerRadius: 6))
         }
         .padding(16)
         .background(Color.white)

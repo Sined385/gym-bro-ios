@@ -532,6 +532,7 @@ final class SessionFlowViewModel: ObservableObject {
         isLoading = true
         errorMessage = nil
 
+        let trackedDuration = max(1, sessionManager.elapsedSeconds / 60)
         let feedback: [String: Any] = [
             "effort_level": effortLevel,
             "energy_level": energyLevel,
@@ -540,7 +541,7 @@ final class SessionFlowViewModel: ObservableObject {
 
         do {
             let response = try await networkService.request(
-                SessionRouter.completeWithFeedback(sessionId: sessionId, feedback: feedback).endpoint,
+                SessionRouter.completeWithFeedback(sessionId: sessionId, feedback: feedback, durationMinutes: trackedDuration).endpoint,
                 responseType: SessionResponse.self
             )
 

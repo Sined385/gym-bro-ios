@@ -130,6 +130,10 @@ struct TrainingPlanView: View {
             return .completed
         }
 
+        if day.status == "skipped" {
+            return .skipped
+        }
+
         if day.dayType == "rest" {
             return .rest
         }

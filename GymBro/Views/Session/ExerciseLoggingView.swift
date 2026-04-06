@@ -838,7 +838,7 @@ struct ExerciseLoggingView: View {
     // MARK: - Submit New Set
 
     private func submitNewSet() {
-        let weight = Double(addSetWeight)
+        let weight = Double(addSetWeight.replacingOccurrences(of: ",", with: "."))
         let reps = Int(addSetReps) ?? 0
 
         // Edit existing set

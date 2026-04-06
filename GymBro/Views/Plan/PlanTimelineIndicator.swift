@@ -12,6 +12,7 @@ enum PlanDayState {
     case upNext
     case future
     case rest
+    case skipped
 }
 
 struct PlanTimelineIndicator: View {
@@ -54,6 +55,14 @@ struct PlanTimelineIndicator: View {
                     Circle()
                         .stroke(futureColor, lineWidth: 2)
                         .frame(width: 20, height: 20)
+
+                case .skipped:
+                    Circle()
+                        .fill(futureColor)
+                        .frame(width: 24, height: 24)
+                    Image(systemName: "xmark")
+                        .font(.system(size: 11, weight: .bold))
+                        .foregroundColor(.white)
                 }
             }
             .frame(width: 32, height: 32)
@@ -76,6 +85,8 @@ struct PlanTimelineIndicator: View {
         PlanTimelineIndicator(state: .upNext, isLast: false)
             .frame(height: 100)
         PlanTimelineIndicator(state: .future, isLast: false)
+            .frame(height: 100)
+        PlanTimelineIndicator(state: .skipped, isLast: false)
             .frame(height: 100)
         PlanTimelineIndicator(state: .rest, isLast: true)
             .frame(height: 100)
