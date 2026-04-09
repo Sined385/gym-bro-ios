@@ -51,6 +51,14 @@ struct WorkoutAttachment: Decodable, Equatable {
     let exercises: [AttachmentExercise]?
 }
 
+struct AttachmentSetData: Decodable, Equatable, Identifiable {
+    let setNumber: Int
+    let weight: Double?
+    let weightUnit: String?
+    let reps: Int
+    var id: Int { setNumber }
+}
+
 struct AttachmentExercise: Decodable, Equatable, Identifiable {
     let name: String
     let muscleGroup: String?
@@ -60,6 +68,10 @@ struct AttachmentExercise: Decodable, Equatable, Identifiable {
     let totalSets: Int
     let totalReps: Int
     let imageUrl: String?
+    let externalId: String?
+    let sets: [AttachmentSetData]?
+    let supersetGroupId: String?
+    let supersetOrder: String?
     var id: String { name }
 }
 

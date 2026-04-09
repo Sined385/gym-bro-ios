@@ -258,5 +258,5 @@ struct TypingIndicator: View {
 
 #Preview {
     CoachChatView()
-        .environmentObject(ActiveSessionManager(appDataState: AppDataState()))
+        .environmentObject(ActiveSessionManager(appDataState: AppDataState(), liveActivityService: LiveActivityService()))
 }

@@ -54,16 +54,10 @@ class AppDelegate: NSObject, UIApplicationDelegate, MessagingDelegate, UNUserNot
         didReceive response: UNNotificationResponse
     ) async {
         let userInfo = response.notification.request.content.userInfo
-        NotificationCenter.default.post(
-            name: .didTapPushNotification,
-            object: nil,
-            userInfo: userInfo
-        )
+        await MainActor.run {
+            let router = DependencyContainer.shared.resolve(DeepLinkRouter.self)
+            router.handlePushNotification(userInfo: userInfo)
+        }
     }
 }
 
-// MARK: - Notification Names
-
-extension Notification.Name {
-    static let didTapPushNotification = Notification.Name("didTapPushNotification")
-}

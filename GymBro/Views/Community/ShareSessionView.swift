@@ -168,16 +168,13 @@ struct ShareSessionView: View {
                         .foregroundColor(.gymBroTextSecondary)
                         .tracking(0.5)
 
-                    ForEach(viewModel.exercises) { exercise in
-                        let completedSets = exercise.sets.filter { $0.isCompleted }.count
-                        let totalReps = exercise.sets.filter { $0.isCompleted }.compactMap { $0.reps }.reduce(0, +)
-                        ExerciseRowView(
-                            name: exercise.name,
-                            sets: "\(completedSets) \u{00D7} \(totalReps)",
-                            step: exercise.stepNumber,
-                            accentColor: Color(hex: exercise.accentColor),
-                            imageUrl: exercise.imageUrl
-                        )
+                    ForEach(shareExerciseGroups, id: \.id) { group in
+                        switch group {
+                        case .standalone(let exercise):
+                            shareExerciseRow(exercise)
+                        case .superset(let exercises, _):
+                            shareSupersetContainer(exercises)
+                        }
                     }
                 }
             }
@@ -454,6 +451,174 @@ struct ShareSessionView: View {
         }
 
         isUploadingPhoto = false
+    }
+
+    // MARK: - Share Exercise Grouping
+
+    private enum ShareExerciseGroup: Identifiable {
+        case standalone(exercise: ActiveSessionExercise)
+        case superset(exercises: [ActiveSessionExercise], groupId: String)
+
+        var id: String {
+            switch self {
+            case .standalone(let exercise): return "standalone-\(exercise.id)"
+            case .superset(_, let groupId): return "superset-\(groupId)"
+            }
+        }
+    }
+
+    private var shareExerciseGroups: [ShareExerciseGroup] {
+        var groups: [ShareExerciseGroup] = []
+        var supersetMap: [String: [ActiveSessionExercise]] = [:]
+        var emitted: Set<String> = []
+
+        for exercise in viewModel.exercises {
+            if let groupId = exercise.supersetGroupId {
+                if supersetMap[groupId] == nil {
+                    supersetMap[groupId] = []
+                }
+                supersetMap[groupId]?.append(exercise)
+            }
+        }
+
+        for exercise in viewModel.exercises {
+            if let groupId = exercise.supersetGroupId {
+                if !emitted.contains(groupId) {
+                    emitted.insert(groupId)
+                    if let members = supersetMap[groupId], members.count > 1 {
+                        groups.append(.superset(exercises: members, groupId: groupId))
+                    } else {
+                        groups.append(.standalone(exercise: exercise))
+                    }
+                }
+            } else {
+                groups.append(.standalone(exercise: exercise))
+            }
+        }
+
+        return groups
+    }
+
+    private func shareExerciseRow(_ exercise: ActiveSessionExercise, orderLabel: String? = nil) -> some View {
+        VStack(alignment: .leading, spacing: 6) {
+            HStack(spacing: 8) {
+                RoundedRectangle(cornerRadius: 2)
+                    .fill(Color(hex: exercise.accentColor))
+                    .frame(width: 4, height: 32)
+
+                if let orderLabel {
+                    Text(orderLabel)
+                        .font(.system(size: 11, weight: .bold))
+                        .foregroundColor(Color(hex: "7A82F6"))
+                        .frame(width: 18)
+                }
+
+                // Exercise image
+                if let imageUrl = exercise.imageUrl, let url = URL(string: imageUrl) {
+                    CachedAsyncImage(url: url) { image in
+                        image.resizable().aspectRatio(contentMode: .fill)
+                    } placeholder: {
+                        shareExercisePlaceholder
+                    } failure: {
+                        shareExercisePlaceholder
+                    }
+                    .frame(width: 36, height: 36)
+                    .clipShape(RoundedRectangle(cornerRadius: 10))
+                } else {
+                    shareExercisePlaceholder
+                }
+
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(exercise.name)
+                        .font(.system(size: 14, weight: .semibold))
+                        .foregroundColor(.gymBroNeutral900)
+                        .lineLimit(1)
+
+                    if !exercise.muscleGroup.isEmpty {
+                        Text(exercise.muscleGroup.uppercased())
+                            .font(.system(size: 10, weight: .semibold))
+                            .tracking(0.4)
+                            .foregroundColor(.gymBroTextSecondary)
+                    }
+                }
+
+                Spacer()
+            }
+
+            // Per-set chips
+            shareSetChips(for: exercise)
+                .padding(.leading, 12)
+        }
+    }
+
+    @ViewBuilder
+    private func shareSetChips(for exercise: ActiveSessionExercise) -> some View {
+        let completedSets = exercise.sets.filter { $0.isCompleted }
+        if !completedSets.isEmpty {
+            HStack(spacing: 4) {
+                ForEach(completedSets) { set in
+                    let text: String = {
+                        if let weight = set.weight, weight > 0 {
+                            let weightStr = weight.truncatingRemainder(dividingBy: 1) == 0
+                                ? "\(Int(weight))"
+                                : String(format: "%.1f", weight)
+                            return "\(weightStr)\(set.weightUnit) \u{00D7} \(set.reps ?? 0)"
+                        } else {
+                            return "\u{00D7} \(set.reps ?? 0)"
+                        }
+                    }()
+                    Text(text)
+                        .font(.system(size: 11, weight: .semibold))
+                        .foregroundColor(Color(hex: "737373"))
+                        .padding(.horizontal, 8)
+                        .padding(.vertical, 3)
+                        .background(Color(hex: "F5F5F5"))
+                        .clipShape(RoundedRectangle(cornerRadius: 6))
+                }
+            }
+        }
+    }
+
+    private func shareSupersetContainer(_ exercises: [ActiveSessionExercise]) -> some View {
+        VStack(alignment: .leading, spacing: 8) {
+            HStack(spacing: 6) {
+                Image(systemName: "square.stack.fill")
+                    .font(.system(size: 10, weight: .bold))
+                Text("SUPERSET")
+                    .font(.system(size: 10, weight: .bold))
+                    .tracking(0.6)
+            }
+            .foregroundColor(.white)
+            .padding(.horizontal, 10)
+            .padding(.vertical, 5)
+            .background(Color(hex: "7A82F6"))
+            .clipShape(Capsule())
+
+            ForEach(Array(exercises.enumerated()), id: \.element.id) { i, exercise in
+                shareExerciseRow(
+                    exercise,
+                    orderLabel: exercise.supersetOrder ?? String(Character(UnicodeScalar(65 + i)!))
+                )
+            }
+        }
+        .padding(10)
+        .background(Color(hex: "7A82F6").opacity(0.05))
+        .clipShape(RoundedRectangle(cornerRadius: 10))
+        .overlay(
+            RoundedRectangle(cornerRadius: 10)
+                .stroke(Color(hex: "7A82F6").opacity(0.15), lineWidth: 1)
+        )
+    }
+
+    private var shareExercisePlaceholder: some View {
+        RoundedRectangle(cornerRadius: 10)
+            .fill(Color(hex: "F5F5F5"))
+            .frame(width: 36, height: 36)
+            .overlay(
+                Image(systemName: "dumbbell.fill")
+                    .font(.system(size: 14))
+                    .foregroundColor(Color(hex: "D4D4D4"))
+            )
     }
 
     // MARK: - Helpers

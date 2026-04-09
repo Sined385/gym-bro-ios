@@ -210,19 +210,8 @@ struct RestDayCard: View {
 
                 Spacer()
 
-                if let streak = weekStreak, streak > 0 {
-                    HStack(spacing: 4) {
-                        Image(systemName: "flame.fill")
-                            .font(.system(size: 12))
-                        Text("\(streak) day streak")
-                            .font(.system(size: 12, weight: .bold))
-                    }
-                    .foregroundColor(.orange)
-                    .padding(.horizontal, 10)
-                    .padding(.vertical, 5)
-                    .background(Color.orange.opacity(0.15))
-                    .clipShape(Capsule())
-                }
+
+
             }
 
             HStack(spacing: 0) {

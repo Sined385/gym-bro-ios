@@ -30,6 +30,15 @@ struct MainTabView: View {
         case .post(let postId):
             selectedTab = 3
             deepLinkRouter.pendingPostId = postId
+        case .userProfile(let userId):
+            selectedTab = 3
+            deepLinkRouter.pendingUserId = userId
+        case .skipRest:
+            sessionManager.skipRestTimer()
+        case .repeatLastSet:
+            sessionManager.expand()
+            sessionManager.requestRepeatLastSet()
+            sessionManager.startRestTimer()
         }
         deepLinkRouter.clearDeepLink()
     }
@@ -107,8 +116,17 @@ struct MainTabView: View {
                     .transition(.move(edge: .bottom).combined(with: .opacity))
                 }
             }
+
+            // Conflict overlay — inside ZStack, above everything
+            if sessionManager.showSessionConflict {
+                SessionConflictOverlay()
+                    .environmentObject(sessionManager)
+                    .ignoresSafeArea()
+                    .transition(.opacity)
+            }
         }
         .animation(.spring(response: 0.4, dampingFraction: 0.85), value: sessionManager.presentationState)
+        .animation(.spring(response: 0.35, dampingFraction: 0.85), value: sessionManager.showSessionConflict)
         .task {
             guard !hasAttemptedRestore else { return }
             hasAttemptedRestore = true

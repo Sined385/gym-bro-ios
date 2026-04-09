@@ -145,6 +145,12 @@ struct CommunityFeedView: View {
                     deepLinkRouter.pendingPostId = nil
                 }
             }
+            .onChange(of: deepLinkRouter.pendingUserId) { _, userId in
+                if let userId {
+                    navigationPath.append(CommunityDestination.userProfile(userId: userId))
+                    deepLinkRouter.pendingUserId = nil
+                }
+            }
         }
         .analyticsScreen("Community")
     }

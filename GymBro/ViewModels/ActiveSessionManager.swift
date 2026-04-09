@@ -31,6 +31,8 @@ final class ActiveSessionManager: ObservableObject {
     @Published var elapsedSeconds: Int = 0
     @Published var restTimeRemaining: Int?
     @Published var isWorkoutStarted: Bool = false
+    @Published var showSessionConflict = false
+    private var pendingSessionStart: (@MainActor () async -> Void)?
 
     // MARK: - Restored Session Data
 
@@ -52,6 +54,18 @@ final class ActiveSessionManager: ObservableObject {
     private var restDurationSeconds: Int = 0
     private var foregroundCancellable: AnyCancellable?
     private var backgroundCancellable: AnyCancellable?
+
+    // MARK: - Live Activity
+
+    private let liveActivityService: LiveActivityService
+    private(set) var lastCompletedExerciseName: String?
+    private(set) var lastCompletedSetDisplay: String?
+    @Published var repeatLastSetRequested: Bool = false
+
+    // MARK: - Watch Connectivity
+
+    private let watchConnectivityService: WatchConnectivityServiceProtocol?
+    @Published var watchWorkoutSummary: WatchWorkoutSummary?
 
     // MARK: - Reload Trigger
 
@@ -85,10 +99,19 @@ final class ActiveSessionManager: ObservableObject {
     var isExpanded: Bool { presentationState == .expanded }
     var isCollapsed: Bool { presentationState == .collapsed }
 
+    var conflictSessionSummary: (title: String, formattedTime: String, exerciseCount: Int, completedSets: Int) {
+        let count = lastSavedExercises?.count ?? sessionExercises.count
+        let sets = lastSavedExercises?.reduce(0) { $0 + $1.sets.filter(\.isCompleted).count } ?? 0
+        return (sessionTitle ?? "Workout", formattedTime, count, sets)
+    }
+
     // MARK: - Init
 
-    init(appDataState: AppDataState) {
+    init(appDataState: AppDataState, liveActivityService: LiveActivityService, watchConnectivityService: WatchConnectivityServiceProtocol? = nil) {
         self.appDataState = appDataState
+        self.liveActivityService = liveActivityService
+        self.watchConnectivityService = watchConnectivityService
+        setupWatchCallbacks()
         foregroundCancellable = NotificationCenter.default
             .publisher(for: UIApplication.willEnterForegroundNotification)
             .sink { [weak self] _ in
@@ -116,27 +139,32 @@ final class ActiveSessionManager: ObservableObject {
     // MARK: - Session Lifecycle
 
     func openSession(_ session: SessionResponse) {
+        print("🟡 openSession called: \(session.title), liveActivityService = \(liveActivityService)")
         sessionId = session.id
         sessionTitle = session.title
         sessionExercises = session.exercises
         elapsedSeconds = 0
-        isWorkoutStarted = false
-        sessionStartDate = nil
+        isWorkoutStarted = true
+        sessionStartDate = Date()
         presentationState = .expanded
+        startTimer()
+        scheduleStillThereNotification()
+
+        liveActivityService.startActivity(
+            title: session.title,
+            startDate: sessionStartDate!,
+            exerciseCount: session.exercises.count
+        )
 
         Analytics.logEvent("workout_opened", parameters: [
             "session_type": session.type,
             "is_ai_generated": (session.aiGenerated ?? false) ? "true" : "false"
         ])
-    }
-
-    func beginWorkout() {
-        isWorkoutStarted = true
-        sessionStartDate = Date()
-        startTimer()
-        scheduleStillThereNotification()
-
         Analytics.logEvent("workout_started", parameters: [:])
+
+        // Persist session metadata immediately so backgrounding before
+        // SessionFlowViewModel's initial save doesn't lose the session
+        saveSession(exercises: [], effortLevel: 0, energyLevel: 0, painDiscomfort: "")
     }
 
     func refreshInactivityTimer() {
@@ -157,6 +185,8 @@ final class ActiveSessionManager: ObservableObject {
     func endSession() {
         let wasActive = isWorkoutStarted
         let exerciseCount = lastSavedExercises?.count ?? 0
+        liveActivityService.endActivity()
+        pushWatchSessionEnded()
         stopTimer()
         skipRestTimer()
         cancelStillThereNotification()
@@ -171,10 +201,39 @@ final class ActiveSessionManager: ObservableObject {
         isWorkoutStarted = false
         lastSavedExercises = nil
         lastSavedFeedback = nil
+        lastCompletedExerciseName = nil
+        lastCompletedSetDisplay = nil
+        repeatLastSetRequested = false
         restoredExercises = nil
         restoredFeedback = nil
+        watchWorkoutSummary = nil
+        watchHeartRateSamples.removeAll()
         clearCache()
         appDataState.triggerReload()
+    }
+
+    // MARK: - Session Conflict Gating
+
+    func requestSessionStart(_ action: @escaping @MainActor () async -> Void) {
+        if isSessionActive {
+            pendingSessionStart = action
+            showSessionConflict = true
+        } else {
+            Task { @MainActor in await action() }
+        }
+    }
+
+    func confirmReplaceSession() {
+        let pending = pendingSessionStart
+        pendingSessionStart = nil
+        showSessionConflict = false
+        endSession()
+        if let pending { Task { @MainActor in await pending() } }
+    }
+
+    func cancelReplaceSession() {
+        pendingSessionStart = nil
+        showSessionConflict = false
     }
 
     // MARK: - Timer
@@ -210,12 +269,14 @@ final class ActiveSessionManager: ObservableObject {
         let remaining = restDurationSeconds - elapsed
         if remaining > 0 {
             restTimeRemaining = remaining
+            pushRestTickToWatch()
         } else {
             restTimerCancellable?.cancel()
             restTimerCancellable = nil
             restStartDate = nil
             restDurationSeconds = 0
             restTimeRemaining = nil
+            updateLiveActivity(isResting: false, restEndDate: nil)
         }
     }
 
@@ -230,6 +291,8 @@ final class ActiveSessionManager: ObservableObject {
         restTimeRemaining = seconds
         scheduleRestNotification(seconds: seconds)
         scheduleStillThereNotification()
+
+        updateLiveActivity(isResting: true, restEndDate: currentRestEndDate)
 
         restTimerCancellable = Timer.publish(every: 1, on: .main, in: .common)
             .autoconnect()
@@ -256,6 +319,41 @@ final class ActiveSessionManager: ObservableObject {
         restTimeRemaining = nil
         cancelRestNotification()
         cancelStillThereNotification()
+        updateLiveActivity(isResting: false, restEndDate: nil)
+    }
+
+    // MARK: - Live Activity Helpers
+
+    private var currentRestEndDate: Date? {
+        guard let start = restStartDate else { return nil }
+        return start.addingTimeInterval(TimeInterval(restDurationSeconds))
+    }
+
+    private func updateLiveActivity(isResting: Bool, restEndDate: Date?) {
+        let state = WorkoutActivityAttributes.ContentState(
+            isResting: isResting,
+            restEndDate: restEndDate,
+            lastExerciseName: lastCompletedExerciseName,
+            lastSetDisplay: lastCompletedSetDisplay,
+            totalSetsCompleted: lastSavedExercises?.reduce(0) { $0 + $1.sets.filter(\.isCompleted).count } ?? 0,
+            totalExercises: lastSavedExercises?.count ?? 0
+        )
+        liveActivityService.updateActivity(state: state)
+    }
+
+    func updateLastCompletedSet(exerciseName: String, weight: Double?, weightUnit: String, reps: Int) {
+        lastCompletedExerciseName = exerciseName
+        if let w = weight, w > 0 {
+            let wStr = w.truncatingRemainder(dividingBy: 1) == 0 ? "\(Int(w))" : String(format: "%.1f", w)
+            lastCompletedSetDisplay = "\(wStr)\(weightUnit) × \(reps)"
+        } else {
+            lastCompletedSetDisplay = "× \(reps)"
+        }
+        updateLiveActivity(isResting: isResting, restEndDate: currentRestEndDate)
+    }
+
+    func requestRepeatLastSet() {
+        repeatLastSetRequested = true
     }
 
     // MARK: - Rest Notification
@@ -335,6 +433,9 @@ final class ActiveSessionManager: ObservableObject {
         lastSavedExercises = exercises
         lastSavedFeedback = (effortLevel, energyLevel, painDiscomfort)
 
+        // Push updated state to Watch
+        pushStateToWatch(exercises: exercises)
+
         let stateString: String
         switch presentationState {
         case .hidden: stateString = "hidden"
@@ -381,6 +482,7 @@ final class ActiveSessionManager: ObservableObject {
         if isWorkoutStarted {
             recalculateElapsedTime()
             startTimer()
+            liveActivityService.reconnectIfNeeded()
         }
 
         // Restore rest timer only if still within time window
@@ -403,13 +505,190 @@ final class ActiveSessionManager: ObservableObject {
         }
 
         restoredExercises = cached.exercises
+        lastSavedExercises = cached.exercises
         // Only restore feedback if user actually selected values
         if cached.effortLevel > 0 || cached.energyLevel > 0 || !cached.painDiscomfort.isEmpty {
             restoredFeedback = (cached.effortLevel, cached.energyLevel, cached.painDiscomfort)
+            lastSavedFeedback = (cached.effortLevel, cached.energyLevel, cached.painDiscomfort)
         }
     }
 
     func clearCache() {
         UserDefaults.standard.removeObject(forKey: Self.cacheKey)
+    }
+
+    // MARK: - Watch Connectivity
+
+    private func setupWatchCallbacks() {
+        guard let watchService = watchConnectivityService else { return }
+
+        watchService.onSetCompletion = { [weak self] exerciseId, setId, weight, reps in
+            Task { @MainActor [weak self] in
+                self?.handleWatchSetCompletion(exerciseId: exerciseId, setId: setId, weight: weight, reps: reps)
+            }
+        }
+
+        watchService.onRestTimerAction = { [weak self] action in
+            Task { @MainActor [weak self] in
+                switch action {
+                case .skip:
+                    self?.skipRestTimer()
+                case .extend30:
+                    self?.addRestTime(30)
+                case .start:
+                    self?.startRestTimer()
+                }
+            }
+        }
+
+        watchService.onHeartRateBatch = { [weak self] batch in
+            Task { @MainActor [weak self] in
+                self?.handleWatchHeartRateBatch(batch)
+            }
+        }
+
+        watchService.onWorkoutSummary = { [weak self] summary in
+            Task { @MainActor [weak self] in
+                self?.watchWorkoutSummary = summary
+            }
+        }
+
+        watchService.onRequestSessionStart = { [weak self] requestType, planDayId in
+            Task { @MainActor [weak self] in
+                self?.handleWatchSessionStartRequest(requestType: requestType, planDayId: planDayId)
+            }
+        }
+    }
+
+    /// Called by SessionFlowViewModel after set completion to push state to Watch
+    func pushStateToWatch(exercises: [ActiveSessionExercise]) {
+        guard let watchService = watchConnectivityService,
+              let sessionId, let sessionTitle, let startDate = sessionStartDate else { return }
+
+        let watchExercises = exercises.map { ex in
+            WatchExerciseState(
+                id: ex.id,
+                name: ex.name,
+                muscleGroup: ex.muscleGroup,
+                equipment: ex.equipment,
+                sets: ex.sets.map { set in
+                    WatchSetState(
+                        id: set.id,
+                        setNumber: set.setNumber,
+                        weight: set.weight,
+                        weightUnit: set.weightUnit,
+                        reps: set.reps,
+                        isCompleted: set.isCompleted
+                    )
+                },
+                supersetGroupId: ex.supersetGroupId,
+                supersetOrder: ex.supersetOrder,
+                targetSets: ex.targetSets,
+                targetReps: ex.targetReps
+            )
+        }
+
+        let state = WatchSessionState(
+            sessionId: sessionId,
+            sessionTitle: sessionTitle,
+            elapsedSeconds: elapsedSeconds,
+            sessionStartDate: startDate,
+            exercises: watchExercises,
+            isResting: isResting,
+            restTimeRemaining: restTimeRemaining,
+            restStartDate: restStartDate,
+            restDurationSeconds: restDurationSeconds
+        )
+
+        watchService.pushSessionState(state)
+    }
+
+    func pushWatchSessionEnded() {
+        watchConnectivityService?.pushSessionEnded()
+    }
+
+    func pushRestTickToWatch() {
+        guard let remaining = restTimeRemaining else { return }
+        watchConnectivityService?.pushRestTimerTick(remaining: remaining)
+    }
+
+    /// Whether the Watch is managing the HKWorkoutSession (real calories available)
+    var isWatchManagingWorkout: Bool {
+        watchConnectivityService?.isWatchSessionManagingWorkout ?? false
+    }
+
+    func pushTodayPlanToWatch(plannedWorkout: PlannedWorkoutResponse?) {
+        guard let watchService = watchConnectivityService else { return }
+
+        let formatter = DateFormatter()
+        formatter.dateFormat = "EEEE"
+        let dayLabel = formatter.string(from: Date())
+
+        let plan: WatchTodayPlan
+        if let pw = plannedWorkout {
+            plan = WatchTodayPlan(
+                dayLabel: dayLabel,
+                sessionTitle: pw.sessionTitle,
+                dayType: pw.type,
+                muscleGroups: pw.muscleGroups ?? [],
+                exercises: (pw.exercises ?? []).map {
+                    WatchPlanExercise(name: $0.name, muscleGroup: $0.muscleGroup, setsDisplay: $0.setsDisplay)
+                },
+                planDayId: pw.planDayId
+            )
+        } else {
+            plan = WatchTodayPlan(
+                dayLabel: dayLabel,
+                sessionTitle: nil,
+                dayType: "rest",
+                muscleGroups: [],
+                exercises: [],
+                planDayId: nil
+            )
+        }
+
+        watchService.pushTodayPlan(plan)
+    }
+
+    // MARK: - Watch Incoming Handlers
+
+    /// Callback set by SessionFlowViewModel to handle Watch set completions
+    var onWatchSetCompletion: ((_ exerciseId: String, _ setId: String, _ weight: Double?, _ reps: Int) -> Void)?
+
+    private func handleWatchSetCompletion(exerciseId: String, setId: String, weight: Double?, reps: Int) {
+        onWatchSetCompletion?(exerciseId, setId, weight, reps)
+    }
+
+    private func handleWatchSessionStartRequest(requestType: String, planDayId: String?) {
+        print("📱 handleWatchSessionStartRequest: type=\(requestType), planDayId=\(planDayId ?? "nil")")
+        let networkService = DependencyContainer.shared.resolve(NetworkServiceProtocol.self)
+
+        requestSessionStart { [weak self] in
+            guard let self else { return }
+
+            do {
+                let response: SessionResponse
+                if requestType == "planned", let dayId = planDayId {
+                    response = try await networkService.request(
+                        PlanRouter.startPlanSession(dayId: dayId).endpoint,
+                        responseType: SessionResponse.self
+                    )
+                } else {
+                    response = try await networkService.request(
+                        HomeRouter.createSession(title: "Watch Workout", type: "strength").endpoint,
+                        responseType: SessionResponse.self
+                    )
+                }
+                self.openSession(response)
+            } catch {
+                print("📱 Watch session start request failed: \(error)")
+            }
+        }
+    }
+
+    private var watchHeartRateSamples: [WatchHeartRateSample] = []
+
+    private func handleWatchHeartRateBatch(_ batch: WatchHeartRateBatch) {
+        watchHeartRateSamples.append(contentsOf: batch.samples)
     }
 }

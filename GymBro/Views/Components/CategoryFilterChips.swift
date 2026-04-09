@@ -84,6 +84,48 @@ struct MuscleGroupFilterChips: View {
     }
 }
 
+// Version for EquipmentType enum
+struct EquipmentFilterChips: View {
+    @Binding var selectedEquipment: EquipmentType?
+    var allowDeselect: Bool = true
+
+    var body: some View {
+        ScrollView(.horizontal, showsIndicators: false) {
+            HStack(spacing: 8) {
+                ForEach(EquipmentType.allCases) { equipment in
+                    chipButton(equipment)
+                }
+            }
+            .padding(.horizontal, 20)
+        }
+    }
+
+    private func chipButton(_ equipment: EquipmentType) -> some View {
+        let isSelected = selectedEquipment == equipment
+
+        return Button {
+            if isSelected && allowDeselect {
+                selectedEquipment = nil
+            } else {
+                selectedEquipment = equipment
+            }
+        } label: {
+            Text(equipment.rawValue)
+                .font(.system(size: 13, weight: .semibold))
+                .foregroundColor(isSelected ? .white : .gymBroNeutral900)
+                .padding(.horizontal, 16)
+                .padding(.vertical, 8)
+                .background(isSelected ? Color(hex: "2D3240") : Color.clear)
+                .clipShape(Capsule())
+                .overlay(
+                    Capsule()
+                        .stroke(isSelected ? Color.clear : Color.gymBroNeutral200, lineWidth: 1)
+                )
+        }
+        .buttonStyle(.plain)
+    }
+}
+
 #Preview {
     VStack(spacing: 20) {
         CategoryFilterChips(

@@ -16,6 +16,7 @@ struct PostCardView: View {
     var onDelete: (() -> Void)?
     var isCommentsExpanded: Bool = false
     var onShare: (() -> Void)?
+    var isWorkoutExpandedByDefault: Bool = false
 
     @State private var isTextExpanded: Bool = false
     @State private var isPhotoExpanded: Bool = false
@@ -116,7 +117,7 @@ struct PostCardView: View {
 
             // Workout Attachment
             if let attachment = post.workoutAttachment {
-                workoutAttachmentCard(attachment)
+                WorkoutAttachmentView(attachment: attachment, defaultExpanded: isWorkoutExpandedByDefault)
             }
 
             // Photo
@@ -224,84 +225,6 @@ struct PostCardView: View {
                 .stroke(Color(hex: "2D3240").opacity(0.10), lineWidth: 1)
         )
         .gymBroCardShadow()
-    }
-
-    // MARK: - Workout Attachment Card
-
-    @ViewBuilder
-    private func workoutAttachmentCard(_ attachment: WorkoutAttachment) -> some View {
-        VStack(alignment: .leading, spacing: 10) {
-            // Header row with gradient accent
-            HStack(spacing: 10) {
-                ZStack {
-                    RoundedRectangle(cornerRadius: 8)
-                        .fill(
-                            LinearGradient(
-                                colors: [Color.gymBroPrimary, Color.gymBroPrimaryDark],
-                                startPoint: .topLeading,
-                                endPoint: .bottomTrailing
-                            )
-                        )
-                        .frame(width: 36, height: 36)
-
-                    Image(systemName: "dumbbell.fill")
-                        .font(.system(size: 14, weight: .bold))
-                        .foregroundColor(.white)
-                }
-
-                VStack(alignment: .leading, spacing: 2) {
-                    Text(attachment.title)
-                        .font(.system(size: 14, weight: .bold))
-                        .foregroundColor(.gymBroNeutral900)
-
-                    HStack(spacing: 4) {
-                        if let duration = attachment.durationMinutes {
-                            Text("\(duration) MIN")
-                                .font(.system(size: 11, weight: .semibold))
-                                .foregroundColor(.gymBroTextSecondary)
-                        }
-                        Text("\u{2022}")
-                            .font(.system(size: 11))
-                            .foregroundColor(.gymBroTextSecondary)
-                        Text("\(attachment.exerciseCount) EXERCISE\(attachment.exerciseCount == 1 ? "" : "S")")
-                            .font(.system(size: 11, weight: .semibold))
-                            .foregroundColor(.gymBroTextSecondary)
-                    }
-                }
-
-                Spacer()
-
-                if let rpe = attachment.rpe {
-                    Text("\(rpe)/10")
-                        .font(.system(size: 13, weight: .bold))
-                        .foregroundColor(.gymBroPrimary)
-                        .padding(.horizontal, 8)
-                        .padding(.vertical, 4)
-                        .background(Color.gymBroPrimary.opacity(0.1))
-                        .clipShape(RoundedRectangle(cornerRadius: 8))
-                }
-            }
-
-            // Exercise rows
-            if let exercises = attachment.exercises, !exercises.isEmpty {
-                ForEach(Array(exercises.enumerated()), id: \.element.id) { index, exercise in
-                    ExerciseRowView(
-                        name: exercise.name,
-                        sets: exercise.setsDisplay ?? "\(exercise.totalSets) \u{00D7} \(exercise.totalReps)",
-                        step: exercise.stepNumber ?? (index + 1),
-                        accentColor: Color(hex: exercise.accentColor ?? "#E86A75"),
-                        imageUrl: exercise.imageUrl
-                    )
-                }
-            }
-        }
-        .padding(12)
-        .background(Color.gymBroPrimary.opacity(0.03))
-        .clipShape(RoundedRectangle(cornerRadius: 12))
-        .overlay(
-            RoundedRectangle(cornerRadius: 12)
-                .stroke(Color.gymBroPrimary.opacity(0.12), lineWidth: 1)
-        )
     }
 
     // MARK: - Time Ago Helper

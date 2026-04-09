@@ -21,6 +21,7 @@ final class SessionFlowViewModel: ObservableObject {
     @Published var exercises: [ActiveSessionExercise] = []
     @Published var isLoading: Bool = false
     @Published var errorMessage: String?
+    @Published var pendingExerciseId: String?
 
     // Feedback
     @Published var effortLevel: Int = 0
@@ -33,6 +34,7 @@ final class SessionFlowViewModel: ObservableObject {
     private let sessionManager: ActiveSessionManager
     private let healthKitService: HealthKitServiceProtocol
     private let analyticsService: AnalyticsTrackingServiceProtocol
+    private var repeatLastSetCancellable: AnyCancellable?
 
     // MARK: - Computed Properties
 
@@ -84,6 +86,10 @@ final class SessionFlowViewModel: ObservableObject {
             // Clear restored data from session manager
             sessionManager.restoredExercises = nil
             sessionManager.restoredFeedback = nil
+            // Sync exercises back to session manager for persistence
+            Task { [weak self] in
+                self?.notifySessionChanged()
+            }
         } else {
             // Convert DashboardExercises to ActiveSessionExercises with pre-created placeholder sets
             let converted = initialExercises.map { dashEx in
@@ -112,7 +118,8 @@ final class SessionFlowViewModel: ObservableObject {
                     supersetOrder: nil,
                     targetSets: targetSets,
                     targetReps: targetReps,
-                    imageUrl: dashEx.imageUrl
+                    imageUrl: dashEx.imageUrl,
+                    externalId: dashEx.externalId
                 )
             }
             if !converted.isEmpty {
@@ -124,6 +131,23 @@ final class SessionFlowViewModel: ObservableObject {
                 Task { [weak self] in
                     self?.notifySessionChanged()
                 }
+            }
+        }
+
+        // Observe repeat-last-set requests from Live Activity
+        repeatLastSetCancellable = sessionManager.$repeatLastSetRequested
+            .dropFirst()
+            .filter { $0 }
+            .sink { [weak self] _ in
+                Task { @MainActor [weak self] in
+                    self?.handleRepeatLastSet()
+                }
+            }
+
+        // Handle set completions from Watch
+        sessionManager.onWatchSetCompletion = { [weak self] exerciseId, setId, weight, reps in
+            Task { @MainActor [weak self] in
+                await self?.completeSetFromWatch(exerciseId: exerciseId, setId: setId, weight: weight, reps: reps)
             }
         }
     }
@@ -160,165 +184,94 @@ final class SessionFlowViewModel: ObservableObject {
     // MARK: - Exercise Management
 
     func addExercise(_ item: ExerciseLibraryItem) async {
-        isLoading = true
-        errorMessage = nil
+        let newExercise = ActiveSessionExercise(
+            id: UUID().uuidString,
+            libraryExerciseId: item.id,
+            name: item.name,
+            muscleGroup: item.muscleGroup,
+            equipment: item.equipment,
+            accentColor: nextAccentColor(),
+            stepNumber: exercises.count + 1,
+            sets: [],
+            supersetGroupId: nil,
+            supersetOrder: nil,
+            targetSets: 0,
+            targetReps: 0,
+            imageUrl: ExerciseImageURLBuilder.thumbnailURL(for: item.externalId)?.absoluteString ?? item.images?.first,
+            externalId: item.externalId
+        )
+        exercises.append(newExercise)
 
-        let exerciseData: [[String: Any]] = [[
-            "library_exercise_id": item.id,
-            "name": item.name,
-            "muscle_group": item.muscleGroup,
-            "equipment": item.equipment
-        ]]
+        analyticsService.track("exercise_added", properties: [
+            "exercise_name": item.name,
+            "muscle_group": item.muscleGroup
+        ])
 
-        do {
-            let response = try await networkService.request(
-                SessionRouter.addExercises(sessionId: sessionId, exercises: exerciseData).endpoint,
-                responseType: AddExercisesResponse.self
-            )
-
-            for ex in response.exercises {
-                let activeEx = ActiveSessionExercise(
-                    id: ex.id,
-                    libraryExerciseId: ex.libraryExerciseId,
-                    name: ex.name,
-                    muscleGroup: ex.muscleGroup ?? item.muscleGroup,
-                    equipment: ex.equipment ?? item.equipment,
-                    accentColor: ex.accentColor,
-                    stepNumber: ex.stepNumber,
-                    sets: [],
-                    supersetGroupId: nil,
-                    supersetOrder: nil,
-                    targetSets: 0,
-                    targetReps: 0,
-                    imageUrl: ex.imageUrl
-                )
-                exercises.append(activeEx)
-            }
-
-            analyticsService.track("exercise_added", properties: [
-                "exercise_name": item.name,
-                "muscle_group": item.muscleGroup
-            ])
-        } catch {
-            // Mock fallback
-            let mockExercise = ActiveSessionExercise(
-                id: UUID().uuidString,
-                libraryExerciseId: item.id,
-                name: item.name,
-                muscleGroup: item.muscleGroup,
-                equipment: item.equipment,
-                accentColor: nextAccentColor(),
-                stepNumber: exercises.count + 1,
-                sets: [],
-                supersetGroupId: nil,
-                supersetOrder: nil,
-                targetSets: 0,
-                targetReps: 0,
-                imageUrl: item.images?.first
-            )
-            exercises.append(mockExercise)
-            errorMessage = nil  // Suppress while using mock
-        }
-
-        isLoading = false
         notifySessionChanged()
     }
 
+    func addExercisePending(_ item: ExerciseLibraryItem) async -> String {
+        let newExercise = ActiveSessionExercise(
+            id: UUID().uuidString,
+            libraryExerciseId: item.id,
+            name: item.name,
+            muscleGroup: item.muscleGroup,
+            equipment: item.equipment,
+            accentColor: nextAccentColor(),
+            stepNumber: exercises.count + 1,
+            sets: [],
+            supersetGroupId: nil,
+            supersetOrder: nil,
+            targetSets: 0,
+            targetReps: 0,
+            imageUrl: ExerciseImageURLBuilder.thumbnailURL(for: item.externalId)?.absoluteString ?? item.images?.first,
+            externalId: item.externalId
+        )
+        exercises.append(newExercise)
+        pendingExerciseId = newExercise.id
+        return newExercise.id
+    }
+
+    func confirmPendingExercise() {
+        guard let pendingId = pendingExerciseId else { return }
+        pendingExerciseId = nil
+        notifySessionChanged()
+        analyticsService.track("pending_exercise_confirmed", properties: [
+            "exercise_id": pendingId
+        ])
+    }
+
+    func discardPendingExercise() {
+        guard let pendingId = pendingExerciseId else { return }
+        exercises.removeAll { $0.id == pendingId }
+        pendingExerciseId = nil
+    }
+
     func addSuperset(_ exerciseIds: [String]) async {
-        // exerciseIds are library exercise IDs selected in SupersetSelectionView
-        // The API call will be: POST /api/v1/home/sessions/:id/supersets
-        // For now we use items from ExerciseLibraryViewModel
-        isLoading = true
-        errorMessage = nil
-
-        do {
-            let response = try await networkService.request(
-                SessionRouter.createSuperset(sessionId: sessionId, exerciseIds: exerciseIds).endpoint,
-                responseType: SupersetResponse.self
-            )
-
-            let groupId = response.supersetGroupId
-            for ex in response.exercises {
-                let activeEx = ActiveSessionExercise(
-                    id: ex.id,
-                    libraryExerciseId: ex.libraryExerciseId,
-                    name: ex.name,
-                    muscleGroup: ex.muscleGroup ?? "",
-                    equipment: ex.equipment ?? "",
-                    accentColor: ex.accentColor,
-                    stepNumber: ex.stepNumber,
-                    sets: [],
-                    supersetGroupId: groupId,
-                    supersetOrder: ex.supersetOrder,
-                    targetSets: 0,
-                    targetReps: 0,
-                    imageUrl: ex.imageUrl
-                )
-                exercises.append(activeEx)
+        // Local-only: group existing exercises into a superset
+        let groupId = UUID().uuidString
+        let orders = ["A", "B", "C", "D", "E"]
+        for (index, exerciseId) in exerciseIds.enumerated() {
+            if let idx = exercises.firstIndex(where: { $0.id == exerciseId }) {
+                exercises[idx].supersetGroupId = groupId
+                exercises[idx].supersetOrder = index < orders.count ? orders[index] : "\(index)"
             }
-            analyticsService.track("superset_created", properties: ["exercise_count": response.exercises.count])
-        } catch {
-            // Mock: won't add superset on error for now
-            errorMessage = nil
         }
-
-        isLoading = false
+        analyticsService.track("superset_created", properties: ["exercise_count": exerciseIds.count])
         notifySessionChanged()
     }
 
     func addSupersetFromLibrary(_ items: [ExerciseLibraryItem]) async {
-        isLoading = true
-        errorMessage = nil
-
-        // First add exercises, then group as superset
-        let exerciseData = items.map { item in
-            [
-                "library_exercise_id": item.id,
-                "name": item.name,
-                "muscle_group": item.muscleGroup,
-                "equipment": item.equipment
-            ] as [String: Any]
-        }
-
-        do {
-            let response = try await networkService.request(
-                SessionRouter.addExercises(sessionId: sessionId, exercises: exerciseData).endpoint,
-                responseType: AddExercisesResponse.self
-            )
-
-            // Now create superset from the returned exercise IDs
-            let newExerciseIds = response.exercises.map { $0.id }
-            let supersetResp = try await networkService.request(
-                SessionRouter.createSuperset(sessionId: sessionId, exerciseIds: newExerciseIds).endpoint,
-                responseType: SupersetResponse.self
-            )
-
-            let groupId = supersetResp.supersetGroupId
-            for ex in supersetResp.exercises {
-                let activeEx = ActiveSessionExercise(
-                    id: ex.id,
-                    libraryExerciseId: ex.libraryExerciseId,
-                    name: ex.name,
-                    muscleGroup: ex.muscleGroup ?? "",
-                    equipment: ex.equipment ?? "",
-                    accentColor: ex.accentColor,
-                    stepNumber: ex.stepNumber,
-                    sets: [],
-                    supersetGroupId: groupId,
-                    supersetOrder: ex.supersetOrder,
-                    targetSets: 0,
-                    targetReps: 0,
-                    imageUrl: ex.imageUrl
-                )
-                exercises.append(activeEx)
-            }
-            analyticsService.track("superset_created", properties: ["exercise_count": items.count])
-        } catch {
-            // Mock fallback
-            let groupId = UUID().uuidString
-            let orders = ["A", "B", "C", "D", "E"]
-            for (index, item) in items.enumerated() {
-                let mockExercise = ActiveSessionExercise(
+        let groupId = UUID().uuidString
+        let orders = ["A", "B", "C", "D", "E"]
+        for (index, item) in items.enumerated() {
+            let order = index < orders.count ? orders[index] : "\(index)"
+            // If exercise is already in the session, group it instead of duplicating
+            if let existingIndex = exercises.firstIndex(where: { $0.libraryExerciseId == item.id && $0.supersetGroupId == nil }) {
+                exercises[existingIndex].supersetGroupId = groupId
+                exercises[existingIndex].supersetOrder = order
+            } else {
+                let newExercise = ActiveSessionExercise(
                     id: UUID().uuidString,
                     libraryExerciseId: item.id,
                     name: item.name,
@@ -328,172 +281,106 @@ final class SessionFlowViewModel: ObservableObject {
                     stepNumber: exercises.count + 1,
                     sets: [],
                     supersetGroupId: groupId,
-                    supersetOrder: index < orders.count ? orders[index] : "\(index)",
+                    supersetOrder: order,
                     targetSets: 0,
                     targetReps: 0,
-                    imageUrl: item.images?.first
+                    imageUrl: ExerciseImageURLBuilder.thumbnailURL(for: item.externalId)?.absoluteString ?? item.images?.first,
+                    externalId: item.externalId
                 )
-                exercises.append(mockExercise)
+                exercises.append(newExercise)
             }
-            errorMessage = nil
         }
-
-        isLoading = false
+        analyticsService.track("superset_created", properties: ["exercise_count": items.count])
         notifySessionChanged()
     }
 
     func removeExercise(_ exerciseId: String) async {
-        // Optimistic UI update
         exercises.removeAll { $0.id == exerciseId }
         notifySessionChanged()
+    }
 
-        // Background API call
-        let sid = sessionId
-        let ns = networkService
-        Task.detached { [sid, ns] in
-            try? await ns.request(
-                SessionRouter.removeExercise(sessionId: sid, exerciseId: exerciseId).endpoint
-            )
-        }
+    func removeSuperset(_ groupId: String) async {
+        exercises.removeAll { $0.supersetGroupId == groupId }
+        notifySessionChanged()
     }
 
     // MARK: - Set Management
 
-    /// Completes a pre-created placeholder set with entered weight/reps.
-    /// UI updates instantly; API call fires in the background.
     func completeSet(exerciseId: String, setId: String, weight: Double?, reps: Int) async {
         sessionManager.cancelStillThereNotification()
 
         guard let exerciseIndex = exercises.firstIndex(where: { $0.id == exerciseId }),
               let setIndex = exercises[exerciseIndex].sets.firstIndex(where: { $0.id == setId }) else { return }
 
-        let setNumber = exercises[exerciseIndex].sets[setIndex].setNumber
-
-        // Optimistic UI update
         exercises[exerciseIndex].sets[setIndex].weight = weight
         exercises[exerciseIndex].sets[setIndex].reps = reps
         exercises[exerciseIndex].sets[setIndex].isCompleted = true
-        notifySessionChanged()
+
+        if exerciseId == pendingExerciseId {
+            confirmPendingExercise()
+        } else {
+            notifySessionChanged()
+        }
+
+        sessionManager.updateLastCompletedSet(
+            exerciseName: exercises[exerciseIndex].name,
+            weight: weight,
+            weightUnit: exercises[exerciseIndex].sets[setIndex].weightUnit,
+            reps: reps
+        )
 
         Analytics.logEvent("set_logged", parameters: [
             "exercise_name": exercises[exerciseIndex].name,
             "weight": weight ?? 0,
             "reps": reps
         ] as [String: Any])
-
-        // Background API call
-        let sid = sessionId
-        let ns = networkService
-        Task.detached { [sid, ns] in
-            do {
-                let response = try await ns.request(
-                    SessionRouter.logSet(
-                        sessionId: sid, exerciseId: exerciseId,
-                        setNumber: setNumber, weight: weight as Any, weightUnit: "kg", reps: reps
-                    ).endpoint,
-                    responseType: SetResponse.self
-                )
-                await MainActor.run { [weak self] in
-                    guard let self,
-                          let ei = self.exercises.firstIndex(where: { $0.id == exerciseId }),
-                          let si = self.exercises[ei].sets.firstIndex(where: { $0.id == setId }) else { return }
-                    self.exercises[ei].sets[si].id = response.id
-                }
-            } catch {
-                // Local update already applied
-            }
-        }
     }
 
-    /// Logs a new set. UI updates instantly; API call fires in the background.
     func logSet(exerciseId: String, weight: Double?, weightUnit: String = "kg", reps: Int) async {
         sessionManager.cancelStillThereNotification()
 
         guard let exerciseIndex = exercises.firstIndex(where: { $0.id == exerciseId }) else { return }
 
         let setNumber = exercises[exerciseIndex].sets.count + 1
-        let localId = UUID().uuidString
-
-        // Optimistic UI update
-        let optimisticSet = ActiveSet(
-            id: localId,
+        let newSet = ActiveSet(
+            id: UUID().uuidString,
             setNumber: setNumber,
             weight: weight,
             weightUnit: weightUnit,
             reps: reps,
             isCompleted: true
         )
-        exercises[exerciseIndex].sets.append(optimisticSet)
-        notifySessionChanged()
+        exercises[exerciseIndex].sets.append(newSet)
 
-        // Background API call
-        let sid = sessionId
-        let ns = networkService
-        Task.detached { [sid, ns] in
-            do {
-                let response = try await ns.request(
-                    SessionRouter.logSet(
-                        sessionId: sid, exerciseId: exerciseId,
-                        setNumber: setNumber, weight: weight as Any, weightUnit: weightUnit, reps: reps
-                    ).endpoint,
-                    responseType: SetResponse.self
-                )
-                await MainActor.run { [weak self] in
-                    guard let self,
-                          let ei = self.exercises.firstIndex(where: { $0.id == exerciseId }),
-                          let si = self.exercises[ei].sets.firstIndex(where: { $0.id == localId }) else { return }
-                    self.exercises[ei].sets[si].id = response.id
-                }
-            } catch {
-                // Local update already applied
-            }
+        if exerciseId == pendingExerciseId {
+            confirmPendingExercise()
+        } else {
+            notifySessionChanged()
         }
+
+        sessionManager.updateLastCompletedSet(
+            exerciseName: exercises[exerciseIndex].name,
+            weight: weight,
+            weightUnit: weightUnit,
+            reps: reps
+        )
     }
 
-    /// Updates a set. UI updates instantly; API call fires in the background.
     func updateSet(exerciseId: String, setId: String, weight: Double?, weightUnit: String?, reps: Int?, isCompleted: Bool?) async {
         guard let exerciseIndex = exercises.firstIndex(where: { $0.id == exerciseId }),
               let setIndex = exercises[exerciseIndex].sets.firstIndex(where: { $0.id == setId }) else { return }
 
-        // Optimistic UI update
         if let weight = weight { exercises[exerciseIndex].sets[setIndex].weight = weight }
         if let weightUnit = weightUnit { exercises[exerciseIndex].sets[setIndex].weightUnit = weightUnit }
         if let reps = reps { exercises[exerciseIndex].sets[setIndex].reps = reps }
         if let isCompleted = isCompleted { exercises[exerciseIndex].sets[setIndex].isCompleted = isCompleted }
         notifySessionChanged()
-
-        // Background API call
-        var params: [String: Any] = [:]
-        if let weight = weight { params["weight"] = weight }
-        if let weightUnit = weightUnit { params["weight_unit"] = weightUnit }
-        if let reps = reps { params["reps"] = reps }
-        if let isCompleted = isCompleted { params["is_completed"] = isCompleted }
-
-        let sid = sessionId
-        let ns = networkService
-        Task.detached { [sid, ns] in
-            try? await ns.request(
-                SessionRouter.updateSet(sessionId: sid, exerciseId: exerciseId, setId: setId, params: params).endpoint
-            )
-        }
     }
 
-    /// Deletes a set. UI updates instantly; API call fires in the background.
     func deleteSet(exerciseId: String, setId: String) async {
         guard let exerciseIndex = exercises.firstIndex(where: { $0.id == exerciseId }) else { return }
-
-        // Optimistic UI update
         exercises[exerciseIndex].sets.removeAll { $0.id == setId }
         notifySessionChanged()
-
-        // Background API call
-        let sid = sessionId
-        let ns = networkService
-        Task.detached { [sid, ns] in
-            try? await ns.request(
-                SessionRouter.deleteSet(sessionId: sid, exerciseId: exerciseId, setId: setId).endpoint
-            )
-        }
     }
 
     // MARK: - Previous Sets
@@ -511,37 +398,84 @@ final class SessionFlowViewModel: ObservableObject {
         }
     }
 
-    // MARK: - Exercise Images
+    // MARK: - Repeat Last Set (Live Activity)
 
-    func fetchExerciseImages(libraryExerciseId: String) async -> [String] {
-        do {
-            let response = try await networkService.request(
-                ExerciseRouter.detail(exerciseId: libraryExerciseId).endpoint,
-                responseType: ExerciseDetailResponse.self
-            )
-            return response.images ?? []
-        } catch {
-            return []
+    private func handleRepeatLastSet() {
+        sessionManager.repeatLastSetRequested = false
+
+        // Find the last completed set across all exercises
+        var lastExerciseIndex: Int?
+        var lastSet: ActiveSet?
+        for (i, exercise) in exercises.enumerated() {
+            if let completed = exercise.sets.last(where: { $0.isCompleted }) {
+                lastExerciseIndex = i
+                lastSet = completed
+            }
         }
+
+        guard let exerciseIndex = lastExerciseIndex, let set = lastSet else { return }
+        let exercise = exercises[exerciseIndex]
+        Task {
+            await logSet(
+                exerciseId: exercise.id,
+                weight: set.weight,
+                weightUnit: set.weightUnit,
+                reps: set.reps ?? 0
+            )
+        }
+    }
+
+    // MARK: - Watch Set Completion
+
+    func completeSetFromWatch(exerciseId: String, setId: String, weight: Double?, reps: Int) async {
+        await completeSet(exerciseId: exerciseId, setId: setId, weight: weight, reps: reps)
     }
 
     // MARK: - Session Completion
 
     func submitFeedbackAndComplete() async -> SessionResponse? {
         sessionManager.stopTimer()
+        sessionManager.pushWatchSessionEnded()
         isLoading = true
         errorMessage = nil
 
         let trackedDuration = max(1, sessionManager.elapsedSeconds / 60)
-        let feedback: [String: Any] = [
-            "effort_level": effortLevel,
-            "energy_level": energyLevel,
-            "pain_discomfort": painDiscomfort
+
+        let payload: [String: Any] = [
+            "duration_minutes": trackedDuration,
+            "feedback": [
+                "effort_level": effortLevel,
+                "energy_level": energyLevel,
+                "pain_discomfort": painDiscomfort
+            ],
+            "exercises": exercises.map { ex -> [String: Any] in
+                var dict: [String: Any] = [
+                    "name": ex.name,
+                    "muscle_group": ex.muscleGroup,
+                    "step_number": ex.stepNumber,
+                    "sets": ex.sets.filter(\.isCompleted).map { set -> [String: Any] in
+                        var setDict: [String: Any] = [
+                            "set_number": set.setNumber,
+                            "reps": set.reps ?? 0,
+                            "is_completed": set.isCompleted
+                        ]
+                        if let weight = set.weight { setDict["weight"] = weight }
+                        setDict["weight_unit"] = set.weightUnit
+                        return setDict
+                    }
+                ]
+                if let libId = ex.libraryExerciseId { dict["library_exercise_id"] = libId }
+                dict["equipment"] = ex.equipment
+                dict["accent_color"] = ex.accentColor
+                if let groupId = ex.supersetGroupId { dict["superset_group_id"] = groupId }
+                if let order = ex.supersetOrder { dict["superset_order"] = order }
+                return dict
+            }
         ]
 
         do {
             let response = try await networkService.request(
-                SessionRouter.completeWithFeedback(sessionId: sessionId, feedback: feedback, durationMinutes: trackedDuration).endpoint,
+                SessionRouter.completeSessionFull(sessionId: sessionId, payload: payload).endpoint,
                 responseType: SessionResponse.self
             )
 
@@ -551,36 +485,40 @@ final class SessionFlowViewModel: ObservableObject {
                 "exercise_count": exercises.count
             ] as [String: Any])
 
-            // Fire-and-forget HealthKit save
-            let elapsedSeconds = sessionManager.elapsedSeconds
-            let title = sessionTitle
-            let caloriesValue = response.calories
-            let hkService = healthKitService
-            Task.detached {
-                do {
-                    let now = Date()
-                    let startDate = now.addingTimeInterval(-TimeInterval(elapsedSeconds))
-                    let workoutData = WorkoutData(
-                        activityType: .traditionalStrengthTraining,
-                        startDate: startDate,
-                        endDate: now,
-                        duration: TimeInterval(elapsedSeconds),
-                        totalEnergyBurned: caloriesValue.map { Double($0) },
-                        metadata: [
-                            HKMetadataKeyWorkoutBrandName: "GymJam" as Any,
-                            "SessionTitle": title as Any
-                        ]
-                    )
-                    try await hkService.saveWorkout(workoutData)
-                } catch {
-                    print("HealthKit save failed: \(error)")
+            // Fire-and-forget HealthKit save — skip if Watch managed the HKWorkoutSession
+            // (Watch already saved the workout with real HR/calorie data)
+            if !sessionManager.isWatchManagingWorkout {
+                let elapsedSeconds = sessionManager.elapsedSeconds
+                let title = sessionTitle
+                // Prefer Watch-sourced calories over API MET-estimated calories
+                let watchSummary = sessionManager.watchWorkoutSummary
+                let caloriesValue: Double? = watchSummary?.activeCalories ?? response.calories.map { Double($0) }
+                let hkService = healthKitService
+                Task.detached {
+                    do {
+                        let now = Date()
+                        let startDate = now.addingTimeInterval(-TimeInterval(elapsedSeconds))
+                        let workoutData = WorkoutData(
+                            activityType: .traditionalStrengthTraining,
+                            startDate: startDate,
+                            endDate: now,
+                            duration: TimeInterval(elapsedSeconds),
+                            totalEnergyBurned: caloriesValue,
+                            metadata: [
+                                HKMetadataKeyWorkoutBrandName: "GymJam" as Any,
+                                "SessionTitle": title as Any
+                            ]
+                        )
+                        try await hkService.saveWorkout(workoutData)
+                    } catch {
+                        print("HealthKit save failed: \(error)")
+                    }
                 }
             }
 
             isLoading = false
             return response
         } catch {
-            // Still dismiss the flow on failure
             print("❌ submitFeedbackAndComplete failed: \(error)")
             isLoading = false
             return nil

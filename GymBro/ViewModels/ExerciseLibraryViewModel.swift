@@ -16,6 +16,7 @@ final class ExerciseLibraryViewModel: ObservableObject {
     @Published var exercises: [ExerciseLibraryItem] = []
     @Published var searchText: String = ""
     @Published var selectedMuscleGroup: MuscleGroup? = nil
+    @Published var selectedEquipment: EquipmentType? = nil
     @Published var isLoading: Bool = false
     @Published var errorMessage: String?
 
@@ -31,6 +32,10 @@ final class ExerciseLibraryViewModel: ObservableObject {
 
         if let group = selectedMuscleGroup {
             result = result.filter { $0.muscleGroup == group.rawValue }
+        }
+
+        if let equipment = selectedEquipment {
+            result = result.filter { $0.equipment == equipment.rawValue }
         }
 
         if !searchText.isEmpty {
@@ -57,6 +62,7 @@ final class ExerciseLibraryViewModel: ObservableObject {
             let response = try await networkService.request(ExerciseRouter.list.endpoint, responseType: ExerciseLibraryResponse.self)
             exercises = response.exercises
         } catch {
+            print("[ExerciseLibrary] API failed, using mock data. Error: \(error)")
             exercises = Self.mockExercises
         }
 

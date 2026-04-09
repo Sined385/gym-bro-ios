@@ -27,18 +27,19 @@ struct CachedAsyncImage<Content: View, Placeholder: View, Failure: View>: View {
     }
 
     var body: some View {
-        WebImage(url: url) { phase in
-            switch phase {
-            case .success(let image):
-                let _ = print("[CachedAsyncImage] ✅ Loaded: \(url?.absoluteString ?? "nil")")
-                content(image)
-            case .failure(let error):
-                let _ = print("[CachedAsyncImage] ❌ Failed: \(url?.absoluteString ?? "nil") — \(error)")
-                failure()
-            case .empty:
-                let _ = print("[CachedAsyncImage] ⏳ Loading: \(url?.absoluteString ?? "nil")")
-                placeholder()
+        if let url {
+            WebImage(url: url) { phase in
+                switch phase {
+                case .success(let image):
+                    content(image)
+                case .failure:
+                    failure()
+                case .empty:
+                    placeholder()
+                }
             }
+        } else {
+            failure()
         }
     }
 }

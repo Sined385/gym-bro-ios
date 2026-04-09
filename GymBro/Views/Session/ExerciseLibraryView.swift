@@ -39,6 +39,10 @@ struct ExerciseLibraryView: View {
             MuscleGroupFilterChips(selectedGroup: $viewModel.selectedMuscleGroup)
                 .padding(.top, 12)
 
+            // Equipment chips
+            EquipmentFilterChips(selectedEquipment: $viewModel.selectedEquipment)
+                .padding(.top, 8)
+
             // Action buttons
             HStack(spacing: 12) {
                 Button(action: onStartSuperset) {
@@ -94,6 +98,7 @@ struct ExerciseLibraryView: View {
                     }
                     .padding(.top, 8)
                 }
+                .scrollDismissesKeyboard(.interactively)
             }
         }
         .background(Color.gymBroBackground.ignoresSafeArea())
@@ -110,7 +115,7 @@ struct ExerciseLibraryView: View {
     private func exerciseRow(_ item: ExerciseLibraryItem, isAdded: Bool) -> some View {
         HStack(spacing: 12) {
             // Exercise image or fallback icon
-            if let imageUrl = item.images?.first, let url = URL(string: imageUrl) {
+            if let url = ExerciseImageURLBuilder.thumbnailURL(for: item.externalId) ?? item.images?.first.flatMap({ URL(string: $0) }) {
                 CachedAsyncImage(url: url) { image in
                     image
                         .resizable()

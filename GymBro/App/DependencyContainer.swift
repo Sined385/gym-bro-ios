@@ -50,10 +50,24 @@ final class DependencyContainer {
             AppDataState()
         }.inObjectScope(.container)
 
+        // Live Activity Service (singleton)
+        container.register(LiveActivityService.self) { _ in
+            LiveActivityService()
+        }.inObjectScope(.container)
+
+        // Watch Connectivity Service (singleton)
+        container.register(WatchConnectivityServiceProtocol.self) { _ in
+            let service = WatchConnectivityService()
+            service.activate()
+            return service
+        }.inObjectScope(.container)
+
         // Active Session Manager (singleton)
         container.register(ActiveSessionManager.self) { resolver in
             ActiveSessionManager(
-                appDataState: resolver.resolve(AppDataState.self)!
+                appDataState: resolver.resolve(AppDataState.self)!,
+                liveActivityService: resolver.resolve(LiveActivityService.self)!,
+                watchConnectivityService: resolver.resolve(WatchConnectivityServiceProtocol.self)!
             )
         }.inObjectScope(.container)
 

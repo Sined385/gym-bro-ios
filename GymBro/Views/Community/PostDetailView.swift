@@ -50,7 +50,8 @@ struct PostDetailView: View {
                             isCommentsExpanded: false,
                             onShare: {
                                 shareURL = URL(string: "https://gyymjaam.com/p/\(postId)")
-                            }
+                            },
+                            isWorkoutExpandedByDefault: true
                         )
 
                         // Comments header

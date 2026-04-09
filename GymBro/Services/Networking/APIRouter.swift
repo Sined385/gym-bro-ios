@@ -195,6 +195,7 @@ enum SessionRouter: APIRouter {
     case updateSet(sessionId: String, exerciseId: String, setId: String, params: [String: Any])
     case deleteSet(sessionId: String, exerciseId: String, setId: String)
     case completeWithFeedback(sessionId: String, feedback: [String: Any], durationMinutes: Int)
+    case completeSessionFull(sessionId: String, payload: [String: Any])
 
     var path: String {
         switch self {
@@ -212,12 +213,14 @@ enum SessionRouter: APIRouter {
             return "/api/v1/home/sessions/\(sessionId)/exercises/\(exerciseId)/sets/\(setId)"
         case .completeWithFeedback(let sessionId, _, _):
             return "/api/v1/home/sessions/\(sessionId)/complete"
+        case .completeSessionFull(let sessionId, _):
+            return "/api/v1/home/sessions/\(sessionId)/complete-full"
         }
     }
 
     var method: HTTPMethod {
         switch self {
-        case .addExercises, .createSuperset, .logSet: return .post
+        case .addExercises, .createSuperset, .logSet, .completeSessionFull: return .post
         case .updateSet, .completeWithFeedback: return .patch
         case .removeExercise, .deleteSet: return .delete
         }
@@ -242,6 +245,8 @@ enum SessionRouter: APIRouter {
             return params
         case .completeWithFeedback(_, let feedback, let durationMinutes):
             return ["feedback": feedback, "duration_minutes": durationMinutes]
+        case .completeSessionFull(_, let payload):
+            return payload
         }
     }
 

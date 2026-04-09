@@ -16,6 +16,7 @@ struct ExerciseLibraryItem: Decodable, Identifiable, Hashable {
     let equipment: String
     let isSystem: Bool
     var images: [String]? = nil
+    var externalId: String? = nil
 }
 
 struct ExerciseLibraryResponse: Decodable {
@@ -32,6 +33,18 @@ enum MuscleGroup: String, CaseIterable, Identifiable {
     case arms = "Arms"
     case core = "Core"
     case other = "Other"
+
+    var id: String { rawValue }
+}
+
+// MARK: - Equipment Type
+
+enum EquipmentType: String, CaseIterable, Identifiable {
+    case barbell = "Barbell"
+    case dumbbells = "Dumbbells"
+    case cable = "Cable"
+    case machine = "Machine"
+    case bodyweight = "Bodyweight"
 
     var id: String { rawValue }
 }
@@ -73,6 +86,7 @@ struct ActiveSessionExercise: Identifiable, Equatable, Codable {
     var targetSets: Int
     var targetReps: Int
     var imageUrl: String?
+    var externalId: String?
 
     static func == (lhs: Self, rhs: Self) -> Bool {
         lhs.id == rhs.id
@@ -162,6 +176,7 @@ struct SessionExerciseResponse: Decodable, Identifiable {
     let supersetOrder: String?
     let sets: [SetResponse]?
     let imageUrl: String?
+    let externalId: String?
 }
 
 // MARK: - Exercise Detail (on-demand image fetch)

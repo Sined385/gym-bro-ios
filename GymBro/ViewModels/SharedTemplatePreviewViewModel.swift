@@ -54,21 +54,23 @@ final class SharedTemplatePreviewViewModel: ObservableObject {
     }
 
     func startWorkout() async {
-        // Save first, then start from the saved template
-        isSaving = true
-        defer { isSaving = false }
-        do {
-            let saved = try await networkService.request(
-                TemplateRouter.saveShared(code: shareCode).endpoint,
-                responseType: WorkoutTemplate.self
-            )
-            let session = try await networkService.request(
-                TemplateRouter.start(templateId: saved.id).endpoint,
-                responseType: SessionResponse.self
-            )
-            sessionManager.openSession(session)
-        } catch {
-            errorMessage = "Could not start workout"
+        sessionManager.requestSessionStart { [weak self] in
+            guard let self else { return }
+            self.isSaving = true
+            do {
+                let saved = try await self.networkService.request(
+                    TemplateRouter.saveShared(code: self.shareCode).endpoint,
+                    responseType: WorkoutTemplate.self
+                )
+                let session = try await self.networkService.request(
+                    TemplateRouter.start(templateId: saved.id).endpoint,
+                    responseType: SessionResponse.self
+                )
+                self.sessionManager.openSession(session)
+            } catch {
+                self.errorMessage = "Could not start workout"
+            }
+            self.isSaving = false
         }
     }
 

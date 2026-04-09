@@ -16,6 +16,7 @@ struct ExercisePreviewData: Identifiable {
     let setsDisplay: String
     let accentColor: String
     let suggestedWeight: Double?
+    let externalId: String?
 
     init(from ex: DashboardExercise) {
         self.id = ex.libraryExerciseId ?? UUID().uuidString
@@ -26,6 +27,7 @@ struct ExercisePreviewData: Identifiable {
         self.setsDisplay = ex.setsDisplay
         self.accentColor = ex.accentColor
         self.suggestedWeight = ex.suggestedWeight
+        self.externalId = ex.externalId
     }
 
     init(from ex: PlanExercise) {
@@ -37,9 +39,10 @@ struct ExercisePreviewData: Identifiable {
         self.setsDisplay = ex.setsDisplay
         self.accentColor = ex.accentColor ?? "E86A75"
         self.suggestedWeight = ex.suggestedWeight
+        self.externalId = ex.externalId
     }
 
-    init(name: String, muscleGroup: String, setsDisplay: String, accentColor: String, suggestedWeight: Double?) {
+    init(name: String, muscleGroup: String, setsDisplay: String, accentColor: String, suggestedWeight: Double?, externalId: String? = nil) {
         self.id = UUID().uuidString
         self.libraryExerciseId = nil
         self.name = name
@@ -48,5 +51,6 @@ struct ExercisePreviewData: Identifiable {
         self.setsDisplay = setsDisplay
         self.accentColor = accentColor
         self.suggestedWeight = suggestedWeight
+        self.externalId = externalId
     }
 }

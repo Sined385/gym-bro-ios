@@ -95,21 +95,24 @@ final class TrainingPlanViewModel: ObservableObject {
     }
 
     func startPlanSession(dayId: String) async {
-        isStartingSession = true
-        errorMessage = nil
+        sessionManager.requestSessionStart { [weak self] in
+            guard let self else { return }
+            self.isStartingSession = true
+            self.errorMessage = nil
 
-        do {
-            let response = try await networkService.request(
-                PlanRouter.startPlanSession(dayId: dayId).endpoint,
-                responseType: SessionResponse.self
-            )
-            sessionManager.openSession(response)
-        } catch {
-            print("[TrainingPlanVM] startPlanSession failed: \(error)")
-            errorMessage = "Failed to start session"
+            do {
+                let response = try await self.networkService.request(
+                    PlanRouter.startPlanSession(dayId: dayId).endpoint,
+                    responseType: SessionResponse.self
+                )
+                self.sessionManager.openSession(response)
+            } catch {
+                print("[TrainingPlanVM] startPlanSession failed: \(error)")
+                self.errorMessage = "Failed to start session"
+            }
+
+            self.isStartingSession = false
         }
-
-        isStartingSession = false
     }
 
 }

@@ -29,6 +29,7 @@ struct PlannedExercise: Decodable, Identifiable {
     let accentColor: String
     let suggestedWeight: Double?
     let imageUrl: String?
+    let externalId: String?
     var id: String { name + setsDisplay }
 }
 
@@ -94,6 +95,7 @@ struct DashboardExercise: Codable, Identifiable {
     let equipment: String?
     let suggestedWeight: Double?
     let imageUrl: String?
+    let externalId: String?
 }
 
 // MARK: - History Response Models
@@ -121,6 +123,7 @@ struct HistoryExercise: Decodable, Identifiable {
     let accentColor: String
     let stepNumber: Int
     var imageUrl: String? = nil
+    var externalId: String? = nil
     let sets: [ExerciseSetData]
 }
 
@@ -278,6 +281,7 @@ final class HomeViewModel: ObservableObject {
             weekAvgDurationMinutes = response.weekAvgDurationMinutes
             weekTotalCalories = response.weekTotalCalories
             todayCompletedSession = response.todayCompletedSession
+            sessionManager.pushTodayPlanToWatch(plannedWorkout: response.plannedWorkout)
             await loadCompletedDays()
             await loadHealthKitData()
         } catch {
@@ -300,10 +304,10 @@ final class HomeViewModel: ObservableObject {
             durationMinutes: 25,
             aiMessage: "Since you don't have a plan today, I generated a light mobility session to keep you moving and aid recovery.",
             exercises: [
-                DashboardExercise(id: UUID().uuidString, name: "Cat-Cow Stretches", stepNumber: 1, setsDisplay: "2 \u{00D7} 10", accentColor: "#E86A75", libraryExerciseId: nil, muscleGroup: "Core", equipment: "Bodyweight", suggestedWeight: nil, imageUrl: nil),
-                DashboardExercise(id: UUID().uuidString, name: "Thoracic Rotations", stepNumber: 2, setsDisplay: "2 \u{00D7} 8", accentColor: "#30C08D", libraryExerciseId: nil, muscleGroup: "Back", equipment: "Bodyweight", suggestedWeight: nil, imageUrl: nil),
-                DashboardExercise(id: UUID().uuidString, name: "Hip Flexor Stretch", stepNumber: 3, setsDisplay: "2 \u{00D7} 30", accentColor: "#7A82F6", libraryExerciseId: nil, muscleGroup: "Legs", equipment: "Bodyweight", suggestedWeight: nil, imageUrl: nil),
-                DashboardExercise(id: UUID().uuidString, name: "90/90 Stretches", stepNumber: 4, setsDisplay: "2 \u{00D7} 10", accentColor: "#F5A623", libraryExerciseId: nil, muscleGroup: "Legs", equipment: "Bodyweight", suggestedWeight: nil, imageUrl: nil),
+                DashboardExercise(id: UUID().uuidString, name: "Cat-Cow Stretches", stepNumber: 1, setsDisplay: "2 \u{00D7} 10", accentColor: "#E86A75", libraryExerciseId: nil, muscleGroup: "Core", equipment: "Bodyweight", suggestedWeight: nil, imageUrl: nil, externalId: nil),
+                DashboardExercise(id: UUID().uuidString, name: "Thoracic Rotations", stepNumber: 2, setsDisplay: "2 \u{00D7} 8", accentColor: "#30C08D", libraryExerciseId: nil, muscleGroup: "Back", equipment: "Bodyweight", suggestedWeight: nil, imageUrl: nil, externalId: nil),
+                DashboardExercise(id: UUID().uuidString, name: "Hip Flexor Stretch", stepNumber: 3, setsDisplay: "2 \u{00D7} 30", accentColor: "#7A82F6", libraryExerciseId: nil, muscleGroup: "Legs", equipment: "Bodyweight", suggestedWeight: nil, imageUrl: nil, externalId: nil),
+                DashboardExercise(id: UUID().uuidString, name: "90/90 Stretches", stepNumber: 4, setsDisplay: "2 \u{00D7} 10", accentColor: "#F5A623", libraryExerciseId: nil, muscleGroup: "Legs", equipment: "Bodyweight", suggestedWeight: nil, imageUrl: nil, externalId: nil),
             ]
         )
     }
@@ -311,127 +315,133 @@ final class HomeViewModel: ObservableObject {
     // MARK: - Session Actions
 
     func startCustomSession() async {
-        analyticsService.track("custom_workout_screen_opened", properties: [:])
-        isStartingSession = true
-        errorMessage = nil
+        sessionManager.requestSessionStart { [weak self] in
+            guard let self else { return }
+            self.analyticsService.track("custom_workout_screen_opened", properties: [:])
+            self.isStartingSession = true
+            self.errorMessage = nil
 
-        do {
-            let response = try await networkService.request(
-                HomeRouter.createSession(title: "Custom Session", type: "custom").endpoint,
-                responseType: SessionResponse.self
-            )
-            sessionManager.openSession(response)
-        } catch {
-            // Mock fallback for development
-            let mockResponse = SessionResponse(
-                id: UUID().uuidString,
-                title: "Custom Session",
-                type: "custom",
-                status: "active",
-                startedAt: ISO8601DateFormatter().string(from: Date()),
-                completedAt: nil,
-                durationMinutes: nil,
-                calories: nil,
-                aiGenerated: false,
-                aiMessage: nil,
-                exercises: []
-            )
-            sessionManager.openSession(mockResponse)
-            errorMessage = nil
+            do {
+                let response = try await self.networkService.request(
+                    HomeRouter.createSession(title: "Custom Session", type: "custom").endpoint,
+                    responseType: SessionResponse.self
+                )
+                self.sessionManager.openSession(response)
+            } catch {
+                let mockResponse = SessionResponse(
+                    id: UUID().uuidString,
+                    title: "Custom Session",
+                    type: "custom",
+                    status: "active",
+                    startedAt: ISO8601DateFormatter().string(from: Date()),
+                    completedAt: nil,
+                    durationMinutes: nil,
+                    calories: nil,
+                    aiGenerated: false,
+                    aiMessage: nil,
+                    exercises: []
+                )
+                self.sessionManager.openSession(mockResponse)
+                self.errorMessage = nil
+            }
+
+            self.isStartingSession = false
         }
-
-        isStartingSession = false
     }
 
     func startQuickWorkout() async {
-        isStartingSession = true
-        errorMessage = nil
+        sessionManager.requestSessionStart { [weak self] in
+            guard let self else { return }
+            self.isStartingSession = true
+            self.errorMessage = nil
 
-        // If no quick workout from API, create a mock one
-        guard let session = quickWorkout else {
-            let mockResponse = SessionResponse(
-                id: UUID().uuidString,
-                title: "Quick Workout",
-                type: "strength",
-                status: "active",
-                startedAt: ISO8601DateFormatter().string(from: Date()),
-                completedAt: nil,
-                durationMinutes: nil,
-                calories: nil,
-                aiGenerated: true,
-                aiMessage: nil,
-                exercises: []
-            )
-            sessionManager.openSession(mockResponse)
-            isStartingSession = false
-            return
+            guard let session = self.quickWorkout else {
+                let mockResponse = SessionResponse(
+                    id: UUID().uuidString,
+                    title: "Quick Workout",
+                    type: "strength",
+                    status: "active",
+                    startedAt: ISO8601DateFormatter().string(from: Date()),
+                    completedAt: nil,
+                    durationMinutes: nil,
+                    calories: nil,
+                    aiGenerated: true,
+                    aiMessage: nil,
+                    exercises: []
+                )
+                self.sessionManager.openSession(mockResponse)
+                self.isStartingSession = false
+                return
+            }
+
+            do {
+                let response = try await self.networkService.request(
+                    HomeRouter.startSession(sessionId: session.id).endpoint,
+                    responseType: SessionResponse.self
+                )
+                self.activeSession = response
+                self.sessionManager.openSession(response)
+                self.analyticsService.track("proposed_workout_started", properties: ["session_type": "quick"])
+                self.quickWorkout = nil
+            } catch {
+                let mockResponse = SessionResponse(
+                    id: session.id,
+                    title: session.title,
+                    type: session.type,
+                    status: "active",
+                    startedAt: ISO8601DateFormatter().string(from: Date()),
+                    completedAt: nil,
+                    durationMinutes: session.durationMinutes,
+                    calories: nil,
+                    aiGenerated: true,
+                    aiMessage: session.aiMessage,
+                    exercises: session.exercises
+                )
+                self.sessionManager.openSession(mockResponse)
+                self.quickWorkout = nil
+                self.errorMessage = nil
+            }
+
+            self.isStartingSession = false
         }
-
-        do {
-            let response = try await networkService.request(
-                HomeRouter.startSession(sessionId: session.id).endpoint,
-                responseType: SessionResponse.self
-            )
-            activeSession = response
-            sessionManager.openSession(response)
-            analyticsService.track("proposed_workout_started", properties: ["session_type": "quick"])
-            quickWorkout = nil
-        } catch {
-            // Mock fallback — open session flow with quick workout data
-            let mockResponse = SessionResponse(
-                id: session.id,
-                title: session.title,
-                type: session.type,
-                status: "active",
-                startedAt: ISO8601DateFormatter().string(from: Date()),
-                completedAt: nil,
-                durationMinutes: session.durationMinutes,
-                calories: nil,
-                aiGenerated: true,
-                aiMessage: session.aiMessage,
-                exercises: session.exercises
-            )
-            sessionManager.openSession(mockResponse)
-            quickWorkout = nil
-            errorMessage = nil
-        }
-
-        isStartingSession = false
     }
 
     func startPlannedWorkout() async {
         guard let planned = plannedWorkout, planned.type == "training",
               let dayId = planned.planDayId else { return }
-        isStartingSession = true
-        errorMessage = nil
 
-        do {
-            let response = try await networkService.request(
-                PlanRouter.startPlanSession(dayId: dayId).endpoint,
-                responseType: SessionResponse.self
-            )
-            sessionManager.openSession(response)
-            analyticsService.track("planned_workout_started", properties: ["day_id": dayId])
-        } catch {
-            // Mock fallback for development
-            let mockResponse = SessionResponse(
-                id: UUID().uuidString,
-                title: planned.sessionTitle ?? "Training Session",
-                type: planned.sessionType ?? "strength",
-                status: "active",
-                startedAt: ISO8601DateFormatter().string(from: Date()),
-                completedAt: nil,
-                durationMinutes: nil,
-                calories: nil,
-                aiGenerated: true,
-                aiMessage: nil,
-                exercises: []
-            )
-            sessionManager.openSession(mockResponse)
-            errorMessage = nil
+        sessionManager.requestSessionStart { [weak self] in
+            guard let self else { return }
+            self.isStartingSession = true
+            self.errorMessage = nil
+
+            do {
+                let response = try await self.networkService.request(
+                    PlanRouter.startPlanSession(dayId: dayId).endpoint,
+                    responseType: SessionResponse.self
+                )
+                self.sessionManager.openSession(response)
+                self.analyticsService.track("planned_workout_started", properties: ["day_id": dayId])
+            } catch {
+                let mockResponse = SessionResponse(
+                    id: UUID().uuidString,
+                    title: planned.sessionTitle ?? "Training Session",
+                    type: planned.sessionType ?? "strength",
+                    status: "active",
+                    startedAt: ISO8601DateFormatter().string(from: Date()),
+                    completedAt: nil,
+                    durationMinutes: nil,
+                    calories: nil,
+                    aiGenerated: true,
+                    aiMessage: nil,
+                    exercises: []
+                )
+                self.sessionManager.openSession(mockResponse)
+                self.errorMessage = nil
+            }
+
+            self.isStartingSession = false
         }
-
-        isStartingSession = false
     }
 
     func completeSession() async {

@@ -74,7 +74,6 @@ struct SessionFlowContainer: View {
                         },
                         onEndWorkout: { navigationPath.append(SessionRoute.workoutFeedback) },
                         onCancelWorkout: onDismiss,
-                        onStartWorkout: { Task { await startWorkout() } },
                         onSaveTemplate: { showSaveTemplate = true }
                     )
                 } else {
@@ -95,9 +94,8 @@ struct SessionFlowContainer: View {
                         addedExerciseIds: Set(viewModel.exercises.compactMap { $0.libraryExerciseId }),
                         onExerciseSelected: { item in
                             Task {
-                                await viewModel.addExercise(item)
-                                guard !navigationPath.isEmpty else { return }
-                                navigationPath.removeLast()
+                                let exerciseId = await viewModel.addExercisePending(item)
+                                navigationPath.append(SessionRoute.exerciseLogging(exerciseId: exerciseId))
                             }
                         },
                         onStartSuperset: {
@@ -146,6 +144,11 @@ struct SessionFlowContainer: View {
                 }
             }
         }
+        .onChange(of: navigationPath.count) { _, newCount in
+            if viewModel.pendingExerciseId != nil && newCount <= 1 {
+                viewModel.discardPendingExercise()
+            }
+        }
         .sheet(isPresented: $showSaveTemplate) {
             SaveTemplateSheet(
                 defaultName: sessionTitle,
@@ -159,19 +162,4 @@ struct SessionFlowContainer: View {
         }
     }
 
-    // MARK: - Start Workout
-
-    private func startWorkout() async {
-        guard let sessionId = sessionManager.sessionId else { return }
-        let networkService = DependencyContainer.shared.resolve(NetworkServiceProtocol.self)
-        do {
-            _ = try await networkService.request(
-                HomeRouter.startSession(sessionId: sessionId).endpoint,
-                responseType: SessionResponse.self
-            )
-        } catch {
-            // Continue anyway — server state can be reconciled later
-        }
-        sessionManager.beginWorkout()
-    }
 }

@@ -9,12 +9,7 @@ struct SessionPlanView: View {
     var onTapSuperset: (String) -> Void
     var onEndWorkout: () -> Void
     var onCancelWorkout: () -> Void
-    var onStartWorkout: () -> Void
     var onSaveTemplate: () -> Void
-
-    private var isStarted: Bool {
-        sessionManager.isWorkoutStarted
-    }
 
     private var hasLoggedSets: Bool {
         viewModel.exercises.contains { exercise in
@@ -27,8 +22,8 @@ struct SessionPlanView: View {
         VStack(spacing: 0) {
             // Top bar
             HStack(spacing: 14) {
-                // Back button — collapse if started, dismiss if not
-                Button { isStarted ? onCollapse() : onCancelWorkout() } label: {
+                // Back button — collapse workout
+                Button { onCollapse() } label: {
                     ZStack {
                         Circle()
                             .fill(Color.white)
@@ -46,7 +41,7 @@ struct SessionPlanView: View {
                 }
                 .buttonStyle(.plain)
 
-                Text("Session Plan")
+                Text("Workout Plan")
                     .font(.system(size: 20, weight: .bold))
                     .foregroundColor(.gymBroNeutral900)
 
@@ -70,9 +65,7 @@ struct SessionPlanView: View {
                 }
                 .buttonStyle(.plain)
 
-                if sessionManager.isWorkoutStarted {
-                    TimerBadge(time: sessionManager.formattedTime)
-                }
+                TimerBadge(time: sessionManager.formattedTime)
             }
             .padding(.horizontal, 20)
             .padding(.top, 16)
@@ -88,10 +81,14 @@ struct SessionPlanView: View {
 
                     // Superset groups
                     ForEach(viewModel.supersetGroups) { group in
-                        supersetCard(group)
-                            .onTapGesture {
-                                onTapSuperset(group.id)
-                            }
+                        SwipeToDeleteCard {
+                            supersetCard(group)
+                                .onTapGesture {
+                                    onTapSuperset(group.id)
+                                }
+                        } onDelete: {
+                            Task { await viewModel.removeSuperset(group.id) }
+                        }
                     }
                 }
                 .padding(.horizontal, 20)
@@ -126,24 +123,7 @@ struct SessionPlanView: View {
                     }
                     .buttonStyle(.plain)
 
-                    if !isStarted {
-                        // Start Workout button
-                        Button(action: onStartWorkout) {
-                            HStack(spacing: 8) {
-                                Image(systemName: "play.fill")
-                                    .font(.system(size: 14, weight: .bold))
-                                Text("Start Workout")
-                                    .font(.system(size: 16, weight: .bold))
-                            }
-                            .foregroundColor(.white)
-                            .frame(maxWidth: .infinity)
-                            .frame(height: 64)
-                            .background(Color(hex: "2D3240"))
-                            .clipShape(RoundedRectangle(cornerRadius: 24))
-                            .shadow(color: Color.black.opacity(0.15), radius: 8, y: 4)
-                        }
-                        .buttonStyle(.plain)
-                    } else if hasLoggedSets {
+                    if hasLoggedSets {
                         // Complete Workout button
                         Button(action: onEndWorkout) {
                             HStack(spacing: 8) {
@@ -234,9 +214,9 @@ struct SessionPlanView: View {
 
                 // Sets badge
                 let completedSets = exercise.sets.filter { $0.isCompleted }.count
-                let target = exercise.targetSets > 0 ? exercise.targetSets : 4
-                let allDone = completedSets >= target
-                Text("\(completedSets) / \(target) SETS")
+                let hasTarget = exercise.targetSets > 0
+                let allDone = hasTarget && completedSets >= exercise.targetSets
+                Text(hasTarget ? "\(completedSets) / \(exercise.targetSets) SETS" : "\(completedSets) SETS")
                     .font(.system(size: 11, weight: .semibold))
                     .tracking(0.6)
                     .foregroundColor(allDone ? Color(hex: "30C08D") : Color(hex: "737373"))
@@ -248,7 +228,7 @@ struct SessionPlanView: View {
 
             Spacer()
 
-            if exercise.sets.filter({ $0.isCompleted }).count >= (exercise.targetSets > 0 ? exercise.targetSets : 4) {
+            if exercise.targetSets > 0 && exercise.sets.filter({ $0.isCompleted }).count >= exercise.targetSets {
                 Image(systemName: "checkmark.circle.fill")
                     .font(.system(size: 24))
                     .foregroundColor(Color(hex: "30C08D"))

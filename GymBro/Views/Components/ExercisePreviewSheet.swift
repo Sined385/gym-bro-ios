@@ -44,12 +44,13 @@ struct ExercisePreviewSheet: View {
 
     // MARK: - Image Carousel
 
+    private var exerciseImageURLs: [URL] {
+        ExerciseImageURLBuilder.imageURLs(for: exercise.externalId)
+    }
+
     private var imageCarousel: some View {
         ZStack(alignment: .topTrailing) {
-            if viewModel.isLoading && viewModel.images.isEmpty {
-                ShimmerView()
-                    .frame(height: 220)
-            } else if viewModel.images.isEmpty {
+            if exerciseImageURLs.isEmpty {
                 // Placeholder
                 RoundedRectangle(cornerRadius: 0)
                     .fill(Color.gymBroNeutral100)
@@ -61,38 +62,35 @@ struct ExercisePreviewSheet: View {
                     )
             } else {
                 TabView {
-                    ForEach(viewModel.images, id: \.self) { imgStr in
-                        if let imgUrl = URL(string: imgStr) {
-                            CachedAsyncImage(url: imgUrl) { image in
-                                image
-                                    .resizable()
-                                    .aspectRatio(contentMode: .fill)
-                                    .frame(height: 220)
-                                    .clipped()
-                                    .contentShape(Rectangle())
-                                    .onTapGesture {
-                                        let allUrls = viewModel.images.compactMap { URL(string: $0) }
-                                        expandedGalleryUrls = allUrls
-                                        expandedGalleryIndex = allUrls.firstIndex(of: imgUrl) ?? 0
-                                        showExpandedGallery = true
-                                    }
-                            } placeholder: {
-                                ShimmerView()
-                                    .frame(height: 220)
-                            } failure: {
-                                RoundedRectangle(cornerRadius: 0)
-                                    .fill(Color.gymBroNeutral100)
-                                    .frame(height: 220)
-                                    .overlay(
-                                        Image(systemName: "photo")
-                                            .font(.system(size: 32))
-                                            .foregroundColor(.gymBroNeutral400)
-                                    )
-                            }
+                    ForEach(exerciseImageURLs, id: \.absoluteString) { imgUrl in
+                        CachedAsyncImage(url: imgUrl) { image in
+                            image
+                                .resizable()
+                                .aspectRatio(contentMode: .fill)
+                                .frame(height: 220)
+                                .clipped()
+                                .contentShape(Rectangle())
+                                .onTapGesture {
+                                    expandedGalleryUrls = exerciseImageURLs
+                                    expandedGalleryIndex = exerciseImageURLs.firstIndex(of: imgUrl) ?? 0
+                                    showExpandedGallery = true
+                                }
+                        } placeholder: {
+                            ShimmerView()
+                                .frame(height: 220)
+                        } failure: {
+                            RoundedRectangle(cornerRadius: 0)
+                                .fill(Color.gymBroNeutral100)
+                                .frame(height: 220)
+                                .overlay(
+                                    Image(systemName: "photo")
+                                        .font(.system(size: 32))
+                                        .foregroundColor(.gymBroNeutral400)
+                                )
                         }
                     }
                 }
-                .tabViewStyle(.page(indexDisplayMode: viewModel.images.count > 1 ? .automatic : .never))
+                .tabViewStyle(.page(indexDisplayMode: exerciseImageURLs.count > 1 ? .automatic : .never))
                 .frame(height: 220)
             }
 

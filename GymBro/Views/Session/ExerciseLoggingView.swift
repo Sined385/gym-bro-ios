@@ -18,7 +18,6 @@ struct ExerciseLoggingView: View {
 
     @Environment(\.dismiss) private var dismiss
     @State private var previousSessions: [String: [PreviousSessionEntry]] = [:]
-    @State private var exerciseImages: [String: [String]] = [:]
     @State private var showAddSetSheet: Bool = false
     @State private var addSetWeight: String = ""
     @State private var addSetReps: String = ""
@@ -38,6 +37,8 @@ struct ExerciseLoggingView: View {
     // Superset step-through state
     @State private var supersetStepIndex: Int = 0
     @State private var supersetSetEntries: [(exerciseId: String, weight: Double?, reps: Int)] = []
+    @State private var roundOffsets: [Int: CGFloat] = [:]
+    @State private var editingRoundIndex: Int? = nil
 
     private let greenAccent = Color(hex: "30C08D")
     private let purpleAccent = Color(hex: "7A82F6")
@@ -167,42 +168,40 @@ struct ExerciseLoggingView: View {
                 .foregroundColor(.gymBroNeutral900)
 
             // Exercise image hint — horizontal carousel
-            if let libId = exercise.libraryExerciseId, let images = exerciseImages[libId], !images.isEmpty {
+            let imageURLs = ExerciseImageURLBuilder.imageURLs(for: exercise.externalId)
+            if !imageURLs.isEmpty {
                 TabView {
-                    ForEach(images, id: \.self) { imgStr in
-                        if let imgUrl = URL(string: imgStr) {
-                            CachedAsyncImage(url: imgUrl) { image in
-                                image
-                                    .resizable()
-                                    .aspectRatio(contentMode: .fill)
-                                    .frame(height: 200)
-                                    .clipShape(RoundedRectangle(cornerRadius: 16))
-                                    .contentShape(Rectangle())
-                                    .onTapGesture {
-                                        let allUrls = images.compactMap { URL(string: $0) }
-                                        expandedGalleryUrls = allUrls
-                                        expandedGalleryIndex = allUrls.firstIndex(of: imgUrl) ?? 0
-                                        showExpandedGallery = true
-                                    }
-                            } placeholder: {
-                                ShimmerView()
-                                    .frame(height: 200)
-                                    .clipShape(RoundedRectangle(cornerRadius: 16))
-                            } failure: {
-                                RoundedRectangle(cornerRadius: 16)
-                                    .fill(Color.gymBroNeutral100)
-                                    .frame(height: 200)
-                                    .overlay(
-                                        Image(systemName: "photo")
-                                            .font(.system(size: 32))
-                                            .foregroundColor(.gymBroNeutral400)
-                                    )
-                            }
-                            .padding(.horizontal, 4)
+                    ForEach(imageURLs, id: \.absoluteString) { imgUrl in
+                        CachedAsyncImage(url: imgUrl) { image in
+                            image
+                                .resizable()
+                                .aspectRatio(contentMode: .fill)
+                                .frame(height: 200)
+                                .clipShape(RoundedRectangle(cornerRadius: 16))
+                                .contentShape(Rectangle())
+                                .onTapGesture {
+                                    expandedGalleryUrls = imageURLs
+                                    expandedGalleryIndex = imageURLs.firstIndex(of: imgUrl) ?? 0
+                                    showExpandedGallery = true
+                                }
+                        } placeholder: {
+                            ShimmerView()
+                                .frame(height: 200)
+                                .clipShape(RoundedRectangle(cornerRadius: 16))
+                        } failure: {
+                            RoundedRectangle(cornerRadius: 16)
+                                .fill(Color.gymBroNeutral100)
+                                .frame(height: 200)
+                                .overlay(
+                                    Image(systemName: "photo")
+                                        .font(.system(size: 32))
+                                        .foregroundColor(.gymBroNeutral400)
+                                )
                         }
+                        .padding(.horizontal, 4)
                     }
                 }
-                .tabViewStyle(.page(indexDisplayMode: images.count > 1 ? .automatic : .never))
+                .tabViewStyle(.page(indexDisplayMode: imageURLs.count > 1 ? .automatic : .never))
                 .frame(height: 220)
                 .background(
                     ExpandedGalleryView(
@@ -420,8 +419,10 @@ struct ExerciseLoggingView: View {
                 await viewModel.logSet(
                     exerciseId: exercise.id,
                     weight: set.weight,
+                    weightUnit: set.weightUnit,
                     reps: set.reps ?? 0
                 )
+                sessionManager.startRestTimer()
             }
         }
     }
@@ -572,7 +573,23 @@ struct ExerciseLoggingView: View {
     // MARK: - Superset Content
 
     private func supersetContent(_ group: SupersetGroup) -> some View {
-        VStack(alignment: .leading, spacing: 16) {
+        let maxSets = group.exercises.map { $0.sets.count }.max() ?? 0
+
+        return VStack(alignment: .leading, spacing: 16) {
+            // Superset badge
+            HStack(spacing: 6) {
+                Image(systemName: "square.stack.fill")
+                    .font(.system(size: 12, weight: .bold))
+                Text("SUPERSET")
+                    .font(.system(size: 12, weight: .bold))
+                    .tracking(0.6)
+            }
+            .foregroundColor(.white)
+            .padding(.horizontal, 12)
+            .padding(.vertical, 6)
+            .background(purpleAccent)
+            .clipShape(Capsule())
+
             // Exercise labels
             ForEach(group.exercises) { ex in
                 HStack(spacing: 8) {
@@ -585,91 +602,347 @@ struct ExerciseLoggingView: View {
                 }
             }
 
-            // Rounds
-            let maxSets = group.exercises.map { $0.sets.count }.max() ?? 0
-
-            VStack(alignment: .leading, spacing: 8) {
+            // Today header
+            HStack(spacing: 4) {
                 Text("Today")
-                    .font(.system(size: 16, weight: .bold))
+                    .font(.system(size: 20, weight: .bold))
                     .foregroundColor(.gymBroNeutral900)
-
-                ForEach(0..<max(maxSets, 1), id: \.self) { roundIndex in
-                    supersetRoundCard(group: group, roundIndex: roundIndex)
+                ZStack {
+                    Circle().fill(purpleAccent.opacity(0.8)).frame(width: 15, height: 15).blur(radius: 3)
+                    Circle().fill(purpleAccent).frame(width: 8, height: 8)
                 }
+            }
 
-                addSetDashedButton {
-                    supersetStepIndex = 0
-                    supersetSetEntries = []
-                    addSetWeight = ""
-                    addSetReps = ""
-                    showAddSetSheet = true
+            // Round cards
+            ForEach(0..<maxSets, id: \.self) { roundIndex in
+                let allCompleted = group.exercises.allSatisfy { ex in
+                    roundIndex < ex.sets.count && ex.sets[roundIndex].isCompleted
                 }
+                if allCompleted {
+                    supersetCompletedRound(group: group, roundIndex: roundIndex)
+                } else {
+                    supersetEditableRound(group: group, roundIndex: roundIndex)
+                }
+            }
+
+            // Add Round button
+            addSetDashedButton {
+                editingRoundIndex = nil
+                supersetStepIndex = 0
+                supersetSetEntries = []
+                addSetWeight = ""
+                addSetReps = ""
+                editingSetInfo = nil
+                showAddSetSheet = true
             }
         }
     }
 
-    // MARK: - Superset Round Card
+    // MARK: - Superset Completed Round
 
-    private func supersetRoundCard(group: SupersetGroup, roundIndex: Int) -> some View {
-        VStack(alignment: .leading, spacing: 8) {
+    private func supersetCompletedRound(group: SupersetGroup, roundIndex: Int) -> some View {
+        let offset = roundOffsets[roundIndex] ?? 0
+        let threshold: CGFloat = 70
+
+        return ZStack {
+            // Delete button (swipe left)
+            HStack {
+                Spacer()
+                Button {
+                    withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
+                        roundOffsets[roundIndex] = -400
+                    }
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) {
+                        deleteRound(group: group, roundIndex: roundIndex)
+                    }
+                } label: {
+                    ZStack {
+                        Circle()
+                            .fill(Color(hex: "FB2C36"))
+                            .frame(width: 44, height: 44)
+                            .shadow(color: Color(hex: "FB2C36").opacity(0.3), radius: 6, y: 2)
+                        Image(systemName: "trash.fill")
+                            .font(.system(size: 16, weight: .medium))
+                            .foregroundColor(.white)
+                    }
+                }
+                .buttonStyle(.plain)
+                .opacity(min(Double(abs(min(offset, 0)) / threshold), 1.0))
+                .padding(.trailing, 12)
+            }
+
+            // Repeat button (swipe right)
+            HStack {
+                Button {
+                    repeatRound(group: group, roundIndex: roundIndex)
+                    withAnimation(.spring(response: 0.3)) { roundOffsets[roundIndex] = 0 }
+                } label: {
+                    ZStack {
+                        Circle()
+                            .fill(Color(hex: "F59E0B"))
+                            .frame(width: 44, height: 44)
+                            .shadow(color: Color(hex: "F59E0B").opacity(0.3), radius: 6, y: 2)
+                        Image(systemName: "repeat")
+                            .font(.system(size: 16, weight: .bold))
+                            .foregroundColor(.white)
+                    }
+                }
+                .buttonStyle(.plain)
+                .opacity(min(Double(max(offset, 0) / threshold), 1.0))
+                .padding(.leading, 12)
+                Spacer()
+            }
+
+            // Round card content
+            VStack(alignment: .leading, spacing: 8) {
+                HStack {
+                    Text("ROUND \(roundIndex + 1)")
+                        .font(.system(size: 11, weight: .bold))
+                        .tracking(0.5)
+                        .foregroundColor(purpleAccent)
+                    Spacer()
+                    Image(systemName: "checkmark.circle.fill")
+                        .font(.system(size: 18))
+                        .foregroundColor(greenAccent)
+                }
+
+                ForEach(group.exercises) { ex in
+                    if let set = roundIndex < ex.sets.count ? ex.sets[roundIndex] : nil {
+                        HStack(spacing: 8) {
+                            Text(ex.supersetOrder ?? "")
+                                .font(.system(size: 13, weight: .bold))
+                                .foregroundColor(purpleAccent)
+                                .frame(width: 18)
+
+                            Text(ex.name)
+                                .font(.system(size: 14, weight: .medium))
+                                .foregroundColor(.gymBroNeutral600)
+                                .lineLimit(1)
+
+                            Spacer()
+
+                            Text(set.weight.map { "\(Int($0))" } ?? "--")
+                                .font(.system(size: 14, weight: .semibold))
+                                .foregroundColor(.gymBroNeutral900)
+                            Text("kg  \u{00D7}")
+                                .font(.system(size: 12))
+                                .foregroundColor(.gymBroNeutral400)
+                            Text(set.reps.map { "\($0)" } ?? "--")
+                                .font(.system(size: 14, weight: .semibold))
+                                .foregroundColor(.gymBroNeutral900)
+                        }
+                    }
+                }
+            }
+            .padding(14)
+            .background(purpleAccent.opacity(0.04))
+            .clipShape(RoundedRectangle(cornerRadius: 16))
+            .overlay(
+                RoundedRectangle(cornerRadius: 16)
+                    .stroke(purpleAccent.opacity(0.15), lineWidth: 1)
+            )
+            .offset(x: offset)
+            .contentShape(Rectangle())
+            .onTapGesture {
+                editRound(group: group, roundIndex: roundIndex)
+            }
+            .gesture(
+                DragGesture(minimumDistance: 15)
+                    .onChanged { value in
+                        roundOffsets[roundIndex] = value.translation.width * 0.7
+                    }
+                    .onEnded { _ in
+                        withAnimation(.spring(response: 0.35, dampingFraction: 0.75)) {
+                            let cur = roundOffsets[roundIndex] ?? 0
+                            if cur < -threshold / 2 {
+                                roundOffsets[roundIndex] = -threshold
+                            } else if cur > threshold / 2 {
+                                roundOffsets[roundIndex] = threshold
+                            } else {
+                                roundOffsets[roundIndex] = 0
+                            }
+                        }
+                    }
+            )
+        }
+        .clipShape(RoundedRectangle(cornerRadius: 16))
+    }
+
+    // MARK: - Superset Editable Round
+
+    private func supersetEditableRound(group: SupersetGroup, roundIndex: Int) -> some View {
+        VStack(alignment: .leading, spacing: 12) {
             Text("ROUND \(roundIndex + 1)")
                 .font(.system(size: 11, weight: .bold))
                 .tracking(0.5)
-                .foregroundColor(.gymBroNeutral400)
+                .foregroundColor(purpleAccent)
 
             ForEach(group.exercises) { ex in
-                let set = roundIndex < ex.sets.count ? ex.sets[roundIndex] : nil
-                let exLastSets = lastSessionSets(for: ex.id)
-                HStack(spacing: 8) {
-                    Text(ex.supersetOrder ?? "")
-                        .font(.system(size: 12, weight: .bold))
-                        .foregroundColor(purpleAccent)
-                        .frame(width: 16)
+                let set: ActiveSet? = roundIndex < ex.sets.count ? ex.sets[roundIndex] : nil
 
-                    let prevSet = exLastSets.first { $0.setNumber == roundIndex + 1 }
-
-                    if let prevWeight = prevSet?.weight {
-                        Text("Prev: \(prevWeight.truncatingRemainder(dividingBy: 1) == 0 ? "\(Int(prevWeight))" : String(format: "%.1f", prevWeight))\(prevSet?.weightUnit ?? "kg") \u{00D7} \(prevSet?.reps ?? 0)")
-                            .font(.system(size: 11, weight: .medium))
-                            .foregroundColor(.gymBroNeutral400)
-                            .frame(width: 90, alignment: .leading)
-                    } else {
-                        Text("Prev: --")
-                            .font(.system(size: 11, weight: .medium))
-                            .foregroundColor(.gymBroNeutral400)
-                            .frame(width: 90, alignment: .leading)
+                VStack(alignment: .leading, spacing: 6) {
+                    HStack(spacing: 6) {
+                        Text(ex.supersetOrder ?? "")
+                            .font(.system(size: 13, weight: .bold))
+                            .foregroundColor(purpleAccent)
+                        Text(ex.name)
+                            .font(.system(size: 14, weight: .semibold))
+                            .foregroundColor(.gymBroNeutral900)
+                            .lineLimit(1)
                     }
 
-                    Text(set?.weight.map { "\(Int($0))" } ?? "--")
-                        .font(.system(size: 14, weight: .semibold))
-                        .foregroundColor(.gymBroNeutral900)
-                        .frame(width: 48, height: 32)
-                        .background(Color.white)
-                        .clipShape(RoundedRectangle(cornerRadius: 14))
-                        .overlay(
-                            RoundedRectangle(cornerRadius: 14)
-                                .stroke(Color.gymBroNeutral200, lineWidth: 1)
-                        )
+                    HStack(spacing: 8) {
+                        ZStack(alignment: .trailing) {
+                            TextField("", text: supersetFieldBinding(
+                                dict: $editWeights,
+                                set: set,
+                                fallbackKey: "\(ex.id)-w-\(roundIndex)",
+                                existing: set?.weight.map { "\(Int($0))" }
+                            ))
+                            .font(.system(size: 15, weight: .semibold))
+                            .foregroundColor(.gymBroNeutral900)
+                            .multilineTextAlignment(.center)
+                            .keyboardType(.decimalPad)
+                            .frame(height: 40)
+                            .frame(maxWidth: .infinity)
+                            .background(Color.white)
+                            .clipShape(RoundedRectangle(cornerRadius: 12))
+                            .overlay(
+                                RoundedRectangle(cornerRadius: 12)
+                                    .stroke(purpleAccent.opacity(0.3), lineWidth: 1)
+                            )
 
-                    Text(set?.reps.map { "\($0)" } ?? "--")
-                        .font(.system(size: 14, weight: .semibold))
-                        .foregroundColor(.gymBroNeutral900)
-                        .frame(width: 40, height: 32)
-                        .background(Color.white)
-                        .clipShape(RoundedRectangle(cornerRadius: 14))
-                        .overlay(
-                            RoundedRectangle(cornerRadius: 14)
-                                .stroke(Color.gymBroNeutral200, lineWidth: 1)
-                        )
+                            let weightKey = set?.id ?? "\(ex.id)-w-\(roundIndex)"
+                            if (editWeights[weightKey] ?? set?.weight.map { "\(Int($0))" } ?? "").isEmpty {
+                                Text("kg")
+                                    .font(.system(size: 13, weight: .medium))
+                                    .foregroundColor(.gymBroNeutral400)
+                                    .padding(.trailing, 10)
+                                    .allowsHitTesting(false)
+                            }
+                        }
 
-                    Spacer()
+                        Text("\u{00D7}")
+                            .font(.system(size: 14, weight: .medium))
+                            .foregroundColor(.gymBroNeutral400)
+
+                        TextField("", text: supersetFieldBinding(
+                            dict: $editReps,
+                            set: set,
+                            fallbackKey: "\(ex.id)-r-\(roundIndex)",
+                            existing: set?.reps.map { "\($0)" }
+                        ))
+                        .font(.system(size: 15, weight: .semibold))
+                        .foregroundColor(.gymBroNeutral900)
+                        .multilineTextAlignment(.center)
+                        .keyboardType(.numberPad)
+                        .frame(height: 40)
+                        .frame(maxWidth: .infinity)
+                        .background(Color.white)
+                        .clipShape(RoundedRectangle(cornerRadius: 12))
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 12)
+                                .stroke(purpleAccent.opacity(0.3), lineWidth: 1)
+                        )
+                    }
                 }
             }
+
+            // Complete Round button
+            Button {
+                completeRound(group: group, roundIndex: roundIndex)
+            } label: {
+                HStack(spacing: 6) {
+                    Image(systemName: "checkmark")
+                        .font(.system(size: 13, weight: .bold))
+                    Text("Complete Round")
+                        .font(.system(size: 14, weight: .bold))
+                }
+                .foregroundColor(.white)
+                .frame(maxWidth: .infinity)
+                .frame(height: 44)
+                .background(
+                    LinearGradient(
+                        colors: [purpleAccent, Color(hex: "6366F1")],
+                        startPoint: .topLeading,
+                        endPoint: .bottomTrailing
+                    )
+                )
+                .clipShape(RoundedRectangle(cornerRadius: 14))
+                .shadow(color: purpleAccent.opacity(0.3), radius: 6, y: 3)
+            }
+            .buttonStyle(.plain)
         }
-        .padding(12)
+        .padding(14)
         .background(Color.white)
-        .clipShape(RoundedRectangle(cornerRadius: 12))
-        .shadow(color: .black.opacity(0.03), radius: 3, y: 1)
+        .clipShape(RoundedRectangle(cornerRadius: 16))
+        .overlay(
+            RoundedRectangle(cornerRadius: 16)
+                .stroke(purpleAccent.opacity(0.2), lineWidth: 1)
+        )
+        .shadow(color: .black.opacity(0.03), radius: 6, y: 2)
+    }
+
+    // MARK: - Superset Field Binding
+
+    private func supersetFieldBinding(dict: Binding<[String: String]>, set: ActiveSet?, fallbackKey: String, existing: String?) -> Binding<String> {
+        let key = set?.id ?? fallbackKey
+        return Binding(
+            get: { dict.wrappedValue[key] ?? existing ?? "" },
+            set: { dict.wrappedValue[key] = $0 }
+        )
+    }
+
+    // MARK: - Superset Round Actions
+
+    private func completeRound(group: SupersetGroup, roundIndex: Int) {
+        for ex in group.exercises {
+            guard roundIndex < ex.sets.count else { continue }
+            let set = ex.sets[roundIndex]
+            let wKey = set.id
+            let rKey = set.id
+            let wStr = editWeights[wKey] ?? set.weight.map { "\(Int($0))" } ?? ""
+            let rStr = editReps[rKey] ?? set.reps.map { "\($0)" } ?? ""
+            let w = Double(wStr.replacingOccurrences(of: ",", with: "."))
+            let r = Int(rStr) ?? 0
+            Task {
+                await viewModel.completeSet(exerciseId: ex.id, setId: set.id, weight: w, reps: r)
+            }
+        }
+        sessionManager.startRestTimer()
+    }
+
+    private func deleteRound(group: SupersetGroup, roundIndex: Int) {
+        for ex in group.exercises {
+            guard roundIndex < ex.sets.count else { continue }
+            let setId = ex.sets[roundIndex].id
+            Task { await viewModel.deleteSet(exerciseId: ex.id, setId: setId) }
+        }
+        roundOffsets.removeValue(forKey: roundIndex)
+    }
+
+    private func repeatRound(group: SupersetGroup, roundIndex: Int) {
+        for ex in group.exercises {
+            guard roundIndex < ex.sets.count else { continue }
+            let set = ex.sets[roundIndex]
+            Task { await viewModel.logSet(exerciseId: ex.id, weight: set.weight, reps: set.reps ?? 0) }
+        }
+    }
+
+    private func editRound(group: SupersetGroup, roundIndex: Int) {
+        editingRoundIndex = roundIndex
+        editingSetInfo = nil
+        supersetStepIndex = 0
+        supersetSetEntries = []
+        if let firstEx = group.exercises.first, roundIndex < firstEx.sets.count {
+            let set = firstEx.sets[roundIndex]
+            addSetWeight = set.weight.map { "\(Int($0))" } ?? ""
+            addSetReps = set.reps.map { "\($0)" } ?? ""
+        } else {
+            addSetWeight = ""
+            addSetReps = ""
+        }
+        showAddSetSheet = true
     }
 
     // MARK: - Add Set Dashed Button
@@ -735,7 +1008,7 @@ struct ExerciseLoggingView: View {
                         .foregroundColor(.gymBroNeutral900)
                 }
             } else {
-                Text(editingSetInfo != nil ? "Edit Set" : "Log Set")
+                Text(editingSetInfo != nil ? "Edit Set" : (editingRoundIndex != nil ? "Edit Round" : "Log Set"))
                     .font(.system(size: 20, weight: .bold))
                     .foregroundColor(.gymBroNeutral900)
                     .padding(.top, 8)
@@ -772,6 +1045,7 @@ struct ExerciseLoggingView: View {
                             RoundedRectangle(cornerRadius: 16)
                                 .stroke(Color.gymBroNeutral200, lineWidth: 1)
                         )
+                        .simultaneousGesture(TapGesture().onEnded { addSetWeight = "" })
                 }
 
                 VStack(alignment: .leading, spacing: 6) {
@@ -792,6 +1066,7 @@ struct ExerciseLoggingView: View {
                             RoundedRectangle(cornerRadius: 16)
                                 .stroke(Color.gymBroNeutral200, lineWidth: 1)
                         )
+                        .simultaneousGesture(TapGesture().onEnded { addSetReps = "" })
                 }
             }
 
@@ -865,14 +1140,35 @@ struct ExerciseLoggingView: View {
             }
 
             if isLastSupersetStep {
-                // All exercises entered — log all sets and finish
-                for entry in supersetSetEntries {
-                    Task {
-                        await viewModel.logSet(
-                            exerciseId: entry.exerciseId,
-                            weight: entry.weight,
-                            reps: entry.reps
-                        )
+                if let editingRound = editingRoundIndex {
+                    // Update existing round
+                    for entry in supersetSetEntries {
+                        if let group = supersetGroup,
+                           let ex = group.exercises.first(where: { $0.id == entry.exerciseId }),
+                           editingRound < ex.sets.count {
+                            Task {
+                                await viewModel.updateSet(
+                                    exerciseId: entry.exerciseId,
+                                    setId: ex.sets[editingRound].id,
+                                    weight: entry.weight,
+                                    weightUnit: nil,
+                                    reps: entry.reps,
+                                    isCompleted: nil
+                                )
+                            }
+                        }
+                    }
+                    editingRoundIndex = nil
+                } else {
+                    // Add new round — log new sets
+                    for entry in supersetSetEntries {
+                        Task {
+                            await viewModel.logSet(
+                                exerciseId: entry.exerciseId,
+                                weight: entry.weight,
+                                reps: entry.reps
+                            )
+                        }
                     }
                 }
                 showAddSetSheet = false
@@ -881,8 +1177,23 @@ struct ExerciseLoggingView: View {
             } else {
                 // Advance to next exercise
                 supersetStepIndex += 1
-                addSetWeight = ""
-                addSetReps = ""
+                // Pre-fill with existing data when editing a round
+                if let editingRound = editingRoundIndex,
+                   let group = supersetGroup,
+                   supersetStepIndex < group.exercises.count {
+                    let nextEx = group.exercises[supersetStepIndex]
+                    if editingRound < nextEx.sets.count {
+                        let nextSet = nextEx.sets[editingRound]
+                        addSetWeight = nextSet.weight.map { "\(Int($0))" } ?? ""
+                        addSetReps = nextSet.reps.map { "\($0)" } ?? ""
+                    } else {
+                        addSetWeight = ""
+                        addSetReps = ""
+                    }
+                } else {
+                    addSetWeight = ""
+                    addSetReps = ""
+                }
             }
         } else {
             // Individual exercise
@@ -976,28 +1287,15 @@ struct ExerciseLoggingView: View {
 
     private func loadPreviousData() async {
         if let exercise = exercise, let libId = exercise.libraryExerciseId {
-            async let sessionsTask = viewModel.loadPreviousSets(for: libId)
-            async let imagesTask = fetchExerciseImages(libraryExerciseId: libId)
-            let sessions = await sessionsTask
-            await imagesTask
+            let sessions = await viewModel.loadPreviousSets(for: libId)
             previousSessions[exercise.id] = sessions
         } else if let group = supersetGroup {
             for ex in group.exercises {
                 if let libId = ex.libraryExerciseId {
-                    async let sessionsTask = viewModel.loadPreviousSets(for: libId)
-                    async let imagesTask = fetchExerciseImages(libraryExerciseId: libId)
-                    let sessions = await sessionsTask
-                    await imagesTask
+                    let sessions = await viewModel.loadPreviousSets(for: libId)
                     previousSessions[ex.id] = sessions
                 }
             }
-        }
-    }
-
-    private func fetchExerciseImages(libraryExerciseId: String) async {
-        let images = await viewModel.fetchExerciseImages(libraryExerciseId: libraryExerciseId)
-        if !images.isEmpty {
-            exerciseImages[libraryExerciseId] = images
         }
     }
 }

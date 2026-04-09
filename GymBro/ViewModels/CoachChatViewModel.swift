@@ -228,29 +228,31 @@ final class CoachChatViewModel: ObservableObject {
     func startWorkout(from message: CoachMessageResponse) async {
         guard let session = message.session else { return }
 
-        do {
-            let response = try await networkService.request(
-                CoachRouter.startSessionFromChat(sessionId: session.id).endpoint,
-                responseType: SessionResponse.self
-            )
-            sessionManager.openSession(response)
-            analyticsService.track("coach_workout_started", properties: ["session_id": session.id])
-        } catch {
-            // Fallback: create mock session response from card data
-            let mockResponse = SessionResponse(
-                id: session.id,
-                title: session.title,
-                type: session.type,
-                status: "active",
-                startedAt: ISO8601DateFormatter().string(from: Date()),
-                completedAt: nil,
-                durationMinutes: session.durationMinutes,
-                calories: nil,
-                aiGenerated: true,
-                aiMessage: nil,
-                exercises: session.exercises
-            )
-            sessionManager.openSession(mockResponse)
+        sessionManager.requestSessionStart { [weak self] in
+            guard let self else { return }
+            do {
+                let response = try await self.networkService.request(
+                    CoachRouter.startSessionFromChat(sessionId: session.id).endpoint,
+                    responseType: SessionResponse.self
+                )
+                self.sessionManager.openSession(response)
+                self.analyticsService.track("coach_workout_started", properties: ["session_id": session.id])
+            } catch {
+                let mockResponse = SessionResponse(
+                    id: session.id,
+                    title: session.title,
+                    type: session.type,
+                    status: "active",
+                    startedAt: ISO8601DateFormatter().string(from: Date()),
+                    completedAt: nil,
+                    durationMinutes: session.durationMinutes,
+                    calories: nil,
+                    aiGenerated: true,
+                    aiMessage: nil,
+                    exercises: session.exercises
+                )
+                self.sessionManager.openSession(mockResponse)
+            }
         }
     }
 

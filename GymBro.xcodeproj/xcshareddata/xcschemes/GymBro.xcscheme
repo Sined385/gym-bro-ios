@@ -21,6 +21,20 @@
                ReferencedContainer = "container:GymBro.xcodeproj">
             </BuildableReference>
          </BuildActionEntry>
+         <BuildActionEntry
+            buildForTesting = "YES"
+            buildForRunning = "YES"
+            buildForProfiling = "YES"
+            buildForArchiving = "YES"
+            buildForAnalyzing = "YES">
+            <BuildableReference
+               BuildableIdentifier = "primary"
+               BlueprintIdentifier = "1661B9E36FB8500A6CA4F5F0"
+               BuildableName = "GymJamWatch.app"
+               BlueprintName = "GymJamWatch"
+               ReferencedContainer = "container:GymBro.xcodeproj">
+            </BuildableReference>
+         </BuildActionEntry>
       </BuildActionEntries>
    </BuildAction>
    <TestAction

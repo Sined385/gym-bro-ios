@@ -165,10 +165,10 @@ struct CoachWorkoutCard: View {
             type: "strength",
             durationMinutes: 30,
             exercises: [
-                DashboardExercise(id: "1", name: "DB Bench Press", stepNumber: 1, setsDisplay: "3 \u{00D7} 10", accentColor: "#E86A75", libraryExerciseId: nil, muscleGroup: "Chest", equipment: "Dumbbells", suggestedWeight: nil, imageUrl: nil),
-                DashboardExercise(id: "2", name: "DB Rows", stepNumber: 2, setsDisplay: "3 \u{00D7} 10", accentColor: "#30C08D", libraryExerciseId: nil, muscleGroup: "Back", equipment: "Dumbbells", suggestedWeight: nil, imageUrl: nil),
-                DashboardExercise(id: "3", name: "DB Shoulder Press", stepNumber: 3, setsDisplay: "3 \u{00D7} 10", accentColor: "#7A82F6", libraryExerciseId: nil, muscleGroup: "Shoulders", equipment: "Dumbbells", suggestedWeight: nil, imageUrl: nil),
-                DashboardExercise(id: "4", name: "DB Curls", stepNumber: 4, setsDisplay: "3 \u{00D7} 12", accentColor: "#F5A623", libraryExerciseId: nil, muscleGroup: "Arms", equipment: "Dumbbells", suggestedWeight: nil, imageUrl: nil),
+                DashboardExercise(id: "1", name: "DB Bench Press", stepNumber: 1, setsDisplay: "3 \u{00D7} 10", accentColor: "#E86A75", libraryExerciseId: nil, muscleGroup: "Chest", equipment: "Dumbbells", suggestedWeight: nil, imageUrl: nil, externalId: nil),
+                DashboardExercise(id: "2", name: "DB Rows", stepNumber: 2, setsDisplay: "3 \u{00D7} 10", accentColor: "#30C08D", libraryExerciseId: nil, muscleGroup: "Back", equipment: "Dumbbells", suggestedWeight: nil, imageUrl: nil, externalId: nil),
+                DashboardExercise(id: "3", name: "DB Shoulder Press", stepNumber: 3, setsDisplay: "3 \u{00D7} 10", accentColor: "#7A82F6", libraryExerciseId: nil, muscleGroup: "Shoulders", equipment: "Dumbbells", suggestedWeight: nil, imageUrl: nil, externalId: nil),
+                DashboardExercise(id: "4", name: "DB Curls", stepNumber: 4, setsDisplay: "3 \u{00D7} 12", accentColor: "#F5A623", libraryExerciseId: nil, muscleGroup: "Arms", equipment: "Dumbbells", suggestedWeight: nil, imageUrl: nil, externalId: nil),
             ]
         ),
         onStartWorkout: {},

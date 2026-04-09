@@ -60,14 +60,17 @@ final class WorkoutTemplatesViewModel: ObservableObject {
     }
 
     func startFromTemplate(_ template: WorkoutTemplate) async {
-        do {
-            let response = try await networkService.request(
-                TemplateRouter.start(templateId: template.id).endpoint,
-                responseType: SessionResponse.self
-            )
-            sessionManager.openSession(response)
-        } catch {
-            // Error starting template
+        sessionManager.requestSessionStart { [weak self] in
+            guard let self else { return }
+            do {
+                let response = try await self.networkService.request(
+                    TemplateRouter.start(templateId: template.id).endpoint,
+                    responseType: SessionResponse.self
+                )
+                self.sessionManager.openSession(response)
+            } catch {
+                // Error starting template
+            }
         }
     }
 

@@ -12,6 +12,7 @@ struct BuildingPlanView: View {
 
     @EnvironmentObject var coordinator: AppCoordinator
     @StateObject private var homeViewModel: HomeViewModel = DependencyContainer.shared.resolve(HomeViewModel.self)
+    private let networkService: NetworkServiceProtocol = DependencyContainer.shared.resolve(NetworkServiceProtocol.self)
 
     // MARK: - Animation State
 
@@ -358,8 +359,11 @@ struct BuildingPlanView: View {
     // MARK: - Animation Logic
 
     private func startAnimations() async {
-        // Start dashboard load in background
+        // Generate plan (synchronous endpoint — blocks until done) then load dashboard
         Task {
+            try? await networkService.request(
+                PlanRouter.generatePlan(forceRegenerate: false).endpoint
+            )
             await homeViewModel.loadDashboard()
             dashboardLoaded = true
             checkTransition()

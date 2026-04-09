@@ -83,7 +83,8 @@ struct PlannedWorkoutCard: View {
                                     muscleGroup: exercise.muscleGroup,
                                     setsDisplay: exercise.setsDisplay,
                                     accentColor: exercise.accentColor,
-                                    suggestedWeight: exercise.suggestedWeight
+                                    suggestedWeight: exercise.suggestedWeight,
+                                    externalId: exercise.externalId
                                 )
                             } label: {
                                 ExerciseRowView(
@@ -172,8 +173,8 @@ struct PlannedWorkoutCard: View {
             muscleGroups: ["Chest", "Back"],
             status: "pending",
             exercises: [
-                PlannedExercise(name: "Bench Press", muscleGroup: "Chest", setsDisplay: "4 \u{00D7} 8", libraryExerciseId: nil, accentColor: "#E86A75", suggestedWeight: 185, imageUrl: nil),
-                PlannedExercise(name: "Pull-ups", muscleGroup: "Back", setsDisplay: "3 \u{00D7} 10", libraryExerciseId: nil, accentColor: "#30C08D", suggestedWeight: nil, imageUrl: nil),
+                PlannedExercise(name: "Bench Press", muscleGroup: "Chest", setsDisplay: "4 \u{00D7} 8", libraryExerciseId: nil, accentColor: "#E86A75", suggestedWeight: 185, imageUrl: nil, externalId: nil),
+                PlannedExercise(name: "Pull-ups", muscleGroup: "Back", setsDisplay: "3 \u{00D7} 10", libraryExerciseId: nil, accentColor: "#30C08D", suggestedWeight: nil, imageUrl: nil, externalId: nil),
             ]
         )
     )

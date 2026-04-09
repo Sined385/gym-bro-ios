@@ -13,7 +13,6 @@ final class ExercisePreviewViewModel: ObservableObject {
 
     // MARK: - Published
 
-    @Published var images: [String] = []
     @Published var previousSessions: [PreviousSessionEntry] = []
     @Published var isLoading = false
 
@@ -33,26 +32,10 @@ final class ExercisePreviewViewModel: ObservableObject {
         isLoading = true
         defer { isLoading = false }
 
-        async let fetchedImages = fetchExerciseImages(libraryExerciseId: libraryExerciseId)
-        async let fetchedSessions = loadPreviousSets(for: libraryExerciseId)
-
-        images = await fetchedImages
-        previousSessions = await fetchedSessions
+        previousSessions = await loadPreviousSets(for: libraryExerciseId)
     }
 
     // MARK: - Private
-
-    private func fetchExerciseImages(libraryExerciseId: String) async -> [String] {
-        do {
-            let response = try await networkService.request(
-                ExerciseRouter.detail(exerciseId: libraryExerciseId).endpoint,
-                responseType: ExerciseDetailResponse.self
-            )
-            return response.images ?? []
-        } catch {
-            return []
-        }
-    }
 
     private func loadPreviousSets(for libraryExerciseId: String) async -> [PreviousSessionEntry] {
         do {

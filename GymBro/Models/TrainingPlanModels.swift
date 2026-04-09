@@ -42,9 +42,10 @@ struct PlanExercise: Decodable, Identifiable {
     let accentColor: String?
     let suggestedWeight: Double?
     let imageUrl: String?
+    let externalId: String?
     var id: String { name + setsDisplay }
 
-    init(name: String, muscleGroup: String, setsDisplay: String, libraryExerciseId: String? = nil, accentColor: String? = nil, suggestedWeight: Double? = nil, imageUrl: String? = nil) {
+    init(name: String, muscleGroup: String, setsDisplay: String, libraryExerciseId: String? = nil, accentColor: String? = nil, suggestedWeight: Double? = nil, imageUrl: String? = nil, externalId: String? = nil) {
         self.name = name
         self.muscleGroup = muscleGroup
         self.setsDisplay = setsDisplay
@@ -52,6 +53,7 @@ struct PlanExercise: Decodable, Identifiable {
         self.accentColor = accentColor
         self.suggestedWeight = suggestedWeight
         self.imageUrl = imageUrl
+        self.externalId = externalId
     }
 }
 

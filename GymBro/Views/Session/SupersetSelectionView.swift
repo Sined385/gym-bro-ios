@@ -50,7 +50,7 @@ struct SupersetSelectionView: View {
 
             // Save button
             Button {
-                let items = libraryViewModel.filteredExercises.filter { selectedIds.contains($0.id) }
+                let items = libraryViewModel.exercises.filter { selectedIds.contains($0.id) }
                 onSave(items)
             } label: {
                 HStack(spacing: 8) {
@@ -93,7 +93,6 @@ struct SupersetSelectionView: View {
         let isSelected = selectedIds.contains(item.id)
 
         return Button {
-            guard !isAlreadyInSession else { return }
             if isSelected {
                 selectedIds.remove(item.id)
             } else {
@@ -104,7 +103,7 @@ struct SupersetSelectionView: View {
                 VStack(alignment: .leading, spacing: 3) {
                     Text(item.name)
                         .font(.system(size: 15, weight: .semibold))
-                        .foregroundColor(isAlreadyInSession ? .gymBroNeutral400 : .gymBroNeutral900)
+                        .foregroundColor(.gymBroNeutral900)
 
                     HStack(spacing: 8) {
                         Text(item.muscleGroup)
@@ -119,34 +118,22 @@ struct SupersetSelectionView: View {
 
                 Spacer()
 
-                if isAlreadyInSession {
-                    // Green checkmark for already-added exercises
-                    ZStack {
-                        Circle()
-                            .fill(Color(hex: "30C08D"))
-                            .frame(width: 26, height: 26)
-                        Image(systemName: "checkmark")
-                            .font(.system(size: 12, weight: .bold))
-                            .foregroundColor(.white)
-                    }
-                } else {
-                    // Selection toggle
-                    ZStack {
-                        Circle()
-                            .stroke(isSelected ? Color(hex: "7A82F6") : Color.gymBroNeutral200, lineWidth: 2)
-                            .frame(width: 26, height: 26)
+                // Selection toggle
+                ZStack {
+                    Circle()
+                        .stroke(isSelected ? Color(hex: "7A82F6") : Color.gymBroNeutral200, lineWidth: 2)
+                        .frame(width: 26, height: 26)
 
-                        if isSelected {
-                            Circle()
-                                .fill(Color(hex: "7A82F6"))
-                                .frame(width: 18, height: 18)
-                        }
+                    if isSelected {
+                        Circle()
+                            .fill(Color(hex: "7A82F6"))
+                            .frame(width: 18, height: 18)
                     }
                 }
             }
             .padding(.horizontal, 20)
             .padding(.vertical, 14)
-            .background(isAlreadyInSession ? Color.clear : (isSelected ? Color(hex: "7A82F6").opacity(0.05) : Color.clear))
+            .background(isSelected ? Color(hex: "7A82F6").opacity(0.05) : Color.clear)
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)

@@ -21,6 +21,7 @@ struct TemplateExercise: Decodable, Identifiable {
     let equipment: String?
     let setsDisplay: String
     let imageUrl: String?
+    let externalId: String?
 
     var id: String { name }
 }
