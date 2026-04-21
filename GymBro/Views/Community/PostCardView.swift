@@ -231,6 +231,7 @@ struct PostCardView: View {
 
     private func timeAgo(from isoString: String) -> String {
         let formatter = ISO8601DateFormatter()
+        formatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
         guard let date = formatter.date(from: isoString) else { return "" }
 
         let interval = Date().timeIntervalSince(date)

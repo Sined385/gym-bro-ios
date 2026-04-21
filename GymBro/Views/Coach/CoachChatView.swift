@@ -218,20 +218,28 @@ struct CoachChatView: View {
             }
 
             // Text input + send button
-            HStack(spacing: 10) {
-                TextField("Ask your coach anything...", text: $viewModel.inputText)
+            HStack(alignment: .bottom, spacing: 10) {
+                TextEditor(text: $viewModel.inputText)
                     .font(.gymBroSmall)
-                    .padding(.horizontal, 16)
-                    .padding(.vertical, 12)
+                    .padding(.horizontal, 12)
+                    .padding(.vertical, 6)
+                    .frame(minHeight: 40, maxHeight: 120)
+                    .fixedSize(horizontal: false, vertical: true)
+                    .scrollContentBackground(.hidden)
                     .background(Color.white)
-                    .clipShape(Capsule())
+                    .clipShape(RoundedRectangle(cornerRadius: 20))
                     .overlay(
-                        Capsule()
+                        RoundedRectangle(cornerRadius: 20)
                             .stroke(Color.gymBroNeutral100, lineWidth: 1)
                     )
-                    .onSubmit {
-                        Task {
-                            await viewModel.sendMessage()
+                    .overlay(alignment: .topLeading) {
+                        if viewModel.inputText.isEmpty {
+                            Text("Ask your coach anything...")
+                                .font(.gymBroSmall)
+                                .foregroundColor(Color(.placeholderText))
+                                .padding(.horizontal, 16)
+                                .padding(.vertical, 14)
+                                .allowsHitTesting(false)
                         }
                     }
 
