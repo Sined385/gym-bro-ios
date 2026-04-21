@@ -26,6 +26,7 @@
 		7400000000000000000000C4 /* SDWebImageSwiftUI in Frameworks */ = {isa = PBXBuildFile; productRef = 7400000000000000000000B8 /* SDWebImageSwiftUI */; };
 		7457A8092F62FCD900A0721E /* Alamofire in Frameworks */ = {isa = PBXBuildFile; productRef = 7400000000000000000000B1 /* Alamofire */; };
 		7457A80A2F62FCD900A0721E /* Swinject in Frameworks */ = {isa = PBXBuildFile; productRef = 7400000000000000000000B2 /* Swinject */; };
+		7476C35C2F927D7E0021D04E /* GymJam.storekit in Resources */ = {isa = PBXBuildFile; fileRef = 7476C35B2F927D7E0021D04E /* GymJam.storekit */; };
 		748C84EA2F6300E300DCBF42 /* Supabase in Frameworks */ = {isa = PBXBuildFile; productRef = 7400000000000000000000B3 /* Supabase */; };
 		748C84EB2F6300E300DCBF42 /* Auth in Frameworks */ = {isa = PBXBuildFile; productRef = 7400000000000000000000B4 /* Auth */; };
 		74C81D942F85185B006BC9EF /* WidgetKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 74C81D932F85185B006BC9EF /* WidgetKit.framework */; };
@@ -148,6 +149,7 @@
 		743C12BD2F62F80400DDED12 /* GymJam.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = GymJam.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		743C12CA2F62F80500DDED12 /* GymBroTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = GymBroTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		743C12D42F62F80500DDED12 /* GymBroUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = GymBroUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		7476C35B2F927D7E0021D04E /* GymJam.storekit */ = {isa = PBXFileReference; lastKnownFileType = text; path = GymJam.storekit; sourceTree = "<group>"; };
 		74C81D912F85185A006BC9EF /* GymJamWidgetsExtension.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = GymJamWidgetsExtension.appex; sourceTree = BUILT_PRODUCTS_DIR; };
 		74C81D932F85185B006BC9EF /* WidgetKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = WidgetKit.framework; path = System/Library/Frameworks/WidgetKit.framework; sourceTree = SDKROOT; };
 		74C81D952F85185B006BC9EF /* SwiftUI.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = SwiftUI.framework; path = System/Library/Frameworks/SwiftUI.framework; sourceTree = SDKROOT; };
@@ -297,6 +299,7 @@
 		743C12B42F62F80400DDED12 = {
 			isa = PBXGroup;
 			children = (
+				7476C35B2F927D7E0021D04E /* GymJam.storekit */,
 				743C12BF2F62F80400DDED12 /* GymBro */,
 				743C12CD2F62F80500DDED12 /* GymBroTests */,
 				743C12D72F62F80500DDED12 /* GymBroUITests */,
@@ -587,6 +590,7 @@
 				74C8F58A2F7564AD006BC9EF /* Prod.xcconfig in Resources */,
 				74C8F5882F756497006BC9EF /* Dev.xcconfig in Resources */,
 				74D0000000000000000000F1 /* Staging.xcconfig in Resources */,
+				7476C35C2F927D7E0021D04E /* GymJam.storekit in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

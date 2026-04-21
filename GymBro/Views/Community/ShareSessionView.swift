@@ -559,10 +559,7 @@ struct ShareSessionView: View {
                 ForEach(completedSets) { set in
                     let text: String = {
                         if let weight = set.weight, weight > 0 {
-                            let weightStr = weight.truncatingRemainder(dividingBy: 1) == 0
-                                ? "\(Int(weight))"
-                                : String(format: "%.1f", weight)
-                            return "\(weightStr)\(set.weightUnit) \u{00D7} \(set.reps ?? 0)"
+                            return "\(weight.formattedWeight)\(set.weightUnit) \u{00D7} \(set.reps ?? 0)"
                         } else {
                             return "\u{00D7} \(set.reps ?? 0)"
                         }

@@ -209,7 +209,7 @@ struct ExercisePreviewSheet: View {
                                 .frame(width: 48, alignment: .leading)
 
                             if let w = set.weight {
-                                Text("\(Int(w)) \(set.weightUnit)")
+                                Text("\(w.formattedWeight) \(set.weightUnit)")
                                     .font(.system(size: 14, weight: .semibold))
                                     .foregroundColor(.gymBroNeutral900)
                                 Text("  \u{00D7}  ")

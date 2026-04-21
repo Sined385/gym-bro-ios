@@ -150,7 +150,7 @@ struct SharedTemplatePreviewView: View {
                                 .foregroundColor(.gymBroTextSecondary)
                         }
                         if let weight = creator.bodyWeightKg {
-                            Text("\(Int(weight)) kg")
+                            Text("\(weight.formattedWeight) kg")
                                 .font(.system(size: 14, weight: .medium))
                                 .foregroundColor(.gymBroTextSecondary)
                         }

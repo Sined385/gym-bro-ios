@@ -228,6 +228,27 @@ struct ComparisonStrengths: Decodable {
     let otherUser: String
 }
 
+// MARK: - Follow List
+
+struct FollowListUser: Decodable, Identifiable, Equatable {
+    let id: String
+    let fullName: String
+    let username: String?
+    let avatarUrl: String?
+    var isFollowing: Bool
+}
+
+struct FollowListResponse: Decodable {
+    let users: [FollowListUser]
+    let nextCursor: String?
+    let hasMore: Bool
+}
+
+enum FollowListTab: String, CaseIterable {
+    case followers = "Followers"
+    case following = "Following"
+}
+
 // MARK: - Simple Success
 
 struct SuccessResponse: Decodable {

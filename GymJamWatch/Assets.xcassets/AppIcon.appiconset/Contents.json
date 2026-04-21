@@ -1,9 +1,9 @@
 {
   "images" : [
     {
-      "idiom" : "watch",
-      "platform" : "watchOS",
-      "scale" : "2x",
+      "filename" : "GymJam.png",
+      "idiom" : "universal",
+      "platform" : "watchos",
       "size" : "1024x1024"
     }
   ],

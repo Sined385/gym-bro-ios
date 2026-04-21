@@ -8,6 +8,8 @@ struct WorkoutFeedbackView: View {
     @State private var isSubmitting: Bool = false
     @State private var showShareSheet: Bool = false
     @State private var completionDurationMinutes: Int?
+    @State private var showError: Bool = false
+    @State private var errorMessage: String = ""
 
     private let painOptions = ["None", "Joint Pain", "Muscle Tweak", "Extreme Fatigue"]
     private let painIcons = ["checkmark.circle", "figure.arms.open", "bandage", "zzz"]
@@ -119,8 +121,13 @@ struct WorkoutFeedbackView: View {
                     Task {
                         let response = await viewModel.submitFeedbackAndComplete()
                         isSubmitting = false
-                        completionDurationMinutes = response?.durationMinutes
-                        showShareSheet = true
+                        if let response {
+                            completionDurationMinutes = response.durationMinutes
+                            showShareSheet = true
+                        } else {
+                            errorMessage = "Failed to save workout. Please try again."
+                            showError = true
+                        }
                     }
                 } label: {
                     HStack(spacing: 8) {
@@ -154,6 +161,11 @@ struct WorkoutFeedbackView: View {
         .background(Color.gymBroBackground.ignoresSafeArea())
         .navigationTitle("Feedback")
         .navigationBarTitleDisplayMode(.inline)
+        .alert("Error", isPresented: $showError) {
+            Button("OK", role: .cancel) { }
+        } message: {
+            Text(errorMessage)
+        }
         .sheet(isPresented: $showShareSheet) {
             ShareSessionView(
                 viewModel: viewModel,

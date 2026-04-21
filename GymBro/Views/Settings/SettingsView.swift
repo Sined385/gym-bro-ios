@@ -11,6 +11,7 @@ import Combine
 struct SettingsView: View {
 
     @StateObject private var viewModel: SettingsViewModel = DependencyContainer.shared.resolve(SettingsViewModel.self)
+    @ObservedObject private var subscriptionManager: SubscriptionManager = DependencyContainer.shared.resolve(SubscriptionManager.self)
     @EnvironmentObject var coordinator: AppCoordinator
     @Environment(\.dismiss) private var dismiss
 
@@ -21,6 +22,7 @@ struct SettingsView: View {
 
             ScrollView(.vertical, showsIndicators: false) {
                 VStack(spacing: 24) {
+                    subscriptionSection
                     preferencesSection
                     accountSection
                     footer
@@ -68,6 +70,103 @@ struct SettingsView: View {
         }
         .padding(.horizontal, 24)
         .padding(.vertical, 16)
+    }
+
+    // MARK: - Subscription Section
+
+    private var subscriptionSection: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Text("SUBSCRIPTION")
+                .font(.system(size: 12, weight: .bold))
+                .foregroundColor(Color(hex: "A1A1A1"))
+                .tracking(0.5)
+
+            if subscriptionManager.isPremium {
+                // Premium active
+                HStack(spacing: 14) {
+                    ZStack {
+                        Circle()
+                            .fill(Color.gymBroPrimary.opacity(0.1))
+                            .frame(width: 44, height: 44)
+
+                        Image(systemName: "dumbbell.fill")
+                            .font(.system(size: 18, weight: .medium))
+                            .foregroundColor(.gymBroPrimary)
+                    }
+
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text("GymJam Premium")
+                            .font(.system(size: 16, weight: .semibold))
+                            .foregroundColor(.gymBroNeutral900)
+
+                        Text("Active")
+                            .font(.system(size: 13, weight: .medium))
+                            .foregroundColor(Color(hex: "30C08D"))
+                    }
+
+                    Spacer()
+
+                    Button {
+                        if let url = URL(string: "https://apps.apple.com/account/subscriptions") {
+                            UIApplication.shared.open(url)
+                        }
+                    } label: {
+                        Text("Manage")
+                            .font(.system(size: 13, weight: .semibold))
+                            .foregroundColor(.gymBroPrimary)
+                    }
+                }
+                .padding(16)
+                .background(Color.white)
+                .overlay(
+                    RoundedRectangle(cornerRadius: 24)
+                        .stroke(Color.gymBroPrimary.opacity(0.2), lineWidth: 1)
+                )
+                .cornerRadius(24)
+                .shadow(color: .black.opacity(0.04), radius: 8, x: 0, y: 2)
+            } else {
+                // Free tier — upgrade CTA
+                Button {
+                    subscriptionManager.showPaywall = true
+                } label: {
+                    HStack(spacing: 14) {
+                        ZStack {
+                            Circle()
+                                .fill(Color.gymBroPrimary.opacity(0.1))
+                                .frame(width: 44, height: 44)
+
+                            Image(systemName: "dumbbell.fill")
+                                .font(.system(size: 18, weight: .medium))
+                                .foregroundColor(.gymBroPrimary)
+                        }
+
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text("Upgrade to Premium")
+                                .font(.system(size: 16, weight: .semibold))
+                                .foregroundColor(.gymBroNeutral900)
+
+                            Text("Unlock unlimited AI coaching & more")
+                                .font(.system(size: 13, weight: .medium))
+                                .foregroundColor(.gymBroTextSecondary)
+                        }
+
+                        Spacer()
+
+                        Image(systemName: "chevron.right")
+                            .font(.system(size: 14, weight: .semibold))
+                            .foregroundColor(Color(hex: "D4D4D4"))
+                    }
+                    .padding(16)
+                }
+                .background(Color.white)
+                .overlay(
+                    RoundedRectangle(cornerRadius: 24)
+                        .stroke(Color(hex: "F5F5F5"), lineWidth: 1)
+                )
+                .cornerRadius(24)
+                .shadow(color: .black.opacity(0.04), radius: 8, x: 0, y: 2)
+            }
+        }
     }
 
     // MARK: - Preferences Section

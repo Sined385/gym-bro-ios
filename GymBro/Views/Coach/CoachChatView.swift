@@ -68,6 +68,15 @@ struct CoachChatView: View {
                                 }
                             }
                         }
+
+                        // Limit reached upgrade card
+                        if viewModel.isLimitReached {
+                            PremiumUpgradeCard(
+                                description: "You've used all 20 free messages. Upgrade to Premium for unlimited AI coaching.",
+                                subscriptionManager: viewModel.subscriptionManager
+                            )
+                            .id("upgrade-card")
+                        }
                     }
                     .padding(.horizontal, 16)
                     .padding(.top, 16)
@@ -91,7 +100,11 @@ struct CoachChatView: View {
             }
 
             // Input area
-            inputArea
+            if viewModel.isLimitReached {
+                limitReachedBar
+            } else {
+                inputArea
+            }
         }
         .background(Color.gymBroBackground.ignoresSafeArea())
         .navigationBarTitleDisplayMode(.inline)
@@ -128,6 +141,41 @@ struct CoachChatView: View {
 
             Spacer().frame(height: 20)
         }
+    }
+
+    // MARK: - Limit Reached Bar
+
+    private var limitReachedBar: some View {
+        VStack(spacing: 8) {
+            Button {
+                viewModel.subscriptionManager.showPaywall = true
+            } label: {
+                HStack(spacing: 8) {
+                    Image(systemName: "dumbbell.fill")
+                        .font(.system(size: 14, weight: .semibold))
+                    Text("Upgrade to Premium")
+                        .font(.system(size: 15, weight: .bold))
+                }
+                .foregroundColor(.white)
+                .frame(maxWidth: .infinity)
+                .frame(height: 48)
+                .background(Color.gymBroPrimaryGradient)
+                .cornerRadius(24)
+            }
+            .padding(.horizontal, 16)
+
+            Text("Unlock unlimited AI coaching conversations")
+                .font(.system(size: 12, weight: .medium))
+                .foregroundColor(.gymBroTextSecondary)
+        }
+        .padding(.vertical, 12)
+        .background(Color.gymBroBackground)
+        .overlay(alignment: .top) {
+            Rectangle()
+                .fill(Color.gymBroNeutral100)
+                .frame(height: 1)
+        }
+        .padding(.bottom, sessionManager.isCollapsed ? 72 : 0)
     }
 
     // MARK: - Input Area
@@ -209,12 +257,13 @@ struct CoachChatView: View {
             .padding(.bottom, 8)
         }
         .padding(.top, 8)
+        .background(Color.gymBroBackground)
         .overlay(alignment: .top) {
             Rectangle()
                 .fill(Color.gymBroNeutral100)
                 .frame(height: 1)
         }
-        .padding(.bottom, sessionManager.isCollapsed ? 64 : 0)
+        .padding(.bottom, sessionManager.isCollapsed ? 72 : 0)
     }
 
     // MARK: - Quick Action Icons

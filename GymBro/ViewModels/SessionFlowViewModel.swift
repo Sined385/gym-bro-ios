@@ -34,6 +34,7 @@ final class SessionFlowViewModel: ObservableObject {
     private let sessionManager: ActiveSessionManager
     private let healthKitService: HealthKitServiceProtocol
     private let analyticsService: AnalyticsTrackingServiceProtocol
+    let subscriptionManager: SubscriptionManager
     private var repeatLastSetCancellable: AnyCancellable?
 
     // MARK: - Computed Properties
@@ -68,13 +69,14 @@ final class SessionFlowViewModel: ObservableObject {
 
     // MARK: - Initialization
 
-    init(sessionId: String, sessionTitle: String, networkService: NetworkServiceProtocol, sessionManager: ActiveSessionManager, healthKitService: HealthKitServiceProtocol, analyticsService: AnalyticsTrackingServiceProtocol, initialExercises: [DashboardExercise] = [], restoredExercises: [ActiveSessionExercise]? = nil, restoredFeedback: (effort: Int, energy: Int, pain: String)? = nil) {
+    init(sessionId: String, sessionTitle: String, networkService: NetworkServiceProtocol, sessionManager: ActiveSessionManager, healthKitService: HealthKitServiceProtocol, analyticsService: AnalyticsTrackingServiceProtocol, subscriptionManager: SubscriptionManager = DependencyContainer.shared.resolve(SubscriptionManager.self), initialExercises: [DashboardExercise] = [], restoredExercises: [ActiveSessionExercise]? = nil, restoredFeedback: (effort: Int, energy: Int, pain: String)? = nil) {
         self.sessionId = sessionId
         self.sessionTitle = sessionTitle
         self.networkService = networkService
         self.sessionManager = sessionManager
         self.healthKitService = healthKitService
         self.analyticsService = analyticsService
+        self.subscriptionManager = subscriptionManager
 
         if let restored = restoredExercises {
             _exercises = Published(wrappedValue: restored)
@@ -248,6 +250,7 @@ final class SessionFlowViewModel: ObservableObject {
     }
 
     func addSuperset(_ exerciseIds: [String]) async {
+        guard subscriptionManager.requireFeature(.supersets) else { return }
         // Local-only: group existing exercises into a superset
         let groupId = UUID().uuidString
         let orders = ["A", "B", "C", "D", "E"]
@@ -262,6 +265,7 @@ final class SessionFlowViewModel: ObservableObject {
     }
 
     func addSupersetFromLibrary(_ items: [ExerciseLibraryItem]) async {
+        guard subscriptionManager.requireFeature(.supersets) else { return }
         let groupId = UUID().uuidString
         let orders = ["A", "B", "C", "D", "E"]
         for (index, item) in items.enumerated() {

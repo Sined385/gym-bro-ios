@@ -88,6 +88,14 @@ final class DependencyContainer {
             DeepLinkRouter()
         }.inObjectScope(.container)
 
+        // Subscription Manager (singleton)
+        container.register(SubscriptionManager.self) { resolver in
+            SubscriptionManager(
+                networkService: resolver.resolve(NetworkServiceProtocol.self)!,
+                analyticsService: resolver.resolve(AnalyticsTrackingServiceProtocol.self)!
+            )
+        }.inObjectScope(.container)
+
         // Push Notification Service (singleton)
         container.register(PushNotificationService.self) { resolver in
             PushNotificationService(
@@ -139,7 +147,8 @@ final class DependencyContainer {
                 networkService: resolver.resolve(NetworkServiceProtocol.self)!,
                 sessionManager: resolver.resolve(ActiveSessionManager.self)!,
                 healthKitService: resolver.resolve(HealthKitServiceProtocol.self)!,
-                analyticsService: resolver.resolve(AnalyticsTrackingServiceProtocol.self)!
+                analyticsService: resolver.resolve(AnalyticsTrackingServiceProtocol.self)!,
+                subscriptionManager: resolver.resolve(SubscriptionManager.self)!
             )
         }
 
@@ -148,14 +157,16 @@ final class DependencyContainer {
                 networkService: resolver.resolve(NetworkServiceProtocol.self)!,
                 sessionManager: resolver.resolve(ActiveSessionManager.self)!,
                 appDataState: resolver.resolve(AppDataState.self)!,
-                analyticsService: resolver.resolve(AnalyticsTrackingServiceProtocol.self)!
+                analyticsService: resolver.resolve(AnalyticsTrackingServiceProtocol.self)!,
+                subscriptionManager: resolver.resolve(SubscriptionManager.self)!
             )
         }
 
         container.register(ExerciseLibraryViewModel.self) { resolver in
             ExerciseLibraryViewModel(
                 networkService: resolver.resolve(NetworkServiceProtocol.self)!,
-                analyticsService: resolver.resolve(AnalyticsTrackingServiceProtocol.self)!
+                analyticsService: resolver.resolve(AnalyticsTrackingServiceProtocol.self)!,
+                subscriptionManager: resolver.resolve(SubscriptionManager.self)!
             )
         }
 
@@ -163,7 +174,8 @@ final class DependencyContainer {
             TrainingPlanViewModel(
                 networkService: resolver.resolve(NetworkServiceProtocol.self)!,
                 sessionManager: resolver.resolve(ActiveSessionManager.self)!,
-                appDataState: resolver.resolve(AppDataState.self)!
+                appDataState: resolver.resolve(AppDataState.self)!,
+                subscriptionManager: resolver.resolve(SubscriptionManager.self)!
             )
         }
 
@@ -191,6 +203,14 @@ final class DependencyContainer {
             MyProfileViewModel(
                 networkService: resolver.resolve(NetworkServiceProtocol.self)!,
                 appDataState: resolver.resolve(AppDataState.self)!,
+                analyticsService: resolver.resolve(AnalyticsTrackingServiceProtocol.self)!
+            )
+        }
+
+        container.register(FollowListViewModel.self) { (resolver, initialTab: FollowListTab) in
+            FollowListViewModel(
+                initialTab: initialTab,
+                networkService: resolver.resolve(NetworkServiceProtocol.self)!,
                 analyticsService: resolver.resolve(AnalyticsTrackingServiceProtocol.self)!
             )
         }

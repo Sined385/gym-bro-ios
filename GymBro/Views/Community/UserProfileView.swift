@@ -200,7 +200,7 @@ struct UserProfileView: View {
                             .foregroundColor(.gymBroTextSecondary)
                     }
                     if let weight = profile.bodyWeightKg {
-                        Text("\(Int(weight)) kg")
+                        Text("\(weight.formattedWeight) kg")
                             .font(.system(size: 14, weight: .medium))
                             .foregroundColor(.gymBroTextSecondary)
                     }
@@ -390,7 +390,7 @@ struct UserProfileView: View {
                                 .font(.system(size: 15, weight: .semibold))
                                 .foregroundColor(.gymBroNeutral900)
 
-                            Text("\(Int(record.weight)) \(record.weightUnit) x \(record.reps) reps")
+                            Text("\(record.weight.formattedWeight) \(record.weightUnit) x \(record.reps) reps")
                                 .font(.system(size: 13, weight: .medium))
                                 .foregroundColor(.gymBroTextSecondary)
                         }

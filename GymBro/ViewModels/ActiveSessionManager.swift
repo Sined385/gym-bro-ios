@@ -344,7 +344,7 @@ final class ActiveSessionManager: ObservableObject {
     func updateLastCompletedSet(exerciseName: String, weight: Double?, weightUnit: String, reps: Int) {
         lastCompletedExerciseName = exerciseName
         if let w = weight, w > 0 {
-            let wStr = w.truncatingRemainder(dividingBy: 1) == 0 ? "\(Int(w))" : String(format: "%.1f", w)
+            let wStr = w.formattedWeight
             lastCompletedSetDisplay = "\(wStr)\(weightUnit) × \(reps)"
         } else {
             lastCompletedSetDisplay = "× \(reps)"

@@ -33,6 +33,13 @@ struct TrainingPlanView: View {
                     .padding(.top, 8)
                     .padding(.bottom, 100)
                 }
+                .blur(radius: viewModel.subscriptionManager.isPremium ? 0 : 6)
+                .allowsHitTesting(viewModel.subscriptionManager.isPremium)
+            }
+
+            // Premium upgrade overlay
+            if !viewModel.subscriptionManager.isPremium && !viewModel.isLoading {
+                premiumOverlay
             }
         }
         .task {
@@ -120,6 +127,60 @@ struct TrainingPlanView: View {
                 }
                 .padding(.bottom, isLast ? 0 : 4)
             }
+        }
+    }
+
+    // MARK: - Premium Overlay
+
+    private var premiumOverlay: some View {
+        VStack(spacing: 20) {
+            Spacer()
+
+            VStack(spacing: 16) {
+                ZStack {
+                    Circle()
+                        .fill(Color.gymBroPrimary.opacity(0.1))
+                        .frame(width: 64, height: 64)
+
+                    Image(systemName: "lock.fill")
+                        .font(.system(size: 26, weight: .medium))
+                        .foregroundColor(.gymBroPrimary)
+                }
+
+                Text("Unlock Your Training Plan")
+                    .font(.system(size: 22, weight: .bold))
+                    .foregroundColor(.gymBroNeutral900)
+
+                Text("Upgrade to Premium to access your AI-generated training plan and track your weekly progress.")
+                    .font(.system(size: 15, weight: .medium))
+                    .foregroundColor(.gymBroTextSecondary)
+                    .multilineTextAlignment(.center)
+                    .padding(.horizontal, 16)
+
+                Button {
+                    viewModel.subscriptionManager.showPaywall = true
+                } label: {
+                    HStack(spacing: 8) {
+                        Image(systemName: "dumbbell.fill")
+                            .font(.system(size: 14, weight: .semibold))
+                        Text("Upgrade to Premium")
+                            .font(.system(size: 16, weight: .bold))
+                    }
+                    .foregroundColor(.white)
+                    .frame(maxWidth: .infinity)
+                    .frame(height: 52)
+                    .background(Color.gymBroPrimaryGradient)
+                    .cornerRadius(16)
+                }
+                .padding(.horizontal, 8)
+            }
+            .padding(28)
+            .background(Color.white)
+            .cornerRadius(28)
+            .shadow(color: .black.opacity(0.08), radius: 20, x: 0, y: 8)
+            .padding(.horizontal, 24)
+
+            Spacer()
         }
     }
 

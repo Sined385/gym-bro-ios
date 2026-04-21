@@ -26,15 +26,17 @@ final class TrainingPlanViewModel: ObservableObject {
     private let networkService: NetworkServiceProtocol
     private let sessionManager: ActiveSessionManager
     private let appDataState: AppDataState
+    let subscriptionManager: SubscriptionManager
     private var hasLoaded = false
     private var cancellables = Set<AnyCancellable>()
 
     // MARK: - Initialization
 
-    init(networkService: NetworkServiceProtocol, sessionManager: ActiveSessionManager, appDataState: AppDataState) {
+    init(networkService: NetworkServiceProtocol, sessionManager: ActiveSessionManager, appDataState: AppDataState, subscriptionManager: SubscriptionManager) {
         self.networkService = networkService
         self.sessionManager = sessionManager
         self.appDataState = appDataState
+        self.subscriptionManager = subscriptionManager
 
         appDataState.$reloadVersion
             .dropFirst()

@@ -362,6 +362,8 @@ enum CommunityRouter: APIRouter {
     case userProfile(userId: String)
     case userWorkouts(userId: String, cursor: String?, limit: Int)
     case userCompare(userId: String)
+    case myFollowers(cursor: String?, limit: Int)
+    case myFollowing(cursor: String?, limit: Int)
 
     var path: String {
         switch self {
@@ -395,12 +397,17 @@ enum CommunityRouter: APIRouter {
             return "/api/v1/community/users/\(userId)/workouts"
         case .userCompare(let userId):
             return "/api/v1/community/users/\(userId)/compare"
+        case .myFollowers:
+            return "/api/v1/community/me/followers"
+        case .myFollowing:
+            return "/api/v1/community/me/following"
         }
     }
 
     var method: HTTPMethod {
         switch self {
-        case .feed, .getPost, .getComments, .myProfile, .myWorkouts, .userProfile, .userWorkouts, .userCompare:
+        case .feed, .getPost, .getComments, .myProfile, .myWorkouts, .userProfile, .userWorkouts, .userCompare,
+             .myFollowers, .myFollowing:
             return .get
         case .createPost, .toggleLike, .createComment, .followUser:
             return .post
@@ -436,6 +443,14 @@ enum CommunityRouter: APIRouter {
             var params: [String: Any] = ["limit": limit]
             if let cursor { params["cursor"] = cursor }
             return params
+        case .myFollowers(let cursor, let limit):
+            var params: [String: Any] = ["limit": limit]
+            if let cursor { params["cursor"] = cursor }
+            return params
+        case .myFollowing(let cursor, let limit):
+            var params: [String: Any] = ["limit": limit]
+            if let cursor { params["cursor"] = cursor }
+            return params
         case .getPost, .deletePost, .toggleLike, .deleteComment, .unfollowUser,
              .myProfile, .userProfile, .userCompare:
             return nil
@@ -445,7 +460,7 @@ enum CommunityRouter: APIRouter {
     var encoding: ParameterEncoding {
         switch self {
         case .feed, .getPost, .getComments, .myProfile, .myWorkouts, .userProfile, .userWorkouts, .userCompare,
-             .deletePost, .deleteComment, .unfollowUser:
+             .deletePost, .deleteComment, .unfollowUser, .myFollowers, .myFollowing:
             return .url
         default:
             return .json
@@ -456,7 +471,7 @@ enum CommunityRouter: APIRouter {
 // MARK: - Notification Router
 
 enum NotificationRouter: APIRouter {
-    case registerToken(token: String, platform: String)
+    case registerToken(token: String, platform: String, timezone: String)
     case removeToken(token: String)
     case list(cursor: String?, limit: Int)
     case unreadCount
@@ -489,8 +504,8 @@ enum NotificationRouter: APIRouter {
 
     var parameters: [String: Any]? {
         switch self {
-        case .registerToken(let token, let platform):
-            return ["token": token, "platform": platform]
+        case .registerToken(let token, let platform, let timezone):
+            return ["token": token, "platform": platform, "timezone": timezone]
         case .removeToken(let token):
             return ["token": token]
         case .list(let cursor, let limit):
@@ -668,6 +683,49 @@ enum TemplateRouter: APIRouter {
         switch self {
         case .list, .delete: return .url
         case .create, .rename, .start, .share, .saveShared: return .json
+        }
+    }
+}
+
+// MARK: - Subscription Router
+
+enum SubscriptionRouter: APIRouter {
+    case getStatus
+    case verify(transactionId: String, productId: String)
+    case restore(transactionId: String, productId: String)
+
+    var path: String {
+        switch self {
+        case .getStatus:
+            return "/api/v1/subscription/status"
+        case .verify:
+            return "/api/v1/subscription/verify"
+        case .restore:
+            return "/api/v1/subscription/restore"
+        }
+    }
+
+    var method: HTTPMethod {
+        switch self {
+        case .getStatus: return .get
+        case .verify, .restore: return .post
+        }
+    }
+
+    var parameters: [String: Any]? {
+        switch self {
+        case .getStatus:
+            return nil
+        case .verify(let transactionId, let productId),
+             .restore(let transactionId, let productId):
+            return ["transaction_id": transactionId, "product_id": productId]
+        }
+    }
+
+    var encoding: ParameterEncoding {
+        switch self {
+        case .getStatus: return .url
+        case .verify, .restore: return .json
         }
     }
 }

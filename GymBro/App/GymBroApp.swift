@@ -29,7 +29,8 @@ struct GymBroApp: App {
             schema: schema,
             isStoredInMemoryOnly: false
         )
-
+        let foo = Array<Int>()
+        
         do {
             return try ModelContainer(
                 for: schema,

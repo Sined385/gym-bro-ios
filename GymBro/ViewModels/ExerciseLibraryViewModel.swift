@@ -24,6 +24,7 @@ final class ExerciseLibraryViewModel: ObservableObject {
 
     private let networkService: NetworkServiceProtocol
     private let analyticsService: AnalyticsTrackingServiceProtocol
+    let subscriptionManager: SubscriptionManager
 
     // MARK: - Computed Properties
 
@@ -47,9 +48,10 @@ final class ExerciseLibraryViewModel: ObservableObject {
 
     // MARK: - Initialization
 
-    init(networkService: NetworkServiceProtocol, analyticsService: AnalyticsTrackingServiceProtocol) {
+    init(networkService: NetworkServiceProtocol, analyticsService: AnalyticsTrackingServiceProtocol, subscriptionManager: SubscriptionManager) {
         self.networkService = networkService
         self.analyticsService = analyticsService
+        self.subscriptionManager = subscriptionManager
     }
 
     // MARK: - Data Loading
@@ -72,6 +74,8 @@ final class ExerciseLibraryViewModel: ObservableObject {
     // MARK: - Create Custom Exercise
 
     func createCustomExercise(name: String, muscleGroup: String, equipment: String) async -> ExerciseLibraryItem? {
+        guard subscriptionManager.requireFeature(.customExercises) else { return nil }
+
         isLoading = true
         errorMessage = nil
 

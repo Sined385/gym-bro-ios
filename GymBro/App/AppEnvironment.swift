@@ -20,48 +20,27 @@ enum AppEnvironment {
         #endif
     }
 
-    /// API base URL — reads from Info.plist (set via xcconfig), falls back to defaults
+    /// API base URL — set via xcconfig → Info.plist
     var apiBaseURL: String {
-        if let url = Bundle.main.infoDictionary?["API_BASE_URL"] as? String, !url.isEmpty {
-            return url
+        guard let url = Bundle.main.infoDictionary?["API_BASE_URL"] as? String, !url.isEmpty else {
+            fatalError("API_BASE_URL not set in Info.plist. Check your xcconfig.")
         }
-        switch self {
-        case .development:
-            return "http://localhost:3001"
-        case .staging:
-            return "https://gym-bro-api-staging.up.railway.app"
-        case .production:
-            return "https://gym-bro-api-production.up.railway.app"
-        }
+        return url
     }
 
-    /// Supabase project URL
+    /// Supabase project URL — set via xcconfig → Info.plist
     var supabaseURL: String {
-        if let url = Bundle.main.infoDictionary?["SUPABASE_URL"] as? String, !url.isEmpty {
-            return url
+        guard let url = Bundle.main.infoDictionary?["SUPABASE_URL"] as? String, !url.isEmpty else {
+            fatalError("SUPABASE_URL not set in Info.plist. Check your xcconfig.")
         }
-        switch self {
-        case .development:
-            return "http://127.0.0.1:54321"
-        case .staging:
-            return "https://pzyjxzhdnamkljjeayno.supabase.co"
-        case .production:
-            return "https://pzyjxzhdnamkljjeayno.supabase.co"
-        }
+        return url
     }
 
-    /// Supabase anon key
+    /// Supabase anon key — set via xcconfig → Info.plist
     var supabaseAnonKey: String {
-        if let key = Bundle.main.infoDictionary?["SUPABASE_ANON_KEY"] as? String, !key.isEmpty {
-            return key
+        guard let key = Bundle.main.infoDictionary?["SUPABASE_ANON_KEY"] as? String, !key.isEmpty else {
+            fatalError("SUPABASE_ANON_KEY not set in Info.plist. Check your xcconfig.")
         }
-        switch self {
-        case .development:
-            return "sb_publishable_ACJWlzQHlZjBrEguHvfOxg_3BJgxAaH"
-        case .staging:
-            return "sb_publishable_dRg8kfSg53w385Z205QITA_dlRWDEiF"
-        case .production:
-            return "sb_publishable_dRg8kfSg53w385Z205QITA_dlRWDEiF"
-        }
+        return key
     }
 }

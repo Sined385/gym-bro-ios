@@ -88,6 +88,7 @@ final class CoachChatViewModel: ObservableObject {
     @Published var hasMoreMessages: Bool = false
     @Published var conversationId: String?
     @Published var errorMessage: String?
+    @Published var isLimitReached: Bool = false
 
     // MARK: - Dependencies
 
@@ -95,6 +96,7 @@ final class CoachChatViewModel: ObservableObject {
     private let sessionManager: ActiveSessionManager
     private let appDataState: AppDataState
     private let analyticsService: AnalyticsTrackingServiceProtocol
+    let subscriptionManager: SubscriptionManager
 
     // MARK: - Quick Actions
 
@@ -108,17 +110,24 @@ final class CoachChatViewModel: ObservableObject {
 
     // MARK: - Initialization
 
-    init(networkService: NetworkServiceProtocol, sessionManager: ActiveSessionManager, appDataState: AppDataState, analyticsService: AnalyticsTrackingServiceProtocol) {
+    init(networkService: NetworkServiceProtocol, sessionManager: ActiveSessionManager, appDataState: AppDataState, analyticsService: AnalyticsTrackingServiceProtocol, subscriptionManager: SubscriptionManager) {
         self.networkService = networkService
         self.sessionManager = sessionManager
         self.appDataState = appDataState
         self.analyticsService = analyticsService
+        self.subscriptionManager = subscriptionManager
     }
 
     // MARK: - Load History
 
     func loadConversation() async {
         guard conversationId == nil else { return }
+
+        // Check coach access upfront
+        await subscriptionManager.loadStatus()
+        if !subscriptionManager.isPremium && subscriptionManager.coachMessagesUsed >= subscriptionManager.coachMessagesLimit {
+            isLimitReached = true
+        }
 
         do {
             let convResponse = try await networkService.request(
@@ -183,6 +192,12 @@ final class CoachChatViewModel: ObservableObject {
     func sendMessage(_ text: String? = nil) async {
         let content = text ?? inputText.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !content.isEmpty else { return }
+
+        // Block if limit reached
+        if isLimitReached {
+            subscriptionManager.showPaywall = true
+            return
+        }
 
         inputText = ""
         errorMessage = nil
@@ -371,7 +386,15 @@ final class CoachChatViewModel: ObservableObject {
                         }
 
                     case "error":
-                        updateLastAssistantMessage(content: "Sorry, something went wrong. Please try again.")
+                        // Check if it's a coach limit error
+                        if let errorData = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+                           let code = errorData["code"] as? String,
+                           code == "COACH_LIMIT_REACHED" {
+                            isLimitReached = true
+                            updateLastAssistantMessage(content: "You've used all 20 free messages. Upgrade to Premium for unlimited AI coaching.")
+                        } else {
+                            updateLastAssistantMessage(content: "Sorry, something went wrong. Please try again.")
+                        }
 
                     default:
                         break

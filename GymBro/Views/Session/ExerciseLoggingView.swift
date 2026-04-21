@@ -389,7 +389,7 @@ struct ExerciseLoggingView: View {
                 reps: repsBinding(for: set, previous: prefillReps),
                 isCompleted: set.isCompleted,
                 onComplete: {
-                    let wStr: String = editWeights[set.id] ?? set.weight.map { "\(Int($0))" } ?? prefillWeight.map { "\(Int($0))" } ?? ""
+                    let wStr: String = editWeights[set.id] ?? set.weight.map { $0.formattedWeight } ?? prefillWeight.map { $0.formattedWeight } ?? ""
                     let rStr: String = editReps[set.id] ?? set.reps.map { "\($0)" } ?? prefillReps.map { "\($0)" } ?? ""
                     let w = Double(wStr)
                     let r = Int(rStr) ?? 0
@@ -405,7 +405,7 @@ struct ExerciseLoggingView: View {
                 },
                 onTapCompleted: {
                     editingSetInfo = (exerciseId: exercise.id, setId: set.id)
-                    addSetWeight = set.weight.map { "\(Int($0))" } ?? ""
+                    addSetWeight = set.weight.map { $0.formattedWeight } ?? ""
                     addSetReps = set.reps.map { "\($0)" } ?? ""
                     showAddSetSheet = true
                 }
@@ -466,12 +466,12 @@ struct ExerciseLoggingView: View {
                 // Pre-fill: last completed today's set → previous session set
                 let lastCompleted = exercise.sets.filter { $0.isCompleted }.last
                 if let lc = lastCompleted, (lc.weight != nil || lc.reps != nil) {
-                    addSetWeight = lc.weight.map { "\(Int($0))" } ?? ""
+                    addSetWeight = lc.weight.map { $0.formattedWeight } ?? ""
                     addSetReps = lc.reps.map { "\($0)" } ?? ""
                 } else {
                     let nextSetNumber = exercise.sets.count + 1
                     let prevSet = lastSets.first { $0.setNumber == nextSetNumber }
-                    addSetWeight = prevSet?.weight.map { "\(Int($0))" } ?? ""
+                    addSetWeight = prevSet?.weight.map { $0.formattedWeight } ?? ""
                     addSetReps = prevSet.map { "\($0.reps)" } ?? ""
                 }
                 showAddSetSheet = true
@@ -516,7 +516,7 @@ struct ExerciseLoggingView: View {
                                 .frame(width: 48, alignment: .leading)
 
                             if let w = set.weight {
-                                Text("\(Int(w)) \(set.weightUnit)")
+                                Text("\(w.formattedWeight) \(set.weightUnit)")
                                     .font(.system(size: 14, weight: .semibold))
                                     .foregroundColor(.gymBroNeutral900)
                                 Text("  \u{00D7}  ")
@@ -558,7 +558,7 @@ struct ExerciseLoggingView: View {
 
     private func weightBinding(for set: ActiveSet, previous: Double? = nil) -> Binding<String> {
         Binding(
-            get: { editWeights[set.id] ?? set.weight.map { "\(Int($0))" } ?? previous.map { "\(Int($0))" } ?? "" },
+            get: { editWeights[set.id] ?? set.weight.map { $0.formattedWeight } ?? previous.map { $0.formattedWeight } ?? "" },
             set: { editWeights[set.id] = $0 }
         )
     }
@@ -721,7 +721,7 @@ struct ExerciseLoggingView: View {
 
                             Spacer()
 
-                            Text(set.weight.map { "\(Int($0))" } ?? "--")
+                            Text(set.weight.map { $0.formattedWeight } ?? "--")
                                 .font(.system(size: 14, weight: .semibold))
                                 .foregroundColor(.gymBroNeutral900)
                             Text("kg  \u{00D7}")
@@ -797,7 +797,7 @@ struct ExerciseLoggingView: View {
                                 dict: $editWeights,
                                 set: set,
                                 fallbackKey: "\(ex.id)-w-\(roundIndex)",
-                                existing: set?.weight.map { "\(Int($0))" }
+                                existing: set?.weight.map { $0.formattedWeight }
                             ))
                             .font(.system(size: 15, weight: .semibold))
                             .foregroundColor(.gymBroNeutral900)
@@ -813,7 +813,7 @@ struct ExerciseLoggingView: View {
                             )
 
                             let weightKey = set?.id ?? "\(ex.id)-w-\(roundIndex)"
-                            if (editWeights[weightKey] ?? set?.weight.map { "\(Int($0))" } ?? "").isEmpty {
+                            if (editWeights[weightKey] ?? set?.weight.map { $0.formattedWeight } ?? "").isEmpty {
                                 Text("kg")
                                     .font(.system(size: 13, weight: .medium))
                                     .foregroundColor(.gymBroNeutral400)
@@ -901,7 +901,7 @@ struct ExerciseLoggingView: View {
             let set = ex.sets[roundIndex]
             let wKey = set.id
             let rKey = set.id
-            let wStr = editWeights[wKey] ?? set.weight.map { "\(Int($0))" } ?? ""
+            let wStr = editWeights[wKey] ?? set.weight.map { $0.formattedWeight } ?? ""
             let rStr = editReps[rKey] ?? set.reps.map { "\($0)" } ?? ""
             let w = Double(wStr.replacingOccurrences(of: ",", with: "."))
             let r = Int(rStr) ?? 0
@@ -936,7 +936,7 @@ struct ExerciseLoggingView: View {
         supersetSetEntries = []
         if let firstEx = group.exercises.first, roundIndex < firstEx.sets.count {
             let set = firstEx.sets[roundIndex]
-            addSetWeight = set.weight.map { "\(Int($0))" } ?? ""
+            addSetWeight = set.weight.map { $0.formattedWeight } ?? ""
             addSetReps = set.reps.map { "\($0)" } ?? ""
         } else {
             addSetWeight = ""
@@ -1184,7 +1184,7 @@ struct ExerciseLoggingView: View {
                     let nextEx = group.exercises[supersetStepIndex]
                     if editingRound < nextEx.sets.count {
                         let nextSet = nextEx.sets[editingRound]
-                        addSetWeight = nextSet.weight.map { "\(Int($0))" } ?? ""
+                        addSetWeight = nextSet.weight.map { $0.formattedWeight } ?? ""
                         addSetReps = nextSet.reps.map { "\($0)" } ?? ""
                     } else {
                         addSetWeight = ""

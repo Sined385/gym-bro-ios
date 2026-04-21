@@ -63,8 +63,9 @@ final class PushNotificationService: ObservableObject {
     private func sendTokenToServer() async {
         guard let token = currentToken else { return }
         do {
+            let timezone = TimeZone.current.identifier
             try await networkService.request(
-                NotificationRouter.registerToken(token: token, platform: "ios").endpoint
+                NotificationRouter.registerToken(token: token, platform: "ios", timezone: timezone).endpoint
             )
             tokenRegistered = true
         } catch {

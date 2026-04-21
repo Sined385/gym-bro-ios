@@ -6,14 +6,17 @@
 //
 
 import SwiftUI
+import Combine
 
 struct MainTabView: View {
     @EnvironmentObject var sessionManager: ActiveSessionManager
     @EnvironmentObject var deepLinkRouter: DeepLinkRouter
+    @ObservedObject private var subscriptionManager: SubscriptionManager = DependencyContainer.shared.resolve(SubscriptionManager.self)
     @State private var hasAttemptedRestore = false
     @State private var selectedTab = 0
     @State private var showSharedTemplateSheet = false
     @State private var sharedTemplateCode: String?
+    @State private var isKeyboardVisible = false
 
     private let analyticsService: AnalyticsTrackingServiceProtocol = {
         DependencyContainer.shared.resolve(AnalyticsTrackingServiceProtocol.self)
@@ -83,11 +86,6 @@ struct MainTabView: View {
                 }
             }
             .toolbar(sessionManager.isExpanded ? .hidden : .visible, for: .tabBar)
-            .safeAreaInset(edge: .bottom) {
-                if sessionManager.isCollapsed {
-                    Color.clear.frame(height: 64)
-                }
-            }
 
             if sessionManager.isSessionActive {
                 // Full session overlay — kept alive via opacity toggle, NOT conditional removal
@@ -111,8 +109,9 @@ struct MainTabView: View {
                         Spacer()
                         SessionMiniPlayerBar()
                             .padding(.horizontal, 16)
-                            .padding(.bottom, 49)
+                            .padding(.bottom, isKeyboardVisible ? 0 : 49)
                     }
+                    .allowsHitTesting(true)
                     .transition(.move(edge: .bottom).combined(with: .opacity))
                 }
             }
@@ -138,11 +137,26 @@ struct MainTabView: View {
         .onChange(of: deepLinkRouter.pendingDeepLink) { _, newValue in
             handleDeepLink(newValue)
         }
+        .onReceive(NotificationCenter.default.publisher(for: UIResponder.keyboardWillShowNotification)) { _ in
+            isKeyboardVisible = true
+        }
+        .onReceive(NotificationCenter.default.publisher(for: UIResponder.keyboardWillHideNotification)) { _ in
+            isKeyboardVisible = false
+        }
         .sheet(isPresented: $showSharedTemplateSheet) {
             if let code = sharedTemplateCode {
                 SharedTemplatePreviewView(shareCode: code)
                     .environmentObject(sessionManager)
             }
+        }
+        .fullScreenCover(isPresented: $subscriptionManager.showPaywall) {
+            NavigationStack {
+                PaywallView()
+                    .environmentObject(subscriptionManager)
+            }
+        }
+        .task {
+            await subscriptionManager.loadStatus()
         }
     }
 }

@@ -15,6 +15,8 @@ struct MyProfileView: View {
     @State private var showEditProfile = false
     @State private var isSharingWorkout = false
     @State private var shareURL: URL?
+    @State private var showFollowList = false
+    @State private var followListInitialTab: FollowListTab = .followers
 
     private let networkService: NetworkServiceProtocol = DependencyContainer.shared.resolve(NetworkServiceProtocol.self)
     private let analytics: AnalyticsTrackingServiceProtocol = DependencyContainer.shared.resolve(AnalyticsTrackingServiceProtocol.self)
@@ -74,6 +76,10 @@ struct MyProfileView: View {
                 .padding(.horizontal, 20)
                 .containerRelativeFrame(.horizontal)
             }
+            .refreshable {
+                await viewModel.loadProfile()
+                await viewModel.loadWorkouts()
+            }
             .background(Color.gymBroBackground.ignoresSafeArea())
             .navigationTitle("My Profile")
             .navigationBarTitleDisplayMode(.inline)
@@ -110,6 +116,15 @@ struct MyProfileView: View {
             .onChange(of: showEditProfile) { _, isPresented in
                 if !isPresented {
                     // Reload profile after edit sheet is dismissed
+                    Task { await viewModel.loadProfile() }
+                }
+            }
+            .navigationDestination(isPresented: $showFollowList) {
+                FollowListView(initialTab: followListInitialTab)
+            }
+            .onChange(of: showFollowList) { _, isPresented in
+                if !isPresented {
+                    // Reload profile to update follower/following counts
                     Task { await viewModel.loadProfile() }
                 }
             }
@@ -207,7 +222,7 @@ struct MyProfileView: View {
                             .foregroundColor(.gymBroTextSecondary)
                     }
                     if let weight = profile.bodyWeightKg {
-                        Text("\(Int(weight)) kg")
+                        Text("\(weight.formattedWeight) kg")
                             .font(.system(size: 14, weight: .medium))
                             .foregroundColor(.gymBroTextSecondary)
                     }
@@ -223,28 +238,40 @@ struct MyProfileView: View {
 
     private func followerRow(_ profile: MyProfileResponse) -> some View {
         HStack(spacing: 0) {
-            VStack(spacing: 2) {
-                Text("\(profile.followerCount)")
-                    .font(.system(size: 20, weight: .bold))
-                    .foregroundColor(.gymBroNeutral900)
-                Text("Followers")
-                    .font(.system(size: 12, weight: .medium))
-                    .foregroundColor(.gymBroTextSecondary)
+            Button {
+                followListInitialTab = .followers
+                showFollowList = true
+            } label: {
+                VStack(spacing: 2) {
+                    Text("\(profile.followerCount)")
+                        .font(.system(size: 20, weight: .bold))
+                        .foregroundColor(.gymBroNeutral900)
+                    Text("Followers")
+                        .font(.system(size: 12, weight: .medium))
+                        .foregroundColor(.gymBroTextSecondary)
+                }
+                .frame(maxWidth: .infinity)
             }
-            .frame(maxWidth: .infinity)
+            .buttonStyle(.plain)
 
             Divider()
                 .frame(height: 32)
 
-            VStack(spacing: 2) {
-                Text("\(profile.followingCount)")
-                    .font(.system(size: 20, weight: .bold))
-                    .foregroundColor(.gymBroNeutral900)
-                Text("Following")
-                    .font(.system(size: 12, weight: .medium))
-                    .foregroundColor(.gymBroTextSecondary)
+            Button {
+                followListInitialTab = .following
+                showFollowList = true
+            } label: {
+                VStack(spacing: 2) {
+                    Text("\(profile.followingCount)")
+                        .font(.system(size: 20, weight: .bold))
+                        .foregroundColor(.gymBroNeutral900)
+                    Text("Following")
+                        .font(.system(size: 12, weight: .medium))
+                        .foregroundColor(.gymBroTextSecondary)
+                }
+                .frame(maxWidth: .infinity)
             }
-            .frame(maxWidth: .infinity)
+            .buttonStyle(.plain)
         }
         .padding(.vertical, 16)
         .background(Color.gymBroCardBackground)
@@ -397,7 +424,7 @@ struct MyProfileView: View {
                                 .font(.system(size: 15, weight: .semibold))
                                 .foregroundColor(.gymBroNeutral900)
 
-                            Text("\(Int(record.weight)) \(record.weightUnit) x \(record.reps) reps")
+                            Text("\(record.weight.formattedWeight) \(record.weightUnit) x \(record.reps) reps")
                                 .font(.system(size: 13, weight: .medium))
                                 .foregroundColor(.gymBroTextSecondary)
                         }

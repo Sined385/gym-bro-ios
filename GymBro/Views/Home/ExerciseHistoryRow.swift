@@ -100,7 +100,7 @@ struct ExerciseHistoryRow: View {
                 .foregroundColor(labelColor)
 
             if let weight = setData.weight {
-                Text("\(Int(weight)) \(setData.weightUnit)")
+                Text("\(weight.formattedWeight) \(setData.weightUnit)")
                     .font(.system(size: 12, weight: .bold))
                     .foregroundColor(.gymBroNeutral900)
             }

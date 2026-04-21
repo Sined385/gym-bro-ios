@@ -154,7 +154,7 @@ struct ProfileWorkoutCard: View {
 
         if let weight = maxWeight, weight > 0 {
             let unit = exercise.sets.first?.weightUnit ?? "kg"
-            return "\(sets)×\(totalReps / max(sets, 1)) · \(Int(weight)) \(unit)"
+            return "\(sets)×\(totalReps / max(sets, 1)) · \(weight.formattedWeight) \(unit)"
         }
         return "\(sets)×\(totalReps / max(sets, 1))"
     }

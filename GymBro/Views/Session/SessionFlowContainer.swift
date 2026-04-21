@@ -99,9 +99,11 @@ struct SessionFlowContainer: View {
                             }
                         },
                         onStartSuperset: {
+                            guard viewModel.subscriptionManager.requireFeature(.supersets) else { return }
                             navigationPath.append(SessionRoute.supersetSelection)
                         },
                         onCreateCustom: {
+                            guard libraryViewModel.subscriptionManager.requireFeature(.customExercises) else { return }
                             navigationPath.append(SessionRoute.createCustomExercise)
                         }
                     )
