@@ -31,5 +31,10 @@ struct ActiveWorkoutView: View {
                 withAnimation { selectedTab = 1 }
             }
         }
+        .onChange(of: restTimerViewModel.isFinished) { _, finished in
+            if finished {
+                withAnimation { selectedTab = 1 }
+            }
+        }
     }
 }

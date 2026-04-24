@@ -636,6 +636,7 @@ enum PlanRouter: APIRouter {
 enum TemplateRouter: APIRouter {
     case list
     case create(name: String, sessionIds: [String])
+    case createFromExercises(name: String, exercises: [[String: Any]])
     case rename(templateId: String, name: String)
     case delete(templateId: String)
     case start(templateId: String)
@@ -644,7 +645,7 @@ enum TemplateRouter: APIRouter {
 
     var path: String {
         switch self {
-        case .list, .create:
+        case .list, .create, .createFromExercises:
             return "/api/v1/home/templates"
         case .rename(let templateId, _):
             return "/api/v1/home/templates/\(templateId)"
@@ -662,7 +663,7 @@ enum TemplateRouter: APIRouter {
     var method: HTTPMethod {
         switch self {
         case .list: return .get
-        case .create, .start, .share, .saveShared: return .post
+        case .create, .createFromExercises, .start, .share, .saveShared: return .post
         case .rename: return .patch
         case .delete: return .delete
         }
@@ -674,6 +675,8 @@ enum TemplateRouter: APIRouter {
             return nil
         case .create(let name, let sessionIds):
             return ["name": name, "session_ids": sessionIds]
+        case .createFromExercises(let name, let exercises):
+            return ["name": name, "exercises": exercises]
         case .rename(_, let name):
             return ["name": name]
         }
@@ -682,7 +685,7 @@ enum TemplateRouter: APIRouter {
     var encoding: ParameterEncoding {
         switch self {
         case .list, .delete: return .url
-        case .create, .rename, .start, .share, .saveShared: return .json
+        case .create, .createFromExercises, .rename, .start, .share, .saveShared: return .json
         }
     }
 }

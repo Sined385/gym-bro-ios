@@ -45,6 +45,11 @@ struct DashboardResponse: Decodable {
     let weekStreak: Int?
     let weekAvgDurationMinutes: Int?
     let weekTotalCalories: Int?
+    let weeklyOverview: String?
+    let prev3AvgWorkouts: Double?
+    let prev3AvgVolumeKg: Double?
+    let prev3AvgDurationMinutes: Int?
+    let prev3AvgCalories: Int?
     let todayCompletedSession: SessionHistory?
 }
 
@@ -168,6 +173,11 @@ final class HomeViewModel: ObservableObject {
     @Published var weekStreak: Int?
     @Published var weekAvgDurationMinutes: Int?
     @Published var weekTotalCalories: Int?
+    @Published var weeklyOverview: String?
+    @Published var prev3AvgWorkouts: Double?
+    @Published var prev3AvgVolumeKg: Double?
+    @Published var prev3AvgDurationMinutes: Int?
+    @Published var prev3AvgCalories: Int?
     @Published var latestWeightKg: Double?
     @Published var restingHeartRate: Double?
     @Published var todayActiveEnergy: Double?
@@ -218,6 +228,8 @@ final class HomeViewModel: ObservableObject {
             .sink { [weak self] _ in
                 Task { [weak self] in
                     await self?.loadDashboard()
+                    let cacheService = DependencyContainer.shared.resolve(SessionCompletionCacheServiceProtocol.self)
+                    await cacheService.retryPendingCompletions()
                 }
             }
             .store(in: &cancellables)
@@ -280,6 +292,11 @@ final class HomeViewModel: ObservableObject {
             weekStreak = response.weekStreak
             weekAvgDurationMinutes = response.weekAvgDurationMinutes
             weekTotalCalories = response.weekTotalCalories
+            weeklyOverview = response.weeklyOverview
+            prev3AvgWorkouts = response.prev3AvgWorkouts
+            prev3AvgVolumeKg = response.prev3AvgVolumeKg
+            prev3AvgDurationMinutes = response.prev3AvgDurationMinutes
+            prev3AvgCalories = response.prev3AvgCalories
             todayCompletedSession = response.todayCompletedSession
             sessionManager.pushTodayPlanToWatch(plannedWorkout: response.plannedWorkout)
             await loadCompletedDays()

@@ -50,6 +50,8 @@ struct HomeView: View {
                         session: viewModel.sessionHistory!,
                         dayLabel: viewModel.selectedDayLabel
                     )
+
+                    weeklyOverviewCard
                 } else if viewModel.selectedDate != nil && viewModel.isLoadingHistory {
                     // Loading history
                     ProgressView()
@@ -64,6 +66,8 @@ struct HomeView: View {
                     MyWorkoutsButton { showWorkoutLibrary = true }
 
                     SessionHistorySection(session: completed, dayLabel: "Today")
+
+                    weeklyOverviewCard
                 } else if sessionManager.isSessionActive {
                     // Session in progress — show resume button
                     ResumeSessionButton {
@@ -96,6 +100,8 @@ struct HomeView: View {
                         weekAvgDurationMinutes: viewModel.weekAvgDurationMinutes,
                         weekTotalCalories: viewModel.weekTotalCalories
                     )
+
+                    weeklyOverviewCard
                 } else if viewModel.isTrainingDay, let planned = viewModel.plannedWorkout {
                     // Training day — show start button + planned workout
                     StartSessionButton {
@@ -109,6 +115,8 @@ struct HomeView: View {
                         onStart: { Task { await viewModel.startPlannedWorkout() } },
                         isStarting: viewModel.isStartingSession
                     )
+
+                    weeklyOverviewCard
                 } else {
                     // No plan — start button + quick workout fallback
                     StartSessionButton {
@@ -118,6 +126,8 @@ struct HomeView: View {
                     MyWorkoutsButton { showWorkoutLibrary = true }
 
                     quickWorkoutSection
+
+                    weeklyOverviewCard
                 }
 
                 // Bottom spacing for tab bar
@@ -225,6 +235,25 @@ struct HomeView: View {
             .sheet(isPresented: $showNotifications) {
                 NotificationsView()
             }
+        }
+    }
+
+    // MARK: - Weekly Overview
+
+    @ViewBuilder
+    private var weeklyOverviewCard: some View {
+        if let overview = viewModel.weeklyOverview {
+            WeeklyOverviewCard(
+                overview: overview,
+                weekWorkouts: viewModel.weekWorkoutsCompleted,
+                weekVolumeKg: viewModel.weekVolumeKg,
+                weekAvgDuration: viewModel.weekAvgDurationMinutes,
+                weekCalories: viewModel.weekTotalCalories,
+                avgWorkouts: viewModel.prev3AvgWorkouts,
+                avgVolumeKg: viewModel.prev3AvgVolumeKg,
+                avgDuration: viewModel.prev3AvgDurationMinutes,
+                avgCalories: viewModel.prev3AvgCalories
+            )
         }
     }
 

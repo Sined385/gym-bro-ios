@@ -19,6 +19,7 @@ struct WorkoutLibraryView: View {
     }
 
     @State private var selectedTab: LibraryTab = .workouts
+    @State private var showCreateWorkout = false
 
     private let accentColors: [Color] = [
         Color(hex: "E86A75"), Color(hex: "30C08D"),
@@ -59,6 +60,11 @@ struct WorkoutLibraryView: View {
             await viewModel.loadTemplates()
         }
         .presentationDetents([.large])
+        .sheet(isPresented: $showCreateWorkout) {
+            CreateCustomWorkoutView(onSaved: {
+                Task { await viewModel.loadTemplates() }
+            })
+        }
         .sheet(isPresented: Binding(
             get: { viewModel.shareURL != nil },
             set: { if !$0 { viewModel.shareURL = nil } }
@@ -72,7 +78,35 @@ struct WorkoutLibraryView: View {
     // MARK: - Workouts Tab
 
     private var workoutsTab: some View {
-        Group {
+        VStack(spacing: 0) {
+            // Create Custom Workout button
+            Button {
+                showCreateWorkout = true
+            } label: {
+                HStack(spacing: 10) {
+                    Image(systemName: "plus.circle.fill")
+                        .font(.system(size: 20, weight: .medium))
+                        .foregroundColor(.gymBroPrimary)
+
+                    Text("Create Custom Workout")
+                        .font(.system(size: 16, weight: .semibold))
+                        .foregroundColor(.gymBroPrimary)
+
+                    Spacer()
+
+                    Image(systemName: "chevron.right")
+                        .font(.system(size: 13, weight: .semibold))
+                        .foregroundColor(.gymBroNeutral400)
+                }
+                .padding(16)
+                .background(Color.white)
+                .clipShape(RoundedRectangle(cornerRadius: 16))
+                .shadow(color: .black.opacity(0.04), radius: 4, y: 2)
+            }
+            .buttonStyle(.plain)
+            .padding(.horizontal, 20)
+            .padding(.top, 12)
+
             if viewModel.isLoading && viewModel.templates.isEmpty {
                 ProgressView()
                     .tint(.gymBroPrimary)
@@ -127,12 +161,14 @@ struct WorkoutLibraryView: View {
                 Spacer()
             } else {
                 ScrollView(.vertical, showsIndicators: false) {
-                    LazyVStack(spacing: 0) {
+                    LazyVStack(spacing: 12) {
                         ForEach(exerciseVM.filteredExercises) { item in
-                            exerciseRow(item)
+                            exerciseCard(item)
                         }
                     }
+                    .padding(.horizontal, 16)
                     .padding(.top, 8)
+                    .padding(.bottom, 16)
                 }
             }
         }
@@ -143,52 +179,82 @@ struct WorkoutLibraryView: View {
         }
     }
 
-    private func exerciseRow(_ item: ExerciseLibraryItem) -> some View {
-        HStack(spacing: 12) {
-            // Exercise image or fallback icon
-            if let imageUrl = item.images?.first, let url = URL(string: imageUrl) {
-                CachedAsyncImage(url: url) { image in
+    private func exerciseImageURLs(for item: ExerciseLibraryItem) -> [URL] {
+        let builderURLs = ExerciseImageURLBuilder.imageURLs(for: item.externalId)
+        if !builderURLs.isEmpty { return builderURLs }
+        return item.images?.compactMap { URL(string: $0) } ?? []
+    }
+
+    private func exerciseCard(_ item: ExerciseLibraryItem) -> some View {
+        let urls = exerciseImageURLs(for: item)
+
+        return VStack(alignment: .leading, spacing: 0) {
+            // Image carousel
+            if urls.isEmpty {
+                exercisePlaceholder
+                    .aspectRatio(16/9, contentMode: .fit)
+            } else if urls.count == 1 {
+                CachedAsyncImage(url: urls[0]) { image in
                     image
                         .resizable()
-                        .aspectRatio(contentMode: .fill)
+                        .aspectRatio(16/9, contentMode: .fill)
                 } placeholder: {
                     ShimmerView()
+                        .aspectRatio(16/9, contentMode: .fit)
                 } failure: {
                     exercisePlaceholder
+                        .aspectRatio(16/9, contentMode: .fit)
                 }
-                .frame(width: 52, height: 52)
-                .clipShape(RoundedRectangle(cornerRadius: 10))
+                .clipped()
             } else {
-                exercisePlaceholder
-                    .frame(width: 52, height: 52)
-                    .clipShape(RoundedRectangle(cornerRadius: 10))
+                TabView {
+                    ForEach(urls, id: \.self) { url in
+                        CachedAsyncImage(url: url) { image in
+                            image
+                                .resizable()
+                                .aspectRatio(16/9, contentMode: .fill)
+                        } placeholder: {
+                            ShimmerView()
+                                .aspectRatio(16/9, contentMode: .fit)
+                        } failure: {
+                            exercisePlaceholder
+                                .aspectRatio(16/9, contentMode: .fit)
+                        }
+                        .clipped()
+                    }
+                }
+                .tabViewStyle(.page(indexDisplayMode: .automatic))
+                .aspectRatio(16/9, contentMode: .fit)
             }
 
-            VStack(alignment: .leading, spacing: 3) {
+            // Details
+            VStack(alignment: .leading, spacing: 6) {
                 Text(item.name)
-                    .font(.system(size: 15, weight: .semibold))
+                    .font(.system(size: 14, weight: .semibold))
                     .foregroundColor(.gymBroNeutral900)
+                    .lineLimit(2)
+                    .fixedSize(horizontal: false, vertical: true)
 
-                HStack(spacing: 8) {
+                HStack(spacing: 6) {
                     Text(item.muscleGroup)
-                        .font(.system(size: 12, weight: .medium))
+                        .font(.system(size: 11, weight: .medium))
                         .foregroundColor(.white)
-                        .padding(.horizontal, 8)
-                        .padding(.vertical, 3)
+                        .padding(.horizontal, 6)
+                        .padding(.vertical, 2)
                         .background(Color(hex: "2D3240").opacity(0.7))
                         .clipShape(Capsule())
 
                     Text(item.equipment)
-                        .font(.system(size: 12, weight: .medium))
+                        .font(.system(size: 11, weight: .medium))
                         .foregroundColor(.gymBroNeutral600)
+                        .lineLimit(1)
                 }
             }
-
-            Spacer()
+            .padding(10)
         }
-        .padding(.horizontal, 20)
-        .padding(.vertical, 8)
         .background(Color.gymBroBackground)
+        .clipShape(RoundedRectangle(cornerRadius: 12))
+        .shadow(color: .black.opacity(0.06), radius: 4, x: 0, y: 2)
     }
 
     private var exercisePlaceholder: some View {
@@ -211,9 +277,10 @@ struct WorkoutLibraryView: View {
             Text("No saved workouts yet")
                 .font(.system(size: 20, weight: .bold))
                 .foregroundColor(.gymBroNeutral900)
-            Text("Save one from your workout screen")
+            Text("Create one or save from a completed workout")
                 .font(.system(size: 15))
                 .foregroundColor(.gymBroNeutral400)
+                .multilineTextAlignment(.center)
             Spacer()
         }
         .frame(maxWidth: .infinity)

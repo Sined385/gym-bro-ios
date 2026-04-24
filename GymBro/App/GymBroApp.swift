@@ -118,6 +118,8 @@ struct GymBroApp: App {
                 switch newPhase {
                 case .active:
                     analyticsService.trackAppOpened()
+                    let cacheService = DependencyContainer.shared.resolve(SessionCompletionCacheServiceProtocol.self)
+                    Task { await cacheService.retryPendingCompletions() }
                 case .background:
                     analyticsService.trackAppBackgrounded()
                     analyticsService.flush()

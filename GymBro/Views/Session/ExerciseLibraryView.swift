@@ -78,7 +78,7 @@ struct ExerciseLibraryView: View {
             .padding(.horizontal, 20)
             .padding(.top, 12)
 
-            // Exercise list
+            // Exercise grid
             if viewModel.isLoading {
                 Spacer()
                 ProgressView()
@@ -86,17 +86,19 @@ struct ExerciseLibraryView: View {
                 Spacer()
             } else {
                 ScrollView(.vertical, showsIndicators: false) {
-                    LazyVStack(spacing: 0) {
+                    LazyVStack(spacing: 12) {
                         ForEach(viewModel.filteredExercises) { item in
                             let isAdded = addedExerciseIds.contains(item.id)
-                            exerciseRow(item, isAdded: isAdded)
+                            exerciseCard(item, isAdded: isAdded)
                                 .onTapGesture {
                                     guard !isAdded else { return }
                                     onExerciseSelected(item)
                                 }
                         }
                     }
+                    .padding(.horizontal, 16)
                     .padding(.top, 8)
+                    .padding(.bottom, 16)
                 }
                 .scrollDismissesKeyboard(.interactively)
             }
@@ -112,58 +114,91 @@ struct ExerciseLibraryView: View {
         .analyticsScreen("ExerciseLibrary")
     }
 
-    private func exerciseRow(_ item: ExerciseLibraryItem, isAdded: Bool) -> some View {
-        HStack(spacing: 12) {
-            // Exercise image or fallback icon
-            if let url = ExerciseImageURLBuilder.thumbnailURL(for: item.externalId) ?? item.images?.first.flatMap({ URL(string: $0) }) {
-                CachedAsyncImage(url: url) { image in
+    private func imageURLs(for item: ExerciseLibraryItem) -> [URL] {
+        let builderURLs = ExerciseImageURLBuilder.imageURLs(for: item.externalId)
+        if !builderURLs.isEmpty { return builderURLs }
+        return item.images?.compactMap { URL(string: $0) } ?? []
+    }
+
+    private func exerciseCard(_ item: ExerciseLibraryItem, isAdded: Bool) -> some View {
+        let urls = imageURLs(for: item)
+
+        return VStack(alignment: .leading, spacing: 0) {
+            // Exercise image carousel
+            if urls.isEmpty {
+                exercisePlaceholder(isAdded: isAdded)
+                    .aspectRatio(16/9, contentMode: .fit)
+            } else if urls.count == 1 {
+                CachedAsyncImage(url: urls[0]) { image in
                     image
                         .resizable()
-                        .aspectRatio(contentMode: .fill)
+                        .aspectRatio(16/9, contentMode: .fill)
                 } placeholder: {
                     ShimmerView()
+                        .aspectRatio(16/9, contentMode: .fit)
                 } failure: {
                     exercisePlaceholder(isAdded: isAdded)
+                        .aspectRatio(16/9, contentMode: .fit)
                 }
-                .frame(width: 52, height: 52)
-                .clipShape(RoundedRectangle(cornerRadius: 10))
+                .clipped()
                 .opacity(isAdded ? 0.5 : 1)
             } else {
-                exercisePlaceholder(isAdded: isAdded)
-                    .frame(width: 52, height: 52)
-                    .clipShape(RoundedRectangle(cornerRadius: 10))
+                TabView {
+                    ForEach(urls, id: \.self) { url in
+                        CachedAsyncImage(url: url) { image in
+                            image
+                                .resizable()
+                                .aspectRatio(16/9, contentMode: .fill)
+                        } placeholder: {
+                            ShimmerView()
+                                .aspectRatio(16/9, contentMode: .fit)
+                        } failure: {
+                            exercisePlaceholder(isAdded: isAdded)
+                                .aspectRatio(16/9, contentMode: .fit)
+                        }
+                        .clipped()
+                    }
+                }
+                .tabViewStyle(.page(indexDisplayMode: .automatic))
+                .aspectRatio(16/9, contentMode: .fit)
+                .opacity(isAdded ? 0.5 : 1)
             }
 
-            VStack(alignment: .leading, spacing: 3) {
+            // Details
+            VStack(alignment: .leading, spacing: 6) {
                 Text(item.name)
-                    .font(.system(size: 15, weight: .semibold))
+                    .font(.system(size: 14, weight: .semibold))
                     .foregroundColor(isAdded ? .gymBroNeutral400 : .gymBroNeutral900)
+                    .lineLimit(2)
+                    .fixedSize(horizontal: false, vertical: true)
 
-                HStack(spacing: 8) {
+                HStack(spacing: 6) {
                     Text(item.muscleGroup)
-                        .font(.system(size: 12, weight: .medium))
+                        .font(.system(size: 11, weight: .medium))
                         .foregroundColor(.white)
-                        .padding(.horizontal, 8)
-                        .padding(.vertical, 3)
+                        .padding(.horizontal, 6)
+                        .padding(.vertical, 2)
                         .background(Color(hex: "2D3240").opacity(isAdded ? 0.4 : 0.7))
                         .clipShape(Capsule())
 
                     Text(item.equipment)
-                        .font(.system(size: 12, weight: .medium))
+                        .font(.system(size: 11, weight: .medium))
                         .foregroundColor(.gymBroNeutral600)
+                        .lineLimit(1)
+
+                    Spacer()
+
+                    Image(systemName: isAdded ? "checkmark.circle.fill" : "plus.circle")
+                        .font(.system(size: 18, weight: .medium))
+                        .foregroundColor(isAdded ? Color(hex: "30C08D") : .gymBroNeutral400)
                 }
             }
-
-            Spacer()
-
-            // Add indicator
-            Image(systemName: isAdded ? "checkmark.circle.fill" : "plus.circle")
-                .font(.system(size: 22, weight: .medium))
-                .foregroundColor(isAdded ? Color(hex: "30C08D") : .gymBroNeutral400)
+            .padding(10)
         }
-        .padding(.horizontal, 20)
-        .padding(.vertical, 8)
         .background(Color.gymBroBackground)
+        .clipShape(RoundedRectangle(cornerRadius: 12))
+        .shadow(color: .black.opacity(0.06), radius: 4, x: 0, y: 2)
+        .opacity(isAdded ? 0.7 : 1)
         .contentShape(Rectangle())
     }
 

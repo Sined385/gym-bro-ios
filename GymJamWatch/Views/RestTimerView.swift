@@ -12,7 +12,9 @@ struct RestTimerView: View {
     @EnvironmentObject var restTimerViewModel: WatchRestTimerViewModel
 
     var body: some View {
-        if restTimerViewModel.isActive {
+        if restTimerViewModel.isFinished {
+            completedView
+        } else if restTimerViewModel.isActive {
             activeTimerView
         } else {
             inactiveView
@@ -66,6 +68,24 @@ struct RestTimerView: View {
             }
         }
         .padding(.horizontal, 8)
+    }
+
+    // MARK: - Completed
+
+    private var completedView: some View {
+        VStack(spacing: 8) {
+            Image(systemName: "checkmark.circle.fill")
+                .font(.system(size: 44))
+                .foregroundColor(.green)
+
+            Text("Rest Complete!")
+                .font(WatchTypography.sectionTitle)
+                .foregroundColor(.green)
+
+            Text("Time for next set")
+                .font(WatchTypography.caption)
+                .foregroundColor(WatchColors.textSecondary)
+        }
     }
 
     // MARK: - Inactive

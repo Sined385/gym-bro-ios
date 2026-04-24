@@ -16,6 +16,7 @@ final class WatchRestTimerViewModel: ObservableObject {
     @Published var remaining: Int = 0
     @Published var totalDuration: Int = 0
     @Published var isActive = false
+    @Published var isFinished = false
 
     // MARK: - Computed
 
@@ -124,14 +125,25 @@ final class WatchRestTimerViewModel: ObservableObject {
     }
 
     private func timerFinished() {
-        stopTimer()
+        localTimer?.invalidate()
+        localTimer = nil
+        remaining = 0
+        restStartDate = nil
+        isFinished = true
         WatchHaptics.restTimerFinished()
+
+        // Auto-dismiss after 4 seconds
+        DispatchQueue.main.asyncAfter(deadline: .now() + 4) { [weak self] in
+            self?.isFinished = false
+            self?.isActive = false
+        }
     }
 
     func stopTimer() {
         localTimer?.invalidate()
         localTimer = nil
         isActive = false
+        isFinished = false
         remaining = 0
         restStartDate = nil
     }

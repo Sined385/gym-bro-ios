@@ -35,6 +35,7 @@ final class SessionFlowViewModel: ObservableObject {
     private let healthKitService: HealthKitServiceProtocol
     private let analyticsService: AnalyticsTrackingServiceProtocol
     let subscriptionManager: SubscriptionManager
+    private let completionCacheService: SessionCompletionCacheServiceProtocol
     private var repeatLastSetCancellable: AnyCancellable?
 
     // MARK: - Computed Properties
@@ -69,7 +70,7 @@ final class SessionFlowViewModel: ObservableObject {
 
     // MARK: - Initialization
 
-    init(sessionId: String, sessionTitle: String, networkService: NetworkServiceProtocol, sessionManager: ActiveSessionManager, healthKitService: HealthKitServiceProtocol, analyticsService: AnalyticsTrackingServiceProtocol, subscriptionManager: SubscriptionManager = DependencyContainer.shared.resolve(SubscriptionManager.self), initialExercises: [DashboardExercise] = [], restoredExercises: [ActiveSessionExercise]? = nil, restoredFeedback: (effort: Int, energy: Int, pain: String)? = nil) {
+    init(sessionId: String, sessionTitle: String, networkService: NetworkServiceProtocol, sessionManager: ActiveSessionManager, healthKitService: HealthKitServiceProtocol, analyticsService: AnalyticsTrackingServiceProtocol, subscriptionManager: SubscriptionManager = DependencyContainer.shared.resolve(SubscriptionManager.self), completionCacheService: SessionCompletionCacheServiceProtocol = DependencyContainer.shared.resolve(SessionCompletionCacheServiceProtocol.self), initialExercises: [DashboardExercise] = [], restoredExercises: [ActiveSessionExercise]? = nil, restoredFeedback: (effort: Int, energy: Int, pain: String)? = nil) {
         self.sessionId = sessionId
         self.sessionTitle = sessionTitle
         self.networkService = networkService
@@ -77,6 +78,7 @@ final class SessionFlowViewModel: ObservableObject {
         self.healthKitService = healthKitService
         self.analyticsService = analyticsService
         self.subscriptionManager = subscriptionManager
+        self.completionCacheService = completionCacheService
 
         if let restored = restoredExercises {
             _exercises = Published(wrappedValue: restored)
@@ -445,37 +447,50 @@ final class SessionFlowViewModel: ObservableObject {
 
         let trackedDuration = max(1, sessionManager.elapsedSeconds / 60)
 
-        let payload: [String: Any] = [
-            "duration_minutes": trackedDuration,
-            "feedback": [
-                "effort_level": effortLevel,
-                "energy_level": energyLevel,
-                "pain_discomfort": painDiscomfort
-            ],
-            "exercises": exercises.map { ex -> [String: Any] in
-                var dict: [String: Any] = [
-                    "name": ex.name,
-                    "muscle_group": ex.muscleGroup,
-                    "step_number": ex.stepNumber,
-                    "sets": ex.sets.filter(\.isCompleted).map { set -> [String: Any] in
-                        var setDict: [String: Any] = [
-                            "set_number": set.setNumber,
-                            "reps": set.reps ?? 0,
-                            "is_completed": set.isCompleted
-                        ]
-                        if let weight = set.weight { setDict["weight"] = weight }
-                        setDict["weight_unit"] = set.weightUnit
-                        return setDict
-                    }
-                ]
-                if let libId = ex.libraryExerciseId { dict["library_exercise_id"] = libId }
-                dict["equipment"] = ex.equipment
-                dict["accent_color"] = ex.accentColor
-                if let groupId = ex.supersetGroupId { dict["superset_group_id"] = groupId }
-                if let order = ex.supersetOrder { dict["superset_order"] = order }
-                return dict
+        // Build typed payload for cache persistence
+        let completionPayload = SessionCompletionPayload(
+            durationMinutes: trackedDuration,
+            feedback: SessionFeedback(
+                effortLevel: effortLevel,
+                energyLevel: energyLevel,
+                painDiscomfort: painDiscomfort
+            ),
+            exercises: exercises.map { ex in
+                CompletionExercise(
+                    name: ex.name,
+                    muscleGroup: ex.muscleGroup,
+                    stepNumber: ex.stepNumber,
+                    sets: ex.sets.filter(\.isCompleted).map { set in
+                        CompletionSet(
+                            setNumber: set.setNumber,
+                            reps: set.reps ?? 0,
+                            isCompleted: set.isCompleted,
+                            weight: set.weight,
+                            weightUnit: set.weightUnit
+                        )
+                    },
+                    libraryExerciseId: ex.libraryExerciseId,
+                    equipment: ex.equipment,
+                    accentColor: ex.accentColor,
+                    supersetGroupId: ex.supersetGroupId,
+                    supersetOrder: ex.supersetOrder
+                )
             }
-        ]
+        )
+
+        // Persist to disk BEFORE the network call so data survives app kill
+        let pendingCompletion = PendingSessionCompletion(
+            id: UUID(),
+            sessionId: sessionId,
+            sessionTitle: sessionTitle,
+            payload: completionPayload,
+            createdAt: Date(),
+            retryCount: 0,
+            lastRetryAt: nil
+        )
+        completionCacheService.save(pendingCompletion)
+
+        let payload = completionPayload.toDictionary()
 
         do {
             let response = try await networkService.request(
@@ -483,49 +498,72 @@ final class SessionFlowViewModel: ObservableObject {
                 responseType: SessionResponse.self
             )
 
+            // Success — remove from disk
+            completionCacheService.remove(id: pendingCompletion.id)
+
             analyticsService.track("workout_completed", properties: [
                 "duration_minutes": response.durationMinutes ?? 0,
                 "calories": response.calories ?? 0,
                 "exercise_count": exercises.count
             ] as [String: Any])
 
-            // Fire-and-forget HealthKit save — skip if Watch managed the HKWorkoutSession
-            // (Watch already saved the workout with real HR/calorie data)
-            if !sessionManager.isWatchManagingWorkout {
-                let elapsedSeconds = sessionManager.elapsedSeconds
-                let title = sessionTitle
-                // Prefer Watch-sourced calories over API MET-estimated calories
-                let watchSummary = sessionManager.watchWorkoutSummary
-                let caloriesValue: Double? = watchSummary?.activeCalories ?? response.calories.map { Double($0) }
-                let hkService = healthKitService
-                Task.detached {
-                    do {
-                        let now = Date()
-                        let startDate = now.addingTimeInterval(-TimeInterval(elapsedSeconds))
-                        let workoutData = WorkoutData(
-                            activityType: .traditionalStrengthTraining,
-                            startDate: startDate,
-                            endDate: now,
-                            duration: TimeInterval(elapsedSeconds),
-                            totalEnergyBurned: caloriesValue,
-                            metadata: [
-                                HKMetadataKeyWorkoutBrandName: "GymJam" as Any,
-                                "SessionTitle": title as Any
-                            ]
-                        )
-                        try await hkService.saveWorkout(workoutData)
-                    } catch {
-                        print("HealthKit save failed: \(error)")
-                    }
-                }
-            }
+            saveToHealthKit(response: response)
 
             isLoading = false
             return response
         } catch {
-            print("❌ submitFeedbackAndComplete failed: \(error)")
+            print("submitFeedbackAndComplete failed, cached for retry: \(error)")
+
+            // Save to HealthKit even on failure so the user doesn't lose the record
+            saveToHealthKit(response: nil)
+
             isLoading = false
-            return nil
+
+            // Return a fallback response so the UI can dismiss normally
+            return SessionResponse(
+                id: sessionId,
+                title: sessionTitle,
+                type: "strength",
+                status: "completed",
+                startedAt: nil,
+                completedAt: ISO8601DateFormatter().string(from: Date()),
+                durationMinutes: trackedDuration,
+                calories: nil,
+                aiGenerated: nil,
+                aiMessage: nil,
+                exercises: []
+            )
+        }
+    }
+
+    private func saveToHealthKit(response: SessionResponse?) {
+        // Skip if Watch managed the HKWorkoutSession (Watch already saved with real HR/calorie data)
+        guard !sessionManager.isWatchManagingWorkout else { return }
+
+        let elapsedSeconds = sessionManager.elapsedSeconds
+        let title = sessionTitle
+        let watchSummary = sessionManager.watchWorkoutSummary
+        let caloriesValue: Double? = watchSummary?.activeCalories ?? response?.calories.map { Double($0) }
+        let hkService = healthKitService
+        Task.detached {
+            do {
+                let now = Date()
+                let startDate = now.addingTimeInterval(-TimeInterval(elapsedSeconds))
+                let workoutData = WorkoutData(
+                    activityType: .traditionalStrengthTraining,
+                    startDate: startDate,
+                    endDate: now,
+                    duration: TimeInterval(elapsedSeconds),
+                    totalEnergyBurned: caloriesValue,
+                    metadata: [
+                        HKMetadataKeyWorkoutBrandName: "GymJam" as Any,
+                        "SessionTitle": title as Any
+                    ]
+                )
+                try await hkService.saveWorkout(workoutData)
+            } catch {
+                print("HealthKit save failed: \(error)")
+            }
         }
     }
 }

@@ -13,7 +13,6 @@ struct ExerciseView: View {
     @EnvironmentObject var setLoggingViewModel: WatchSetLoggingViewModel
 
     @State private var showSetInput = false
-    @State private var showRepeatInput = false
 
     var body: some View {
         ScrollView {
@@ -53,13 +52,13 @@ struct ExerciseView: View {
                         showSetInput = true
                     }
 
-                    // Repeat Last button — uses locally tracked or state-derived values
-                    if exercise.currentSet != nil,
+                    // Repeat Last button — one-tap completion with previous set's weight/reps
+                    if let currentSet = exercise.currentSet,
                        let lastReps = setLoggingViewModel.lastCompletedReps ?? sessionViewModel.lastCompletedReps {
                         Button {
                             let lastWeight = setLoggingViewModel.lastCompletedWeight ?? sessionViewModel.lastCompletedWeight
                             setLoggingViewModel.loadForRepeat(weight: lastWeight, reps: lastReps)
-                            showRepeatInput = true
+                            setLoggingViewModel.completeSet(exerciseId: exercise.id, setId: currentSet.id)
                         } label: {
                             HStack(spacing: 4) {
                                 Image(systemName: "arrow.counterclockwise")
@@ -91,16 +90,6 @@ struct ExerciseView: View {
             .padding(.horizontal, 8)
         }
         .sheet(isPresented: $showSetInput) {
-            if let exercise = sessionViewModel.currentExercise,
-               let currentSet = exercise.currentSet {
-                SetInputView(
-                    exerciseId: exercise.id,
-                    setId: currentSet.id,
-                    exerciseName: exercise.name
-                )
-            }
-        }
-        .sheet(isPresented: $showRepeatInput) {
             if let exercise = sessionViewModel.currentExercise,
                let currentSet = exercise.currentSet {
                 SetInputView(

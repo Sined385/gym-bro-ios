@@ -102,6 +102,14 @@ final class DependencyContainer {
                 networkService: resolver.resolve(NetworkServiceProtocol.self)!
             )
         }.inObjectScope(.container)
+
+        // Session Completion Cache Service (singleton)
+        container.register(SessionCompletionCacheServiceProtocol.self) { resolver in
+            SessionCompletionCacheService(
+                networkService: resolver.resolve(NetworkServiceProtocol.self)!,
+                appDataState: resolver.resolve(AppDataState.self)!
+            )
+        }.inObjectScope(.container)
     }
 
     private func registerViewModels() {
@@ -148,7 +156,8 @@ final class DependencyContainer {
                 sessionManager: resolver.resolve(ActiveSessionManager.self)!,
                 healthKitService: resolver.resolve(HealthKitServiceProtocol.self)!,
                 analyticsService: resolver.resolve(AnalyticsTrackingServiceProtocol.self)!,
-                subscriptionManager: resolver.resolve(SubscriptionManager.self)!
+                subscriptionManager: resolver.resolve(SubscriptionManager.self)!,
+                completionCacheService: resolver.resolve(SessionCompletionCacheServiceProtocol.self)!
             )
         }
 
@@ -247,6 +256,13 @@ final class DependencyContainer {
             WorkoutTemplatesViewModel(
                 networkService: resolver.resolve(NetworkServiceProtocol.self)!,
                 sessionManager: resolver.resolve(ActiveSessionManager.self)!,
+                analyticsService: resolver.resolve(AnalyticsTrackingServiceProtocol.self)!
+            )
+        }
+
+        container.register(CreateCustomWorkoutViewModel.self) { resolver in
+            CreateCustomWorkoutViewModel(
+                networkService: resolver.resolve(NetworkServiceProtocol.self)!,
                 analyticsService: resolver.resolve(AnalyticsTrackingServiceProtocol.self)!
             )
         }

@@ -38,9 +38,6 @@ struct SessionHistorySection: View {
                 calories: session.calories
             )
 
-            // Performance score
-            PerformanceScoreCard(score: session.performanceScore)
-
             // Exercises completed
             ExercisesCompletedCard(exercises: session.exercises)
 
