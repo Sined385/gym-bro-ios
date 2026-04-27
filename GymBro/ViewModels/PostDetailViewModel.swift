@@ -213,4 +213,13 @@ final class PostDetailViewModel: ObservableObject {
         }
     }
 
+    // MARK: - Block
+
+    func blockUser(userId: String) async {
+        let _ = try? await networkService.request(
+            CommunityRouter.blockUser(userId: userId).endpoint,
+            responseType: SuccessResponse.self
+        )
+    }
+
 }

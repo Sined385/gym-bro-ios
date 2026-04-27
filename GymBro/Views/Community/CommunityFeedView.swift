@@ -17,6 +17,8 @@ struct CommunityFeedView: View {
     @EnvironmentObject var deepLinkRouter: DeepLinkRouter
     @State private var navigationPath = NavigationPath()
     @State private var shareURL: URL?
+    @State private var reportTarget: (contentType: String, contentId: String)?
+    @State private var blockTarget: (userId: String, userName: String)?
     private let analytics: AnalyticsTrackingServiceProtocol = DependencyContainer.shared.resolve(AnalyticsTrackingServiceProtocol.self)
 
     var body: some View {
@@ -58,6 +60,12 @@ struct CommunityFeedView: View {
                                             let postId = post.id
                                             Task { await viewModel.deletePost(postId) }
                                         } : nil,
+                                        onReport: post.isOwnPost ? nil : {
+                                            reportTarget = (contentType: "post", contentId: post.id)
+                                        },
+                                        onBlockUser: post.isOwnPost ? nil : {
+                                            blockTarget = (userId: post.user.id, userName: post.user.fullName)
+                                        },
                                         isCommentsExpanded: viewModel.expandedComments.contains(post.id),
                                         onShare: {
                                             shareURL = URL(string: "https://gyymjaam.com/p/\(post.id)")
@@ -80,6 +88,9 @@ struct CommunityFeedView: View {
                                             },
                                             onUserTap: { userId in
                                                 navigationPath.append(CommunityDestination.userProfile(userId: userId))
+                                            },
+                                            onReportComment: { commentId in
+                                                reportTarget = (contentType: "comment", contentId: commentId)
                                             }
                                         )
                                         .padding(.horizontal, 16)
@@ -130,6 +141,36 @@ struct CommunityFeedView: View {
                 if let url = shareURL {
                     ActivityViewController(activityItems: [url])
                 }
+            }
+            .sheet(isPresented: Binding(
+                get: { reportTarget != nil },
+                set: { if !$0 { reportTarget = nil } }
+            )) {
+                if let target = reportTarget {
+                    ReportContentView(contentType: target.contentType, contentId: target.contentId) {
+                        reportTarget = nil
+                    }
+                }
+            }
+            .confirmationDialog(
+                "Block \(blockTarget?.userName ?? "user")?",
+                isPresented: Binding(
+                    get: { blockTarget != nil },
+                    set: { if !$0 { blockTarget = nil } }
+                ),
+                titleVisibility: .visible
+            ) {
+                Button("Block", role: .destructive) {
+                    if let target = blockTarget {
+                        Task { await viewModel.blockUser(userId: target.userId) }
+                    }
+                    blockTarget = nil
+                }
+                Button("Cancel", role: .cancel) {
+                    blockTarget = nil
+                }
+            } message: {
+                Text("You won't see their content and they won't be able to interact with you.")
             }
             .navigationDestination(for: CommunityDestination.self) { destination in
                 switch destination {

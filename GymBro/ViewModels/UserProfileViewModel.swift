@@ -283,6 +283,15 @@ final class UserProfileViewModel: ObservableObject {
         } catch { }
     }
 
+    // MARK: - Block
+
+    func blockUser(userId: String) async {
+        let _ = try? await networkService.request(
+            CommunityRouter.blockUser(userId: userId).endpoint,
+            responseType: SuccessResponse.self
+        )
+    }
+
     // MARK: - Follow Actions
 
     func toggleFollow() async {

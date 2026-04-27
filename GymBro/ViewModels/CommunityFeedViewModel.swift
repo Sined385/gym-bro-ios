@@ -319,6 +319,16 @@ final class CommunityFeedViewModel: ObservableObject {
         }
     }
 
+    // MARK: - Block User
+
+    func blockUser(userId: String) async {
+        let _ = try? await networkService.request(
+            CommunityRouter.blockUser(userId: userId).endpoint,
+            responseType: SuccessResponse.self
+        )
+        posts.removeAll { $0.user.id == userId }
+    }
+
     // MARK: - Post Created Callback
 
     func onPostCreated(_ post: CommunityPost) {

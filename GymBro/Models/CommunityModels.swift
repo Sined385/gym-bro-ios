@@ -249,6 +249,42 @@ enum FollowListTab: String, CaseIterable {
     case following = "Following"
 }
 
+// MARK: - Report & Block
+
+enum ReportReason: String, CaseIterable, Identifiable {
+    case spam
+    case harassment
+    case inappropriateContent = "inappropriate_content"
+    case other
+
+    var id: String { rawValue }
+
+    var displayName: String {
+        switch self {
+        case .spam: return "Spam"
+        case .harassment: return "Harassment"
+        case .inappropriateContent: return "Inappropriate Content"
+        case .other: return "Other"
+        }
+    }
+}
+
+struct ReportResponse: Decodable {
+    let success: Bool
+}
+
+struct BlockedUser: Decodable, Identifiable {
+    let id: String
+    let fullName: String
+    let username: String?
+    let avatarUrl: String?
+    let blockedAt: String
+}
+
+struct BlockedUsersResponse: Decodable {
+    let users: [BlockedUser]
+}
+
 // MARK: - Simple Success
 
 struct SuccessResponse: Decodable {

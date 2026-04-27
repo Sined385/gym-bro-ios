@@ -14,6 +14,8 @@ struct PostCardView: View {
     let onUserTap: (String) -> Void
     var onFollow: (() -> Void)?
     var onDelete: (() -> Void)?
+    var onReport: (() -> Void)?
+    var onBlockUser: (() -> Void)?
     var isCommentsExpanded: Bool = false
     var onShare: (() -> Void)?
     var isWorkoutExpandedByDefault: Bool = false
@@ -80,12 +82,28 @@ struct PostCardView: View {
                     .buttonStyle(.plain)
                 }
 
-                if let onDelete {
+                if onDelete != nil || onReport != nil {
                     Menu {
-                        Button(role: .destructive) {
-                            onDelete()
-                        } label: {
-                            Label("Delete", systemImage: "trash")
+                        if let onDelete {
+                            Button(role: .destructive) {
+                                onDelete()
+                            } label: {
+                                Label("Delete", systemImage: "trash")
+                            }
+                        }
+                        if let onReport {
+                            Button {
+                                onReport()
+                            } label: {
+                                Label("Report Post", systemImage: "flag")
+                            }
+                        }
+                        if let onBlockUser {
+                            Button(role: .destructive) {
+                                onBlockUser()
+                            } label: {
+                                Label("Block User", systemImage: "person.slash")
+                            }
                         }
                     } label: {
                         Image(systemName: "ellipsis")

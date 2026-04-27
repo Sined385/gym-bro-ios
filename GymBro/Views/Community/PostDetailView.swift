@@ -13,6 +13,8 @@ struct PostDetailView: View {
     @Environment(\.dismiss) private var dismiss
     @State private var shareURL: URL?
     @State private var newComment: String = ""
+    @State private var reportTarget: (contentType: String, contentId: String)?
+    @State private var blockTarget: (userId: String, userName: String)?
 
     init(postId: String) {
         self.postId = postId
@@ -47,6 +49,12 @@ struct PostDetailView: View {
                                     }
                                 }
                             } : nil,
+                            onReport: post.isOwnPost ? nil : {
+                                reportTarget = (contentType: "post", contentId: post.id)
+                            },
+                            onBlockUser: post.isOwnPost ? nil : {
+                                blockTarget = (userId: post.user.id, userName: post.user.fullName)
+                            },
                             isCommentsExpanded: false,
                             onShare: {
                                 shareURL = URL(string: "https://gyymjaam.com/p/\(postId)")
@@ -80,6 +88,15 @@ struct PostDetailView: View {
                             LazyVStack(spacing: 0) {
                                 ForEach(viewModel.comments) { comment in
                                     commentRow(comment)
+                                        .contextMenu {
+                                            if let post = viewModel.post, !post.isOwnPost || comment.user.id != post.user.id {
+                                                Button {
+                                                    reportTarget = (contentType: "comment", contentId: comment.id)
+                                                } label: {
+                                                    Label("Report Comment", systemImage: "flag")
+                                                }
+                                            }
+                                        }
                                 }
                             }
                             .background(Color.gymBroCardBackground)
@@ -129,6 +146,39 @@ struct PostDetailView: View {
             if let url = shareURL {
                 ActivityViewController(activityItems: [url])
             }
+        }
+        .sheet(isPresented: Binding(
+            get: { reportTarget != nil },
+            set: { if !$0 { reportTarget = nil } }
+        )) {
+            if let target = reportTarget {
+                ReportContentView(contentType: target.contentType, contentId: target.contentId) {
+                    reportTarget = nil
+                }
+            }
+        }
+        .confirmationDialog(
+            "Block \(blockTarget?.userName ?? "user")?",
+            isPresented: Binding(
+                get: { blockTarget != nil },
+                set: { if !$0 { blockTarget = nil } }
+            ),
+            titleVisibility: .visible
+        ) {
+            Button("Block", role: .destructive) {
+                if let target = blockTarget {
+                    Task {
+                        await viewModel.blockUser(userId: target.userId)
+                        dismiss()
+                    }
+                }
+                blockTarget = nil
+            }
+            Button("Cancel", role: .cancel) {
+                blockTarget = nil
+            }
+        } message: {
+            Text("You won't see their content and they won't be able to interact with you.")
         }
     }
 

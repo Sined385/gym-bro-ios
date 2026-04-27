@@ -364,6 +364,10 @@ enum CommunityRouter: APIRouter {
     case userCompare(userId: String)
     case myFollowers(cursor: String?, limit: Int)
     case myFollowing(cursor: String?, limit: Int)
+    case reportContent(contentType: String, contentId: String, reason: String, description: String?)
+    case blockUser(userId: String)
+    case unblockUser(userId: String)
+    case blockedUsers
 
     var path: String {
         switch self {
@@ -401,17 +405,25 @@ enum CommunityRouter: APIRouter {
             return "/api/v1/community/me/followers"
         case .myFollowing:
             return "/api/v1/community/me/following"
+        case .reportContent:
+            return "/api/v1/community/reports"
+        case .blockUser:
+            return "/api/v1/community/blocks"
+        case .unblockUser(let userId):
+            return "/api/v1/community/blocks/\(userId)"
+        case .blockedUsers:
+            return "/api/v1/community/blocks"
         }
     }
 
     var method: HTTPMethod {
         switch self {
         case .feed, .getPost, .getComments, .myProfile, .myWorkouts, .userProfile, .userWorkouts, .userCompare,
-             .myFollowers, .myFollowing:
+             .myFollowers, .myFollowing, .blockedUsers:
             return .get
-        case .createPost, .toggleLike, .createComment, .followUser:
+        case .createPost, .toggleLike, .createComment, .followUser, .reportContent, .blockUser:
             return .post
-        case .deletePost, .deleteComment, .unfollowUser:
+        case .deletePost, .deleteComment, .unfollowUser, .unblockUser:
             return .delete
         }
     }
@@ -451,8 +463,14 @@ enum CommunityRouter: APIRouter {
             var params: [String: Any] = ["limit": limit]
             if let cursor { params["cursor"] = cursor }
             return params
+        case .reportContent(let contentType, let contentId, let reason, let description):
+            var params: [String: Any] = ["contentType": contentType, "contentId": contentId, "reason": reason]
+            if let description { params["description"] = description }
+            return params
+        case .blockUser(let userId):
+            return ["userId": userId]
         case .getPost, .deletePost, .toggleLike, .deleteComment, .unfollowUser,
-             .myProfile, .userProfile, .userCompare:
+             .myProfile, .userProfile, .userCompare, .unblockUser, .blockedUsers:
             return nil
         }
     }
@@ -460,7 +478,7 @@ enum CommunityRouter: APIRouter {
     var encoding: ParameterEncoding {
         switch self {
         case .feed, .getPost, .getComments, .myProfile, .myWorkouts, .userProfile, .userWorkouts, .userCompare,
-             .deletePost, .deleteComment, .unfollowUser, .myFollowers, .myFollowing:
+             .deletePost, .deleteComment, .unfollowUser, .myFollowers, .myFollowing, .unblockUser, .blockedUsers:
             return .url
         default:
             return .json

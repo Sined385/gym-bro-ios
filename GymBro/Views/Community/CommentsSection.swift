@@ -11,6 +11,7 @@ struct CommentsSection: View {
     let comments: [PostComment]
     let onSubmit: (String) -> Void
     let onUserTap: (String) -> Void
+    var onReportComment: ((String) -> Void)?
 
     @State private var newComment: String = ""
 
@@ -50,6 +51,15 @@ struct CommentsSection: View {
                     }
 
                     Spacer()
+                }
+                .contextMenu {
+                    if let onReportComment {
+                        Button {
+                            onReportComment(comment.id)
+                        } label: {
+                            Label("Report Comment", systemImage: "flag")
+                        }
+                    }
                 }
             }
 

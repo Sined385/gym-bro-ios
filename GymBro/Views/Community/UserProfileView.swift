@@ -13,6 +13,8 @@ struct UserProfileView: View {
     @Environment(\.dismiss) private var dismiss
     @State private var isSharingWorkout = false
     @State private var shareURL: URL?
+    @State private var reportTarget: (contentType: String, contentId: String)?
+    @State private var blockTarget: (userId: String, userName: String)?
 
     private let networkService: NetworkServiceProtocol = DependencyContainer.shared.resolve(NetworkServiceProtocol.self)
 
@@ -92,7 +94,27 @@ struct UserProfileView: View {
         .toolbar {
             ToolbarItem(placement: .navigationBarTrailing) {
                 if let profile = viewModel.profile, !profile.isOwnProfile {
-                    navFollowButton
+                    HStack(spacing: 8) {
+                        navFollowButton
+
+                        Menu {
+                            Button {
+                                reportTarget = (contentType: "user", contentId: userId)
+                            } label: {
+                                Label("Report User", systemImage: "flag")
+                            }
+                            Button(role: .destructive) {
+                                blockTarget = (userId: userId, userName: profile.user.fullName)
+                            } label: {
+                                Label("Block User", systemImage: "person.slash")
+                            }
+                        } label: {
+                            Image(systemName: "ellipsis")
+                                .font(.system(size: 16, weight: .medium))
+                                .foregroundColor(.gymBroTextSecondary)
+                                .frame(width: 32, height: 32)
+                        }
+                    }
                 }
             }
         }
@@ -109,6 +131,39 @@ struct UserProfileView: View {
             if let url = shareURL {
                 ActivityViewController(activityItems: [url])
             }
+        }
+        .sheet(isPresented: Binding(
+            get: { reportTarget != nil },
+            set: { if !$0 { reportTarget = nil } }
+        )) {
+            if let target = reportTarget {
+                ReportContentView(contentType: target.contentType, contentId: target.contentId) {
+                    reportTarget = nil
+                }
+            }
+        }
+        .confirmationDialog(
+            "Block \(blockTarget?.userName ?? "user")?",
+            isPresented: Binding(
+                get: { blockTarget != nil },
+                set: { if !$0 { blockTarget = nil } }
+            ),
+            titleVisibility: .visible
+        ) {
+            Button("Block", role: .destructive) {
+                if let target = blockTarget {
+                    Task {
+                        await viewModel.blockUser(userId: target.userId)
+                        dismiss()
+                    }
+                }
+                blockTarget = nil
+            }
+            Button("Cancel", role: .cancel) {
+                blockTarget = nil
+            }
+        } message: {
+            Text("You won't see their content and they won't be able to interact with you.")
         }
     }
 
