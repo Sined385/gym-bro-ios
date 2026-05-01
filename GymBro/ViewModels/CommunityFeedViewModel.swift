@@ -169,9 +169,7 @@ final class CommunityFeedViewModel: ObservableObject {
                     let post = posts[index]
                     posts[index] = post.withReactions(response.reactions, reactionCount: response.totalReactionCount)
                 }
-            } catch {
-                await loadFeed()
-            }
+            } catch { }
             reactionInFlight.remove(key)
         }
     }
