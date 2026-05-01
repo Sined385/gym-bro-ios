@@ -484,7 +484,7 @@ struct MyProfileView: View {
                     VStack(spacing: 0) {
                         PostCardView(
                             post: post,
-                            onLike: { viewModel.toggleLike(postId: post.id) },
+                            onReaction: { emoji in viewModel.toggleReaction(postId: post.id, emoji: emoji) },
                             onComment: { viewModel.toggleComments(postId: post.id) },
                             onUserTap: { _ in },
                             onDelete: {

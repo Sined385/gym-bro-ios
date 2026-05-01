@@ -402,10 +402,10 @@ final class OnboardingViewModel: ObservableObject {
     // MARK: - Submission
 
     /// Submit onboarding data to backend via API
-    func submitOnboarding() async {
+    func submitOnboarding() async throws {
         guard onboardingData.isComplete else {
             errorMessage = "Please complete all required fields"
-            return
+            throw OnboardingError.incomplete
         }
 
         isSubmitting = true
@@ -427,7 +427,12 @@ final class OnboardingViewModel: ObservableObject {
         } catch {
             errorMessage = "Failed to save onboarding data: \(error.localizedDescription)"
             isSubmitting = false
+            throw error
         }
+    }
+
+    enum OnboardingError: Error {
+        case incomplete
     }
 
     // MARK: - Progress Calculation

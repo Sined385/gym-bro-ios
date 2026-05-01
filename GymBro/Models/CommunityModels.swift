@@ -19,6 +19,8 @@ struct CommunityPost: Decodable, Identifiable, Equatable {
     let likeCount: Int
     let commentCount: Int
     let isLiked: Bool
+    let reactions: [PostReaction]?
+    let reactionCount: Int?
     let isFollowingAuthor: Bool
     let isOwnPost: Bool
     let createdAt: String
@@ -28,7 +30,38 @@ struct CommunityPost: Decodable, Identifiable, Equatable {
         lhs.likeCount == rhs.likeCount &&
         lhs.commentCount == rhs.commentCount &&
         lhs.isLiked == rhs.isLiked &&
+        lhs.reactions == rhs.reactions &&
         lhs.isFollowingAuthor == rhs.isFollowingAuthor
+    }
+
+    func withReactions(_ newReactions: [PostReaction], reactionCount newCount: Int) -> CommunityPost {
+        CommunityPost(
+            id: id, user: user, content: content, visibility: visibility,
+            photoUrl: photoUrl, workoutAttachment: workoutAttachment,
+            likeCount: newCount, commentCount: commentCount, isLiked: isLiked,
+            reactions: newReactions, reactionCount: newCount,
+            isFollowingAuthor: isFollowingAuthor, isOwnPost: isOwnPost, createdAt: createdAt
+        )
+    }
+
+    func withCommentCount(_ count: Int) -> CommunityPost {
+        CommunityPost(
+            id: id, user: user, content: content, visibility: visibility,
+            photoUrl: photoUrl, workoutAttachment: workoutAttachment,
+            likeCount: likeCount, commentCount: count, isLiked: isLiked,
+            reactions: reactions, reactionCount: reactionCount,
+            isFollowingAuthor: isFollowingAuthor, isOwnPost: isOwnPost, createdAt: createdAt
+        )
+    }
+
+    func withFollowing(_ following: Bool) -> CommunityPost {
+        CommunityPost(
+            id: id, user: user, content: content, visibility: visibility,
+            photoUrl: photoUrl, workoutAttachment: workoutAttachment,
+            likeCount: likeCount, commentCount: commentCount, isLiked: isLiked,
+            reactions: reactions, reactionCount: reactionCount,
+            isFollowingAuthor: following, isOwnPost: isOwnPost, createdAt: createdAt
+        )
     }
 }
 
@@ -98,11 +131,67 @@ struct CommentsResponse: Decodable {
     let hasMore: Bool
 }
 
-// MARK: - Like Response
+// MARK: - Reactions
+
+struct PostReaction: Decodable, Equatable, Identifiable {
+    let emoji: String
+    let count: Int
+    let isReacted: Bool
+    var id: String { emoji }
+}
+
+enum ReactionEmoji: String, CaseIterable {
+    case fire, muscle, clap, wow, trophy
+
+    var display: String {
+        switch self {
+        case .fire: return "\u{1F525}"
+        case .muscle: return "\u{1F4AA}"
+        case .clap: return "\u{1F44F}"
+        case .wow: return "\u{1F62E}"
+        case .trophy: return "\u{1F3C6}"
+        }
+    }
+}
+
+struct ReactionResponse: Decodable {
+    let reactions: [PostReaction]
+    let totalReactionCount: Int
+}
+
+// MARK: - Like Response (legacy)
 
 struct LikeResponse: Decodable {
     let isLiked: Bool
     let likeCount: Int
+}
+
+// MARK: - User Search
+
+struct SearchUserResult: Decodable, Identifiable, Equatable {
+    let id: String
+    let fullName: String
+    let username: String?
+    let avatarUrl: String?
+    var isFollowing: Bool
+}
+
+struct SearchUsersResponse: Decodable {
+    let users: [SearchUserResult]
+}
+
+// MARK: - Suggested Users
+
+struct SuggestedUser: Decodable, Identifiable, Equatable {
+    let id: String
+    let fullName: String
+    let username: String?
+    let avatarUrl: String?
+    let sessionCount: Int
+}
+
+struct SuggestedUsersResponse: Decodable {
+    let users: [SuggestedUser]
 }
 
 // MARK: - Follow Response

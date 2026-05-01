@@ -352,6 +352,7 @@ enum CommunityRouter: APIRouter {
     case createPost(content: String, visibility: String, workoutSessionId: String?, photoUrl: String?)
     case deletePost(postId: String)
     case toggleLike(postId: String)
+    case toggleReaction(postId: String, emoji: String)
     case getComments(postId: String, cursor: String?, limit: Int)
     case createComment(postId: String, content: String)
     case deleteComment(commentId: String)
@@ -359,6 +360,8 @@ enum CommunityRouter: APIRouter {
     case unfollowUser(userId: String)
     case myProfile
     case myWorkouts(cursor: String?, limit: Int)
+    case searchUsers(query: String, limit: Int)
+    case suggestedUsers(limit: Int)
     case userProfile(userId: String)
     case userWorkouts(userId: String, cursor: String?, limit: Int)
     case userCompare(userId: String)
@@ -381,6 +384,8 @@ enum CommunityRouter: APIRouter {
             return "/api/v1/community/posts/\(postId)"
         case .toggleLike(let postId):
             return "/api/v1/community/posts/\(postId)/like"
+        case .toggleReaction(let postId, _):
+            return "/api/v1/community/posts/\(postId)/react"
         case .getComments(let postId, _, _):
             return "/api/v1/community/posts/\(postId)/comments"
         case .createComment(let postId, _):
@@ -395,6 +400,10 @@ enum CommunityRouter: APIRouter {
             return "/api/v1/community/me/profile"
         case .myWorkouts:
             return "/api/v1/community/me/workouts"
+        case .searchUsers:
+            return "/api/v1/community/users/search"
+        case .suggestedUsers:
+            return "/api/v1/community/users/suggested"
         case .userProfile(let userId):
             return "/api/v1/community/users/\(userId)/profile"
         case .userWorkouts(let userId, _, _):
@@ -418,10 +427,10 @@ enum CommunityRouter: APIRouter {
 
     var method: HTTPMethod {
         switch self {
-        case .feed, .getPost, .getComments, .myProfile, .myWorkouts, .userProfile, .userWorkouts, .userCompare,
-             .myFollowers, .myFollowing, .blockedUsers:
+        case .feed, .getPost, .getComments, .myProfile, .myWorkouts, .searchUsers, .suggestedUsers,
+             .userProfile, .userWorkouts, .userCompare, .myFollowers, .myFollowing, .blockedUsers:
             return .get
-        case .createPost, .toggleLike, .createComment, .followUser, .reportContent, .blockUser:
+        case .createPost, .toggleLike, .toggleReaction, .createComment, .followUser, .reportContent, .blockUser:
             return .post
         case .deletePost, .deleteComment, .unfollowUser, .unblockUser:
             return .delete
@@ -469,6 +478,12 @@ enum CommunityRouter: APIRouter {
             return params
         case .blockUser(let userId):
             return ["userId": userId]
+        case .toggleReaction(_, let emoji):
+            return ["emoji": emoji]
+        case .searchUsers(let query, let limit):
+            return ["q": query, "limit": limit]
+        case .suggestedUsers(let limit):
+            return ["limit": limit]
         case .getPost, .deletePost, .toggleLike, .deleteComment, .unfollowUser,
              .myProfile, .userProfile, .userCompare, .unblockUser, .blockedUsers:
             return nil
@@ -477,7 +492,8 @@ enum CommunityRouter: APIRouter {
 
     var encoding: ParameterEncoding {
         switch self {
-        case .feed, .getPost, .getComments, .myProfile, .myWorkouts, .userProfile, .userWorkouts, .userCompare,
+        case .feed, .getPost, .getComments, .myProfile, .myWorkouts, .searchUsers, .suggestedUsers,
+             .userProfile, .userWorkouts, .userCompare,
              .deletePost, .deleteComment, .unfollowUser, .myFollowers, .myFollowing, .unblockUser, .blockedUsers:
             return .url
         default:

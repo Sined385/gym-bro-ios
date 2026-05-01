@@ -36,7 +36,7 @@ struct PostDetailView: View {
                     } else if let post = viewModel.post {
                         PostCardView(
                             post: post,
-                            onLike: { viewModel.toggleLike() },
+                            onReaction: { emoji in viewModel.toggleReaction(emoji: emoji) },
                             onComment: { },
                             onUserTap: { _ in },
                             onFollow: post.isOwnPost ? nil : {

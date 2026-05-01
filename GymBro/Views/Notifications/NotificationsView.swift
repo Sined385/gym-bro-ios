@@ -7,13 +7,20 @@
 
 import SwiftUI
 
+enum NotificationDestination: Hashable {
+    case post(postId: String)
+    case userProfile(userId: String)
+}
+
 struct NotificationsView: View {
 
     @StateObject private var viewModel: NotificationsViewModel = DependencyContainer.shared.resolve(NotificationsViewModel.self)
     @Environment(\.dismiss) private var dismiss
+    @State private var navigationPath = NavigationPath()
     private let analytics: AnalyticsTrackingServiceProtocol = DependencyContainer.shared.resolve(AnalyticsTrackingServiceProtocol.self)
 
     var body: some View {
+        NavigationStack(path: $navigationPath) {
         VStack(spacing: 0) {
             // MARK: - Custom Header
             header
@@ -48,6 +55,16 @@ struct NotificationsView: View {
             await viewModel.loadNotifications()
         }
         .analyticsScreen("Notifications")
+        .navigationDestination(for: NotificationDestination.self) { destination in
+            switch destination {
+            case .post(let postId):
+                PostDetailView(postId: postId)
+            case .userProfile(let userId):
+                UserProfileView(userId: userId)
+            }
+        }
+        .navigationBarHidden(true)
+        }
     }
 
     // MARK: - Header
@@ -181,6 +198,18 @@ struct NotificationsView: View {
                     NotificationCard(notification: notification)
                         .onTapGesture {
                             Task { await viewModel.markAsRead(notification.id) }
+                            switch notification.type {
+                            case "like", "comment", "new_post":
+                                if let postId = notification.data?.postId {
+                                    navigationPath.append(NotificationDestination.post(postId: postId))
+                                }
+                            case "follow":
+                                if let userId = notification.data?.userId {
+                                    navigationPath.append(NotificationDestination.userProfile(userId: userId))
+                                }
+                            default:
+                                break
+                            }
                         }
                         .onAppear {
                             if notification.id == viewModel.filteredNotifications.last?.id {

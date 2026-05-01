@@ -116,29 +116,42 @@ final class MyProfileViewModel: ObservableObject {
 
     // MARK: - Post Interactions
 
-    func toggleLike(postId: String) {
-        guard !likeInFlight.contains(postId) else { return }
-        likeInFlight.insert(postId)
+    func toggleReaction(postId: String, emoji: String) {
+        let key = "\(postId):\(emoji)"
+        guard !likeInFlight.contains(key) else { return }
+        likeInFlight.insert(key)
 
         // Optimistic update
         if let index = profile?.recentPosts.firstIndex(where: { $0.id == postId }) {
             let post = profile!.recentPosts[index]
-            let newIsLiked = !post.isLiked
-            let newCount = newIsLiked ? post.likeCount + 1 : max(0, post.likeCount - 1)
-            updatePost(at: index, likeCount: newCount, isLiked: newIsLiked)
+            var reactions = post.reactions ?? []
+            if let ri = reactions.firstIndex(where: { $0.emoji == emoji }) {
+                let r = reactions[ri]
+                if r.isReacted {
+                    let newCount = max(0, r.count - 1)
+                    if newCount == 0 { reactions.remove(at: ri) }
+                    else { reactions[ri] = PostReaction(emoji: emoji, count: newCount, isReacted: false) }
+                } else {
+                    reactions[ri] = PostReaction(emoji: emoji, count: r.count + 1, isReacted: true)
+                }
+            } else {
+                reactions.append(PostReaction(emoji: emoji, count: 1, isReacted: true))
+            }
+            let totalCount = reactions.reduce(0) { $0 + $1.count }
+            updatePost(at: index, reactions: reactions, reactionCount: totalCount)
         }
 
         Task {
             do {
                 let response = try await networkService.request(
-                    CommunityRouter.toggleLike(postId: postId).endpoint,
-                    responseType: LikeResponse.self
+                    CommunityRouter.toggleReaction(postId: postId, emoji: emoji).endpoint,
+                    responseType: ReactionResponse.self
                 )
                 if let index = profile?.recentPosts.firstIndex(where: { $0.id == postId }) {
-                    updatePost(at: index, likeCount: response.likeCount, isLiked: response.isLiked)
+                    updatePost(at: index, reactions: response.reactions, reactionCount: response.totalReactionCount)
                 }
             } catch { }
-            likeInFlight.remove(postId)
+            likeInFlight.remove(key)
         }
     }
 
@@ -209,7 +222,7 @@ final class MyProfileViewModel: ObservableObject {
 
     // MARK: - Private Helpers
 
-    private func updatePost(at index: Int, likeCount: Int? = nil, isLiked: Bool? = nil, commentCount: Int? = nil) {
+    private func updatePost(at index: Int, reactions: [PostReaction]? = nil, reactionCount: Int? = nil, commentCount: Int? = nil) {
         guard let p = profile else { return }
         let post = p.recentPosts[index]
         let updated = CommunityPost(
@@ -219,9 +232,11 @@ final class MyProfileViewModel: ObservableObject {
             visibility: post.visibility,
             photoUrl: post.photoUrl,
             workoutAttachment: post.workoutAttachment,
-            likeCount: likeCount ?? post.likeCount,
+            likeCount: reactionCount ?? post.likeCount,
             commentCount: commentCount ?? post.commentCount,
-            isLiked: isLiked ?? post.isLiked,
+            isLiked: post.isLiked,
+            reactions: reactions ?? post.reactions,
+            reactionCount: reactionCount ?? post.reactionCount,
             isFollowingAuthor: post.isFollowingAuthor,
             isOwnPost: post.isOwnPost,
             createdAt: post.createdAt

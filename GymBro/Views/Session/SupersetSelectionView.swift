@@ -48,6 +48,10 @@ struct SupersetSelectionView: View {
             MuscleGroupFilterChips(selectedGroup: $libraryViewModel.selectedMuscleGroup)
                 .padding(.top, 12)
 
+            // Equipment chips
+            EquipmentFilterChips(selectedEquipment: $libraryViewModel.selectedEquipment)
+                .padding(.top, 8)
+
             // Save button
             Button {
                 let items = libraryViewModel.exercises.filter { selectedIds.contains($0.id) }
@@ -76,12 +80,14 @@ struct SupersetSelectionView: View {
 
             // Exercise list
             ScrollView(.vertical, showsIndicators: false) {
-                LazyVStack(spacing: 0) {
+                LazyVStack(spacing: 12) {
                     ForEach(libraryViewModel.filteredExercises) { item in
-                        supersetRow(item, isAlreadyInSession: addedExerciseIds.contains(item.id))
+                        exerciseCard(item, isAlreadyInSession: addedExerciseIds.contains(item.id))
                     }
                 }
-                .padding(.top, 12)
+                .padding(.horizontal, 16)
+                .padding(.top, 8)
+                .padding(.bottom, 16)
             }
         }
         .background(Color.gymBroBackground.ignoresSafeArea())
@@ -89,8 +95,15 @@ struct SupersetSelectionView: View {
         .navigationBarTitleDisplayMode(.inline)
     }
 
-    private func supersetRow(_ item: ExerciseLibraryItem, isAlreadyInSession: Bool) -> some View {
+    private func imageURLs(for item: ExerciseLibraryItem) -> [URL] {
+        let builderURLs = ExerciseImageURLBuilder.imageURLs(for: item.externalId)
+        if !builderURLs.isEmpty { return builderURLs }
+        return item.images?.compactMap { URL(string: $0) } ?? []
+    }
+
+    private func exerciseCard(_ item: ExerciseLibraryItem, isAlreadyInSession: Bool) -> some View {
         let isSelected = selectedIds.contains(item.id)
+        let urls = imageURLs(for: item)
 
         return Button {
             if isSelected {
@@ -99,43 +112,103 @@ struct SupersetSelectionView: View {
                 selectedIds.insert(item.id)
             }
         } label: {
-            HStack(spacing: 14) {
-                VStack(alignment: .leading, spacing: 3) {
-                    Text(item.name)
-                        .font(.system(size: 15, weight: .semibold))
-                        .foregroundColor(.gymBroNeutral900)
+            VStack(alignment: .leading, spacing: 0) {
+                // Exercise image carousel
+                if urls.isEmpty {
+                    exercisePlaceholder()
+                        .aspectRatio(16/9, contentMode: .fit)
+                } else if urls.count == 1 {
+                    CachedAsyncImage(url: urls[0]) { image in
+                        image
+                            .resizable()
+                            .aspectRatio(16/9, contentMode: .fill)
+                    } placeholder: {
+                        ShimmerView()
+                            .aspectRatio(16/9, contentMode: .fit)
+                    } failure: {
+                        exercisePlaceholder()
+                            .aspectRatio(16/9, contentMode: .fit)
+                    }
+                    .clipped()
+                } else {
+                    TabView {
+                        ForEach(urls, id: \.self) { url in
+                            CachedAsyncImage(url: url) { image in
+                                image
+                                    .resizable()
+                                    .aspectRatio(16/9, contentMode: .fill)
+                            } placeholder: {
+                                ShimmerView()
+                                    .aspectRatio(16/9, contentMode: .fit)
+                            } failure: {
+                                exercisePlaceholder()
+                                    .aspectRatio(16/9, contentMode: .fit)
+                            }
+                            .clipped()
+                        }
+                    }
+                    .tabViewStyle(.page(indexDisplayMode: .automatic))
+                    .aspectRatio(16/9, contentMode: .fit)
+                }
 
-                    HStack(spacing: 8) {
+                // Details
+                VStack(alignment: .leading, spacing: 6) {
+                    Text(item.name)
+                        .font(.system(size: 14, weight: .semibold))
+                        .foregroundColor(.gymBroNeutral900)
+                        .lineLimit(2)
+                        .fixedSize(horizontal: false, vertical: true)
+
+                    HStack(spacing: 6) {
                         Text(item.muscleGroup)
-                            .font(.system(size: 12, weight: .medium))
-                            .foregroundColor(.gymBroNeutral600)
+                            .font(.system(size: 11, weight: .medium))
+                            .foregroundColor(.white)
+                            .padding(.horizontal, 6)
+                            .padding(.vertical, 2)
+                            .background(Color(hex: "2D3240").opacity(0.7))
+                            .clipShape(Capsule())
 
                         Text(item.equipment)
-                            .font(.system(size: 12, weight: .medium))
-                            .foregroundColor(.gymBroNeutral400)
+                            .font(.system(size: 11, weight: .medium))
+                            .foregroundColor(.gymBroNeutral600)
+                            .lineLimit(1)
+
+                        Spacer()
+
+                        // Selection indicator
+                        ZStack {
+                            Circle()
+                                .stroke(isSelected ? Color(hex: "7A82F6") : Color.gymBroNeutral200, lineWidth: 2)
+                                .frame(width: 26, height: 26)
+
+                            if isSelected {
+                                Circle()
+                                    .fill(Color(hex: "7A82F6"))
+                                    .frame(width: 18, height: 18)
+                            }
+                        }
                     }
                 }
-
-                Spacer()
-
-                // Selection toggle
-                ZStack {
-                    Circle()
-                        .stroke(isSelected ? Color(hex: "7A82F6") : Color.gymBroNeutral200, lineWidth: 2)
-                        .frame(width: 26, height: 26)
-
-                    if isSelected {
-                        Circle()
-                            .fill(Color(hex: "7A82F6"))
-                            .frame(width: 18, height: 18)
-                    }
-                }
+                .padding(10)
             }
-            .padding(.horizontal, 20)
-            .padding(.vertical, 14)
-            .background(isSelected ? Color(hex: "7A82F6").opacity(0.05) : Color.clear)
+            .background(isSelected ? Color(hex: "7A82F6").opacity(0.05) : Color.gymBroBackground)
+            .clipShape(RoundedRectangle(cornerRadius: 12))
+            .overlay(
+                RoundedRectangle(cornerRadius: 12)
+                    .stroke(isSelected ? Color(hex: "7A82F6") : Color.clear, lineWidth: 2)
+            )
+            .shadow(color: .black.opacity(0.06), radius: 4, x: 0, y: 2)
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
+    }
+
+    private func exercisePlaceholder() -> some View {
+        ZStack {
+            Color(hex: "2D3240").opacity(0.08)
+            Image(systemName: "dumbbell.fill")
+                .font(.system(size: 18, weight: .medium))
+                .foregroundColor(.gymBroNeutral400)
+        }
     }
 }

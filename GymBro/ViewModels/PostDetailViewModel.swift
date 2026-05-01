@@ -22,7 +22,7 @@ final class PostDetailViewModel: ObservableObject {
 
     let postId: String
     private let networkService: NetworkServiceProtocol
-    private var likeInFlight = false
+    private var reactionInFlight: Set<String> = []
     private var followInFlight = false
 
     // MARK: - Initialization
@@ -73,71 +73,49 @@ final class PostDetailViewModel: ObservableObject {
             )
             comments.insert(comment, at: 0)
             if let p = post {
-                post = CommunityPost(
-                    id: p.id,
-                    user: p.user,
-                    content: p.content,
-                    visibility: p.visibility,
-                    photoUrl: p.photoUrl,
-                    workoutAttachment: p.workoutAttachment,
-                    likeCount: p.likeCount,
-                    commentCount: p.commentCount + 1,
-                    isLiked: p.isLiked,
-                    isFollowingAuthor: p.isFollowingAuthor,
-                    isOwnPost: p.isOwnPost,
-                    createdAt: p.createdAt
-                )
+                post = p.withCommentCount(p.commentCount + 1)
             }
         } catch { }
     }
 
-    // MARK: - Like
+    // MARK: - Reaction
 
-    func toggleLike() {
-        guard !likeInFlight, let p = post else { return }
-        likeInFlight = true
+    func toggleReaction(emoji: String) {
+        let key = emoji
+        guard !reactionInFlight.contains(key), let p = post else { return }
+        reactionInFlight.insert(key)
 
-        let newIsLiked = !p.isLiked
-        let newCount = newIsLiked ? p.likeCount + 1 : max(0, p.likeCount - 1)
-        post = CommunityPost(
-            id: p.id,
-            user: p.user,
-            content: p.content,
-            visibility: p.visibility,
-            photoUrl: p.photoUrl,
-            workoutAttachment: p.workoutAttachment,
-            likeCount: newCount,
-            commentCount: p.commentCount,
-            isLiked: newIsLiked,
-            isFollowingAuthor: p.isFollowingAuthor,
-            isOwnPost: p.isOwnPost,
-            createdAt: p.createdAt
-        )
+        // Optimistic update
+        var reactions = p.reactions ?? []
+        if let ri = reactions.firstIndex(where: { $0.emoji == emoji }) {
+            let r = reactions[ri]
+            if r.isReacted {
+                let newCount = max(0, r.count - 1)
+                if newCount == 0 {
+                    reactions.remove(at: ri)
+                } else {
+                    reactions[ri] = PostReaction(emoji: emoji, count: newCount, isReacted: false)
+                }
+            } else {
+                reactions[ri] = PostReaction(emoji: emoji, count: r.count + 1, isReacted: true)
+            }
+        } else {
+            reactions.append(PostReaction(emoji: emoji, count: 1, isReacted: true))
+        }
+        let totalCount = reactions.reduce(0) { $0 + $1.count }
+        post = p.withReactions(reactions, reactionCount: totalCount)
 
         Task {
             do {
                 let response = try await networkService.request(
-                    CommunityRouter.toggleLike(postId: postId).endpoint,
-                    responseType: LikeResponse.self
+                    CommunityRouter.toggleReaction(postId: postId, emoji: emoji).endpoint,
+                    responseType: ReactionResponse.self
                 )
                 if let current = post {
-                    post = CommunityPost(
-                        id: current.id,
-                        user: current.user,
-                        content: current.content,
-                        visibility: current.visibility,
-                        photoUrl: current.photoUrl,
-                        workoutAttachment: current.workoutAttachment,
-                        likeCount: response.likeCount,
-                        commentCount: current.commentCount,
-                        isLiked: response.isLiked,
-                        isFollowingAuthor: current.isFollowingAuthor,
-                        isOwnPost: current.isOwnPost,
-                        createdAt: current.createdAt
-                    )
+                    post = current.withReactions(response.reactions, reactionCount: response.totalReactionCount)
                 }
             } catch { }
-            likeInFlight = false
+            reactionInFlight.remove(key)
         }
     }
 
@@ -148,20 +126,7 @@ final class PostDetailViewModel: ObservableObject {
         followInFlight = true
 
         let wasFollowing = p.isFollowingAuthor
-        post = CommunityPost(
-            id: p.id,
-            user: p.user,
-            content: p.content,
-            visibility: p.visibility,
-            photoUrl: p.photoUrl,
-            workoutAttachment: p.workoutAttachment,
-            likeCount: p.likeCount,
-            commentCount: p.commentCount,
-            isLiked: p.isLiked,
-            isFollowingAuthor: !wasFollowing,
-            isOwnPost: p.isOwnPost,
-            createdAt: p.createdAt
-        )
+        post = p.withFollowing(!wasFollowing)
 
         Task {
             do {
@@ -177,22 +142,8 @@ final class PostDetailViewModel: ObservableObject {
                     )
                 }
             } catch {
-                // Revert
                 if let current = post {
-                    post = CommunityPost(
-                        id: current.id,
-                        user: current.user,
-                        content: current.content,
-                        visibility: current.visibility,
-                        photoUrl: current.photoUrl,
-                        workoutAttachment: current.workoutAttachment,
-                        likeCount: current.likeCount,
-                        commentCount: current.commentCount,
-                        isLiked: current.isLiked,
-                        isFollowingAuthor: wasFollowing,
-                        isOwnPost: current.isOwnPost,
-                        createdAt: current.createdAt
-                    )
+                    post = current.withFollowing(wasFollowing)
                 }
             }
             followInFlight = false

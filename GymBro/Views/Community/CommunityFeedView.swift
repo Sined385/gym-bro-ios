@@ -15,6 +15,7 @@ enum CommunityDestination: Hashable {
 struct CommunityFeedView: View {
     @StateObject private var viewModel: CommunityFeedViewModel = DependencyContainer.shared.resolve(CommunityFeedViewModel.self)
     @EnvironmentObject var deepLinkRouter: DeepLinkRouter
+    @EnvironmentObject var sessionManager: ActiveSessionManager
     @State private var navigationPath = NavigationPath()
     @State private var shareURL: URL?
     @State private var reportTarget: (contentType: String, contentId: String)?
@@ -23,108 +24,83 @@ struct CommunityFeedView: View {
 
     var body: some View {
         NavigationStack(path: $navigationPath) {
-            ScrollView(.vertical, showsIndicators: false) {
-                VStack(spacing: 16) {
-                    // Header
-                    headerSection
-                        .padding(.top, 8)
+            ZStack(alignment: .bottomTrailing) {
+                ScrollView(.vertical, showsIndicators: false) {
+                    VStack(spacing: 16) {
+                        // Search bar
+                        searchBar
+                            .padding(.top, 8)
 
-                    // Tab pills
-                    FeedTabPills(selectedTab: $viewModel.selectedTab) { tab in
-                        viewModel.switchTab(to: tab)
-                    }
-
-                    // Content
-                    if viewModel.isLoading {
-                        ProgressView()
-                            .tint(.gymBroPrimary)
-                            .frame(maxWidth: .infinity)
-                            .padding(.vertical, 60)
-                    } else if viewModel.posts.isEmpty {
-                        emptyStateView
-                    } else {
-                        LazyVStack(spacing: 12) {
-                            ForEach(viewModel.posts) { post in
-                                VStack(spacing: 0) {
-                                    PostCardView(
-                                        post: post,
-                                        onLike: { viewModel.toggleLike(postId: post.id) },
-                                        onComment: { viewModel.toggleComments(postId: post.id) },
-                                        onUserTap: { userId in
-                                            navigationPath.append(CommunityDestination.userProfile(userId: userId))
-                                        },
-                                        onFollow: post.isOwnPost ? nil : {
-                                            viewModel.toggleFollow(userId: post.user.id)
-                                        },
-                                        onDelete: post.isOwnPost ? {
-                                            let postId = post.id
-                                            Task { await viewModel.deletePost(postId) }
-                                        } : nil,
-                                        onReport: post.isOwnPost ? nil : {
-                                            reportTarget = (contentType: "post", contentId: post.id)
-                                        },
-                                        onBlockUser: post.isOwnPost ? nil : {
-                                            blockTarget = (userId: post.user.id, userName: post.user.fullName)
-                                        },
-                                        isCommentsExpanded: viewModel.expandedComments.contains(post.id),
-                                        onShare: {
-                                            shareURL = URL(string: "https://gyymjaam.com/p/\(post.id)")
-                                            analytics.track("post_shared", properties: ["post_id": post.id])
-                                        }
-                                    )
-                                    .onTapGesture {
-                                        analytics.track("post_opened", properties: ["post_id": post.id])
-                                        navigationPath.append(CommunityDestination.postDetail(postId: post.id))
-                                    }
-
-                                    // Inline comments
-                                    if viewModel.expandedComments.contains(post.id) {
-                                        CommentsSection(
-                                            comments: viewModel.commentsMap[post.id] ?? [],
-                                            onSubmit: { content in
-                                                Task {
-                                                    await viewModel.addComment(postId: post.id, content: content)
-                                                }
-                                            },
-                                            onUserTap: { userId in
-                                                navigationPath.append(CommunityDestination.userProfile(userId: userId))
-                                            },
-                                            onReportComment: { commentId in
-                                                reportTarget = (contentType: "comment", contentId: commentId)
-                                            }
-                                        )
-                                        .padding(.horizontal, 16)
-                                        .padding(.bottom, 12)
-                                        .background(Color.gymBroCardBackground)
-                                        .cornerRadius(16, corners: [.bottomLeft, .bottomRight])
-                                        .offset(y: -8)
-                                    }
-                                }
+                        // Search results or feed
+                        if !viewModel.searchQuery.isEmpty {
+                            searchResultsList
+                        } else {
+                            // Tab pills
+                            FeedTabPills(selectedTab: $viewModel.selectedTab) { tab in
+                                viewModel.switchTab(to: tab)
                             }
 
-                            // Load more trigger
-                            if viewModel.isLoadingMore {
+                            // Suggested profiles (global tab only)
+                            if viewModel.selectedTab == "global" && !viewModel.suggestedUsers.isEmpty {
+                                SuggestedProfilesSection(
+                                    users: viewModel.suggestedUsers,
+                                    onFollow: { userId in viewModel.followSuggestedUser(userId: userId) },
+                                    onUserTap: { userId in
+                                        navigationPath.append(CommunityDestination.userProfile(userId: userId))
+                                    }
+                                )
+                            }
+
+                            // Content
+                            if viewModel.isLoading {
                                 ProgressView()
                                     .tint(.gymBroPrimary)
-                                    .padding(.vertical, 20)
-                            } else if !viewModel.posts.isEmpty {
-                                Color.clear
-                                    .frame(height: 1)
-                                    .onAppear {
-                                        Task { await viewModel.loadMore() }
-                                    }
+                                    .frame(maxWidth: .infinity)
+                                    .padding(.vertical, 60)
+                            } else if viewModel.posts.isEmpty {
+                                emptyStateView
+                            } else {
+                                feedContent
                             }
                         }
-                    }
 
-                    Spacer()
-                        .frame(height: 40)
+                        Spacer()
+                            .frame(height: 80)
+                    }
+                    .padding(.horizontal, 20)
                 }
-                .padding(.horizontal, 20)
+                .background(Color.gymBroBackground.ignoresSafeArea())
+
+                // Floating create post button
+                if viewModel.searchQuery.isEmpty {
+                    Button {
+                        viewModel.isShowingNewPost = true
+                    } label: {
+                        ZStack {
+                            Circle()
+                                .fill(
+                                    LinearGradient(
+                                        colors: [.gymBroPrimary, .gymBroPrimaryDark],
+                                        startPoint: .topLeading,
+                                        endPoint: .bottomTrailing
+                                    )
+                                )
+                                .frame(width: 56, height: 56)
+                                .shadow(color: .gymBroPrimary.opacity(0.3), radius: 8, x: 0, y: 4)
+
+                            Image(systemName: "plus")
+                                .font(.system(size: 22, weight: .bold))
+                                .foregroundColor(.white)
+                        }
+                    }
+                    .buttonStyle(.plain)
+                    .padding(.trailing, 20)
+                    .padding(.bottom, sessionManager.isCollapsed ? 80 : 16)
+                }
             }
-            .background(Color.gymBroBackground.ignoresSafeArea())
             .task {
                 await viewModel.loadIfNeeded()
+                viewModel.loadSuggestedUsersIfNeeded()
             }
             .refreshable {
                 await viewModel.loadFeed()
@@ -196,65 +172,178 @@ struct CommunityFeedView: View {
         .analyticsScreen("Community")
     }
 
-    // MARK: - Header
+    // MARK: - Search Bar
 
-    private let darkCard = Color(hex: "2D3240")
+    private var searchBar: some View {
+        HStack(spacing: 10) {
+            Image(systemName: "magnifyingglass")
+                .font(.system(size: 16, weight: .medium))
+                .foregroundColor(.gymBroNeutral400)
 
-    private var headerSection: some View {
-        HStack(alignment: .top, spacing: 16) {
-            // Icon circle
-            ZStack {
-                Circle()
-                    .fill(Color.gymBroPrimary.opacity(0.15))
-                    .frame(width: 48, height: 48)
+            TextField("Search users...", text: $viewModel.searchQuery)
+                .font(.system(size: 15))
+                .foregroundColor(.gymBroTextPrimary)
+                .onChange(of: viewModel.searchQuery) { _, _ in
+                    viewModel.searchUsers()
+                }
 
-                Image(systemName: "person.2.fill")
-                    .font(.system(size: 20, weight: .medium))
-                    .foregroundColor(.gymBroPrimary)
+            if !viewModel.searchQuery.isEmpty {
+                Button {
+                    viewModel.clearSearch()
+                } label: {
+                    Image(systemName: "xmark.circle.fill")
+                        .font(.system(size: 16))
+                        .foregroundColor(.gymBroNeutral400)
+                }
+                .buttonStyle(.plain)
             }
+        }
+        .padding(.horizontal, 14)
+        .padding(.vertical, 10)
+        .background(Color.gymBroNeutral100)
+        .clipShape(RoundedRectangle(cornerRadius: 12))
+    }
 
-            VStack(alignment: .leading, spacing: 4) {
-                Text("Community")
-                    .font(.system(size: 22, weight: .bold))
-                    .tracking(-0.44)
-                    .foregroundColor(.white)
+    // MARK: - Search Results
 
-                Text("See what everyone's up to")
-                    .font(.system(size: 14, weight: .medium))
-                    .foregroundColor(Color(hex: "A1A1A1"))
-            }
+    private var searchResultsList: some View {
+        VStack(spacing: 0) {
+            if viewModel.isSearching {
+                ProgressView()
+                    .tint(.gymBroPrimary)
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 40)
+            } else if viewModel.searchResults.isEmpty {
+                Text("No users found")
+                    .font(.system(size: 15, weight: .medium))
+                    .foregroundColor(.gymBroTextSecondary)
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 40)
+            } else {
+                LazyVStack(spacing: 0) {
+                    ForEach(viewModel.searchResults) { user in
+                        Button {
+                            navigationPath.append(CommunityDestination.userProfile(userId: user.id))
+                        } label: {
+                            HStack(spacing: 12) {
+                                AvatarView(name: user.fullName, avatarUrl: user.avatarUrl, size: 40)
 
-            Spacer()
+                                VStack(alignment: .leading, spacing: 2) {
+                                    Text(user.fullName)
+                                        .font(.system(size: 15, weight: .semibold))
+                                        .foregroundColor(.gymBroNeutral900)
+                                    if let username = user.username {
+                                        Text("@\(username)")
+                                            .font(.system(size: 13, weight: .medium))
+                                            .foregroundColor(.gymBroTextSecondary)
+                                    }
+                                }
 
-            Button {
-                viewModel.isShowingNewPost = true
-            } label: {
-                ZStack {
-                    Circle()
-                        .fill(Color.white.opacity(0.10))
-                        .frame(width: 40, height: 40)
+                                Spacer()
 
-                    Image(systemName: "square.and.pencil")
-                        .font(.system(size: 16, weight: .semibold))
-                        .foregroundColor(.white)
+                                Button {
+                                    viewModel.toggleFollowSearchResult(userId: user.id)
+                                } label: {
+                                    Text(user.isFollowing ? "Following" : "Follow")
+                                        .font(.system(size: 12, weight: .semibold))
+                                        .foregroundColor(.white)
+                                        .padding(.horizontal, 14)
+                                        .padding(.vertical, 6)
+                                        .background(user.isFollowing ? Color(hex: "30C08D") : Color.gymBroPrimary)
+                                        .clipShape(Capsule())
+                                }
+                                .buttonStyle(.plain)
+                            }
+                            .padding(.horizontal, 4)
+                            .padding(.vertical, 10)
+                        }
+                        .buttonStyle(.plain)
+                    }
                 }
             }
-            .buttonStyle(.plain)
         }
-        .padding(.horizontal, 20)
-        .padding(.vertical, 18)
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .background(darkCard)
-        .clipShape(RoundedRectangle(cornerRadius: 28))
-        .shadow(
-            color: Color(hex: "2D3240").opacity(0.15),
-            radius: 12.5,
-            x: 0,
-            y: 20
-        )
+    }
+
+    // MARK: - Feed Content
+
+    private var feedContent: some View {
+        LazyVStack(spacing: 12) {
+            ForEach(viewModel.posts) { post in
+                VStack(spacing: 0) {
+                    PostCardView(
+                        post: post,
+                        onReaction: { emoji in viewModel.toggleReaction(postId: post.id, emoji: emoji) },
+                        onComment: { viewModel.toggleComments(postId: post.id) },
+                        onUserTap: { userId in
+                            navigationPath.append(CommunityDestination.userProfile(userId: userId))
+                        },
+                        onFollow: post.isOwnPost ? nil : {
+                            viewModel.toggleFollow(userId: post.user.id)
+                        },
+                        onDelete: post.isOwnPost ? {
+                            let postId = post.id
+                            Task { await viewModel.deletePost(postId) }
+                        } : nil,
+                        onReport: post.isOwnPost ? nil : {
+                            reportTarget = (contentType: "post", contentId: post.id)
+                        },
+                        onBlockUser: post.isOwnPost ? nil : {
+                            blockTarget = (userId: post.user.id, userName: post.user.fullName)
+                        },
+                        isCommentsExpanded: viewModel.expandedComments.contains(post.id),
+                        onShare: {
+                            shareURL = URL(string: "https://gyymjaam.com/p/\(post.id)")
+                            analytics.track("post_shared", properties: ["post_id": post.id])
+                        }
+                    )
+                    .onTapGesture {
+                        analytics.track("post_opened", properties: ["post_id": post.id])
+                        navigationPath.append(CommunityDestination.postDetail(postId: post.id))
+                    }
+
+                    // Inline comments
+                    if viewModel.expandedComments.contains(post.id) {
+                        CommentsSection(
+                            comments: viewModel.commentsMap[post.id] ?? [],
+                            onSubmit: { content in
+                                Task {
+                                    await viewModel.addComment(postId: post.id, content: content)
+                                }
+                            },
+                            onUserTap: { userId in
+                                navigationPath.append(CommunityDestination.userProfile(userId: userId))
+                            },
+                            onReportComment: { commentId in
+                                reportTarget = (contentType: "comment", contentId: commentId)
+                            }
+                        )
+                        .padding(.horizontal, 16)
+                        .padding(.bottom, 12)
+                        .background(Color.gymBroCardBackground)
+                        .cornerRadius(16, corners: [.bottomLeft, .bottomRight])
+                        .offset(y: -8)
+                    }
+                }
+            }
+
+            // Load more trigger
+            if viewModel.isLoadingMore {
+                ProgressView()
+                    .tint(.gymBroPrimary)
+                    .padding(.vertical, 20)
+            } else if !viewModel.posts.isEmpty {
+                Color.clear
+                    .frame(height: 1)
+                    .onAppear {
+                        Task { await viewModel.loadMore() }
+                    }
+            }
+        }
     }
 
     // MARK: - Empty State
+
+    private let darkCard = Color(hex: "2D3240")
 
     private var emptyStateView: some View {
         VStack(spacing: 14) {

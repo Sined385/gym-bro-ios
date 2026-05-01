@@ -22,17 +22,27 @@ final class CommunityFeedViewModel: ObservableObject {
     @Published var commentsMap: [String: [PostComment]] = [:]
     @Published var isShowingNewPost: Bool = false
 
+    // Search
+    @Published var searchQuery: String = ""
+    @Published var searchResults: [SearchUserResult] = []
+    @Published var isSearching: Bool = false
+
+    // Suggested
+    @Published var suggestedUsers: [SuggestedUser] = []
+
     // MARK: - Pagination
 
     private var cursor: String?
     private var hasMore: Bool = true
-    private var likeInFlight: Set<String> = []
+    private var reactionInFlight: Set<String> = []
 
     // MARK: - Dependencies
 
     private let networkService: NetworkServiceProtocol
     private let analyticsService: AnalyticsTrackingServiceProtocol
     private var hasLoaded = false
+    private var searchTask: Task<Void, Never>?
+    private var suggestedLoaded = false
 
     // MARK: - Initialization
 
@@ -117,65 +127,52 @@ final class CommunityFeedViewModel: ObservableObject {
         }
     }
 
-    // MARK: - Like Toggle
+    // MARK: - Reaction Toggle
 
-    func toggleLike(postId: String) {
-        guard !likeInFlight.contains(postId) else { return }
-        likeInFlight.insert(postId)
+    func toggleReaction(postId: String, emoji: String) {
+        let key = "\(postId):\(emoji)"
+        guard !reactionInFlight.contains(key) else { return }
+        reactionInFlight.insert(key)
 
         // Optimistic update
         if let index = posts.firstIndex(where: { $0.id == postId }) {
             let post = posts[index]
-            let newIsLiked = !post.isLiked
-            if newIsLiked {
-                analyticsService.track("post_liked", properties: ["post_id": postId])
+            var reactions = post.reactions ?? []
+            if let ri = reactions.firstIndex(where: { $0.emoji == emoji }) {
+                let r = reactions[ri]
+                if r.isReacted {
+                    let newCount = max(0, r.count - 1)
+                    if newCount == 0 {
+                        reactions.remove(at: ri)
+                    } else {
+                        reactions[ri] = PostReaction(emoji: emoji, count: newCount, isReacted: false)
+                    }
+                } else {
+                    reactions[ri] = PostReaction(emoji: emoji, count: r.count + 1, isReacted: true)
+                    analyticsService.track("post_reacted", properties: ["post_id": postId, "emoji": emoji])
+                }
+            } else {
+                reactions.append(PostReaction(emoji: emoji, count: 1, isReacted: true))
+                analyticsService.track("post_reacted", properties: ["post_id": postId, "emoji": emoji])
             }
-            let newCount = newIsLiked ? post.likeCount + 1 : max(0, post.likeCount - 1)
-            posts[index] = CommunityPost(
-                id: post.id,
-                user: post.user,
-                content: post.content,
-                visibility: post.visibility,
-                photoUrl: post.photoUrl,
-                workoutAttachment: post.workoutAttachment,
-                likeCount: newCount,
-                commentCount: post.commentCount,
-                isLiked: newIsLiked,
-                isFollowingAuthor: post.isFollowingAuthor,
-                isOwnPost: post.isOwnPost,
-                createdAt: post.createdAt
-            )
+            let totalCount = reactions.reduce(0) { $0 + $1.count }
+            posts[index] = post.withReactions(reactions, reactionCount: totalCount)
         }
 
         Task {
             do {
                 let response = try await networkService.request(
-                    CommunityRouter.toggleLike(postId: postId).endpoint,
-                    responseType: LikeResponse.self
+                    CommunityRouter.toggleReaction(postId: postId, emoji: emoji).endpoint,
+                    responseType: ReactionResponse.self
                 )
-                // Update with server values
                 if let index = posts.firstIndex(where: { $0.id == postId }) {
                     let post = posts[index]
-                    posts[index] = CommunityPost(
-                        id: post.id,
-                        user: post.user,
-                        content: post.content,
-                        visibility: post.visibility,
-                        photoUrl: post.photoUrl,
-                        workoutAttachment: post.workoutAttachment,
-                        likeCount: response.likeCount,
-                        commentCount: post.commentCount,
-                        isLiked: response.isLiked,
-                        isFollowingAuthor: post.isFollowingAuthor,
-                        isOwnPost: post.isOwnPost,
-                        createdAt: post.createdAt
-                    )
+                    posts[index] = post.withReactions(response.reactions, reactionCount: response.totalReactionCount)
                 }
             } catch {
-                // Revert optimistic update
                 await loadFeed()
             }
-            likeInFlight.remove(postId)
+            reactionInFlight.remove(key)
         }
     }
 
@@ -215,23 +212,9 @@ final class CommunityFeedViewModel: ObservableObject {
             commentsMap[postId] = existing
             analyticsService.track("post_commented", properties: ["post_id": postId])
 
-            // Update comment count
             if let index = posts.firstIndex(where: { $0.id == postId }) {
                 let post = posts[index]
-                posts[index] = CommunityPost(
-                    id: post.id,
-                    user: post.user,
-                    content: post.content,
-                    visibility: post.visibility,
-                    photoUrl: post.photoUrl,
-                    workoutAttachment: post.workoutAttachment,
-                    likeCount: post.likeCount,
-                    commentCount: post.commentCount + 1,
-                    isLiked: post.isLiked,
-                    isFollowingAuthor: post.isFollowingAuthor,
-                    isOwnPost: post.isOwnPost,
-                    createdAt: post.createdAt
-                )
+                posts[index] = post.withCommentCount(post.commentCount + 1)
             }
         } catch {
             // Silently fail
@@ -246,26 +229,10 @@ final class CommunityFeedViewModel: ObservableObject {
         guard !followInFlight.contains(userId) else { return }
         followInFlight.insert(userId)
 
-        // Find current follow state from the first post by this user
         let isCurrentlyFollowing = posts.first(where: { $0.user.id == userId })?.isFollowingAuthor ?? false
 
-        // Optimistic update — toggle all posts by this user
         for i in posts.indices where posts[i].user.id == userId {
-            let post = posts[i]
-            posts[i] = CommunityPost(
-                id: post.id,
-                user: post.user,
-                content: post.content,
-                visibility: post.visibility,
-                photoUrl: post.photoUrl,
-                workoutAttachment: post.workoutAttachment,
-                likeCount: post.likeCount,
-                commentCount: post.commentCount,
-                isLiked: post.isLiked,
-                isFollowingAuthor: !isCurrentlyFollowing,
-                isOwnPost: post.isOwnPost,
-                createdAt: post.createdAt
-            )
+            posts[i] = posts[i].withFollowing(!isCurrentlyFollowing)
         }
 
         Task {
@@ -282,23 +249,8 @@ final class CommunityFeedViewModel: ObservableObject {
                     )
                 }
             } catch {
-                // Revert optimistic update
                 for i in posts.indices where posts[i].user.id == userId {
-                    let post = posts[i]
-                    posts[i] = CommunityPost(
-                        id: post.id,
-                        user: post.user,
-                        content: post.content,
-                        visibility: post.visibility,
-                        photoUrl: post.photoUrl,
-                        workoutAttachment: post.workoutAttachment,
-                        likeCount: post.likeCount,
-                        commentCount: post.commentCount,
-                        isLiked: post.isLiked,
-                        isFollowingAuthor: isCurrentlyFollowing,
-                        isOwnPost: post.isOwnPost,
-                        createdAt: post.createdAt
-                    )
+                    posts[i] = posts[i].withFollowing(isCurrentlyFollowing)
                 }
             }
             followInFlight.remove(userId)
@@ -333,6 +285,101 @@ final class CommunityFeedViewModel: ObservableObject {
 
     func onPostCreated(_ post: CommunityPost) {
         posts.insert(post, at: 0)
+    }
+
+    // MARK: - User Search
+
+    func searchUsers() {
+        searchTask?.cancel()
+        let query = searchQuery.trimmingCharacters(in: .whitespacesAndNewlines)
+
+        guard !query.isEmpty else {
+            searchResults = []
+            isSearching = false
+            return
+        }
+
+        isSearching = true
+        searchTask = Task {
+            try? await Task.sleep(nanoseconds: 300_000_000) // 300ms debounce
+            guard !Task.isCancelled else { return }
+
+            do {
+                let response = try await networkService.request(
+                    CommunityRouter.searchUsers(query: query, limit: 15).endpoint,
+                    responseType: SearchUsersResponse.self
+                )
+                guard !Task.isCancelled else { return }
+                searchResults = response.users
+            } catch {
+                guard !Task.isCancelled else { return }
+                searchResults = []
+            }
+            isSearching = false
+        }
+    }
+
+    func clearSearch() {
+        searchQuery = ""
+        searchResults = []
+        isSearching = false
+        searchTask?.cancel()
+    }
+
+    func toggleFollowSearchResult(userId: String) {
+        guard let index = searchResults.firstIndex(where: { $0.id == userId }) else { return }
+        let wasFollowing = searchResults[index].isFollowing
+        searchResults[index].isFollowing = !wasFollowing
+
+        Task {
+            do {
+                if wasFollowing {
+                    _ = try await networkService.request(
+                        CommunityRouter.unfollowUser(userId: userId).endpoint,
+                        responseType: SuccessResponse.self
+                    )
+                } else {
+                    _ = try await networkService.request(
+                        CommunityRouter.followUser(userId: userId).endpoint,
+                        responseType: FollowResponse.self
+                    )
+                }
+            } catch {
+                if let i = searchResults.firstIndex(where: { $0.id == userId }) {
+                    searchResults[i].isFollowing = wasFollowing
+                }
+            }
+        }
+    }
+
+    // MARK: - Suggested Users
+
+    func loadSuggestedUsersIfNeeded() {
+        guard !suggestedLoaded else { return }
+        suggestedLoaded = true
+
+        Task {
+            do {
+                let response = try await networkService.request(
+                    CommunityRouter.suggestedUsers(limit: 10).endpoint,
+                    responseType: SuggestedUsersResponse.self
+                )
+                suggestedUsers = response.users
+            } catch {
+                suggestedUsers = []
+            }
+        }
+    }
+
+    func followSuggestedUser(userId: String) {
+        suggestedUsers.removeAll { $0.id == userId }
+
+        Task {
+            _ = try? await networkService.request(
+                CommunityRouter.followUser(userId: userId).endpoint,
+                responseType: FollowResponse.self
+            )
+        }
     }
 
 }

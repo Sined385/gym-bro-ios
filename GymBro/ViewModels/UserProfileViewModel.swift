@@ -125,91 +125,77 @@ final class UserProfileViewModel: ObservableObject {
 
     // MARK: - Post Interactions
 
-    func toggleLike(postId: String) {
-        guard !likeInFlight.contains(postId) else { return }
-        likeInFlight.insert(postId)
+    func toggleReaction(postId: String, emoji: String) {
+        let key = "\(postId):\(emoji)"
+        guard !likeInFlight.contains(key) else { return }
+        likeInFlight.insert(key)
 
         // Optimistic update
         if let index = profile?.recentPosts.firstIndex(where: { $0.id == postId }) {
             let post = profile!.recentPosts[index]
-            let newIsLiked = !post.isLiked
-            let newCount = newIsLiked ? post.likeCount + 1 : max(0, post.likeCount - 1)
-            let updated = CommunityPost(
-                id: post.id,
-                user: post.user,
-                content: post.content,
-                visibility: post.visibility,
-                photoUrl: post.photoUrl,
-                workoutAttachment: post.workoutAttachment,
-                likeCount: newCount,
-                commentCount: post.commentCount,
-                isLiked: newIsLiked,
-                isFollowingAuthor: post.isFollowingAuthor,
-                isOwnPost: post.isOwnPost,
-                createdAt: post.createdAt
+            let updated = post.withReactions(
+                optimisticToggle(post.reactions ?? [], emoji: emoji),
+                reactionCount: optimisticCount(post.reactions ?? [], emoji: emoji)
             )
-            var posts = profile!.recentPosts
-            posts[index] = updated
-            profile = UserProfile(
-                user: profile!.user,
-                primaryGoals: profile!.primaryGoals,
-                experienceLevel: profile!.experienceLevel,
-                bodyWeightKg: profile!.bodyWeightKg,
-                memberSince: profile!.memberSince,
-                consistencyStats: profile!.consistencyStats,
-                extendedStats: profile!.extendedStats,
-                followerCount: profile!.followerCount,
-                followingCount: profile!.followingCount,
-                isFollowing: profile!.isFollowing,
-                followsMe: profile!.followsMe,
-                recentPosts: posts,
-                isOwnProfile: profile!.isOwnProfile
-            )
+            updateProfilePost(at: index, with: updated)
         }
 
         Task {
             do {
                 let response = try await networkService.request(
-                    CommunityRouter.toggleLike(postId: postId).endpoint,
-                    responseType: LikeResponse.self
+                    CommunityRouter.toggleReaction(postId: postId, emoji: emoji).endpoint,
+                    responseType: ReactionResponse.self
                 )
                 if let index = profile?.recentPosts.firstIndex(where: { $0.id == postId }) {
                     let post = profile!.recentPosts[index]
-                    let updated = CommunityPost(
-                        id: post.id,
-                        user: post.user,
-                        content: post.content,
-                        visibility: post.visibility,
-                        photoUrl: post.photoUrl,
-                        workoutAttachment: post.workoutAttachment,
-                        likeCount: response.likeCount,
-                        commentCount: post.commentCount,
-                        isLiked: response.isLiked,
-                        isFollowingAuthor: post.isFollowingAuthor,
-                        isOwnPost: post.isOwnPost,
-                        createdAt: post.createdAt
-                    )
-                    var posts = profile!.recentPosts
-                    posts[index] = updated
-                    profile = UserProfile(
-                        user: profile!.user,
-                        primaryGoals: profile!.primaryGoals,
-                        experienceLevel: profile!.experienceLevel,
-                        bodyWeightKg: profile!.bodyWeightKg,
-                        memberSince: profile!.memberSince,
-                        consistencyStats: profile!.consistencyStats,
-                        extendedStats: profile!.extendedStats,
-                        followerCount: profile!.followerCount,
-                        followingCount: profile!.followingCount,
-                        isFollowing: profile!.isFollowing,
-                        followsMe: profile!.followsMe,
-                        recentPosts: posts,
-                        isOwnProfile: profile!.isOwnProfile
-                    )
+                    let updated = post.withReactions(response.reactions, reactionCount: response.totalReactionCount)
+                    updateProfilePost(at: index, with: updated)
                 }
             } catch { }
-            likeInFlight.remove(postId)
+            likeInFlight.remove(key)
         }
+    }
+
+    private func optimisticToggle(_ reactions: [PostReaction], emoji: String) -> [PostReaction] {
+        var result = reactions
+        if let ri = result.firstIndex(where: { $0.emoji == emoji }) {
+            let r = result[ri]
+            if r.isReacted {
+                let c = max(0, r.count - 1)
+                if c == 0 { result.remove(at: ri) }
+                else { result[ri] = PostReaction(emoji: emoji, count: c, isReacted: false) }
+            } else {
+                result[ri] = PostReaction(emoji: emoji, count: r.count + 1, isReacted: true)
+            }
+        } else {
+            result.append(PostReaction(emoji: emoji, count: 1, isReacted: true))
+        }
+        return result
+    }
+
+    private func optimisticCount(_ reactions: [PostReaction], emoji: String) -> Int {
+        optimisticToggle(reactions, emoji: emoji).reduce(0) { $0 + $1.count }
+    }
+
+    private func updateProfilePost(at index: Int, with updated: CommunityPost) {
+        guard let p = profile else { return }
+        var posts = p.recentPosts
+        posts[index] = updated
+        profile = UserProfile(
+            user: p.user,
+            primaryGoals: p.primaryGoals,
+            experienceLevel: p.experienceLevel,
+            bodyWeightKg: p.bodyWeightKg,
+            memberSince: p.memberSince,
+            consistencyStats: p.consistencyStats,
+            extendedStats: p.extendedStats,
+            followerCount: p.followerCount,
+            followingCount: p.followingCount,
+            isFollowing: p.isFollowing,
+            followsMe: p.followsMe,
+            recentPosts: posts,
+            isOwnProfile: p.isOwnProfile
+        )
     }
 
     func toggleComments(postId: String) {
@@ -248,37 +234,7 @@ final class UserProfileViewModel: ObservableObject {
             // Update comment count
             if let index = profile?.recentPosts.firstIndex(where: { $0.id == postId }) {
                 let post = profile!.recentPosts[index]
-                let updated = CommunityPost(
-                    id: post.id,
-                    user: post.user,
-                    content: post.content,
-                    visibility: post.visibility,
-                    photoUrl: post.photoUrl,
-                    workoutAttachment: post.workoutAttachment,
-                    likeCount: post.likeCount,
-                    commentCount: post.commentCount + 1,
-                    isLiked: post.isLiked,
-                    isFollowingAuthor: post.isFollowingAuthor,
-                    isOwnPost: post.isOwnPost,
-                    createdAt: post.createdAt
-                )
-                var posts = profile!.recentPosts
-                posts[index] = updated
-                profile = UserProfile(
-                    user: profile!.user,
-                    primaryGoals: profile!.primaryGoals,
-                    experienceLevel: profile!.experienceLevel,
-                    bodyWeightKg: profile!.bodyWeightKg,
-                    memberSince: profile!.memberSince,
-                    consistencyStats: profile!.consistencyStats,
-                    extendedStats: profile!.extendedStats,
-                    followerCount: profile!.followerCount,
-                    followingCount: profile!.followingCount,
-                    isFollowing: profile!.isFollowing,
-                    followsMe: profile!.followsMe,
-                    recentPosts: posts,
-                    isOwnProfile: profile!.isOwnProfile
-                )
+                updateProfilePost(at: index, with: post.withCommentCount(post.commentCount + 1))
             }
         } catch { }
     }

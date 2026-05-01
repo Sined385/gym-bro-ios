@@ -9,7 +9,7 @@ import SwiftUI
 
 struct PostCardView: View {
     let post: CommunityPost
-    let onLike: () -> Void
+    let onReaction: (String) -> Void
     let onComment: () -> Void
     let onUserTap: (String) -> Void
     var onFollow: (() -> Void)?
@@ -22,6 +22,7 @@ struct PostCardView: View {
 
     @State private var isTextExpanded: Bool = false
     @State private var isPhotoExpanded: Bool = false
+    @State private var showReactionPicker: Bool = false
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
@@ -62,24 +63,32 @@ struct PostCardView: View {
                 Spacer()
 
                 if let onFollow {
-                    Button {
-                        onFollow()
-                    } label: {
-                        HStack(spacing: 4) {
-                            if post.isFollowingAuthor {
-                                Image(systemName: "checkmark")
-                                    .font(.system(size: 10, weight: .bold))
-                            }
-                            Text(post.isFollowingAuthor ? "Following" : "Follow")
-                                .font(.system(size: 12, weight: .semibold))
+                    if post.isFollowingAuthor {
+                        Button {
+                            onFollow()
+                        } label: {
+                            Image(systemName: "checkmark")
+                                .font(.system(size: 10, weight: .bold))
+                                .foregroundColor(.white)
+                                .frame(width: 24, height: 24)
+                                .background(Color(hex: "30C08D"))
+                                .clipShape(Circle())
                         }
-                        .foregroundColor(.white)
-                        .padding(.horizontal, 12)
-                        .padding(.vertical, 5)
-                        .background(post.isFollowingAuthor ? Color(hex: "30C08D") : Color(hex: "2D3240"))
-                        .clipShape(Capsule())
+                        .buttonStyle(.plain)
+                    } else {
+                        Button {
+                            onFollow()
+                        } label: {
+                            Text("Follow")
+                                .font(.system(size: 12, weight: .semibold))
+                                .foregroundColor(.white)
+                                .padding(.horizontal, 12)
+                                .padding(.vertical, 5)
+                                .background(Color(hex: "2D3240"))
+                                .clipShape(Capsule())
+                        }
+                        .buttonStyle(.plain)
                     }
-                    .buttonStyle(.plain)
                 }
 
                 if onDelete != nil || onReport != nil {
@@ -175,10 +184,43 @@ struct PostCardView: View {
                 )
             }
 
-            // Like / Comment row
-            HStack(spacing: 0) {
+            // Emoji reactions + add emoji row (always visible)
+            HStack(spacing: 6) {
+                if let emojiReactions = post.reactions?.filter({ $0.emoji != "heart" && $0.count > 0 }), !emojiReactions.isEmpty {
+                    ForEach(emojiReactions) { reaction in
+                        Button {
+                            onReaction(reaction.emoji)
+                        } label: {
+                            HStack(spacing: 3) {
+                                Text(ReactionEmoji(rawValue: reaction.emoji)?.display ?? reaction.emoji)
+                                    .font(.system(size: 15))
+                                Text("\(reaction.count)")
+                                    .font(.system(size: 12, weight: .semibold))
+                                    .foregroundColor(reaction.isReacted ? .gymBroPrimary : .gymBroNeutral600)
+                            }
+                            .padding(.horizontal, 8)
+                            .padding(.vertical, 4)
+                            .background(reaction.isReacted ? Color.gymBroPrimary.opacity(0.10) : Color.gymBroNeutral100)
+                            .clipShape(Capsule())
+                        }
+                        .buttonStyle(.plain)
+                    }
+
+                    if !emojiReactions.contains(where: { $0.isReacted }) {
+                        addEmojiButton
+                    }
+                } else {
+                    addEmojiButton
+                }
+
+                Spacer()
+            }
+
+            // Like / Comment / Share row
+            HStack(spacing: 8) {
+                // Like button
                 Button {
-                    onLike()
+                    onReaction("heart")
                 } label: {
                     HStack(spacing: 5) {
                         Image(systemName: post.isLiked ? "heart.fill" : "heart")
@@ -198,6 +240,7 @@ struct PostCardView: View {
                 }
                 .buttonStyle(.plain)
 
+                // Comment button
                 Button {
                     onComment()
                 } label: {
@@ -234,6 +277,33 @@ struct PostCardView: View {
                     .buttonStyle(.plain)
                 }
             }
+            .overlay {
+                if showReactionPicker {
+                    Color.clear
+                        .contentShape(Rectangle())
+                        .onTapGesture {
+                            withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
+                                showReactionPicker = false
+                            }
+                        }
+                }
+            }
+            .overlay(alignment: .topLeading) {
+                if showReactionPicker {
+                    ReactionPickerView(
+                        activeEmojis: Set((post.reactions ?? []).filter { $0.isReacted && $0.emoji != "heart" }.map(\.emoji)),
+                        onReaction: { emoji in
+                            withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
+                                showReactionPicker = false
+                            }
+                            onReaction(emoji)
+                        }
+                    )
+                    .transition(.scale(scale: 0.5, anchor: .bottomLeading).combined(with: .opacity))
+                    .offset(y: -48)
+                    .onTapGesture { }
+                }
+            }
         }
         .padding(16)
         .background(Color.gymBroCardBackground)
@@ -246,6 +316,27 @@ struct PostCardView: View {
     }
 
     // MARK: - Time Ago Helper
+
+    private var addEmojiButton: some View {
+        Button {
+            withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
+                showReactionPicker.toggle()
+            }
+        } label: {
+            HStack(spacing: 3) {
+                Image(systemName: "face.smiling")
+                    .font(.system(size: 15, weight: .medium))
+                Image(systemName: "plus")
+                    .font(.system(size: 9, weight: .bold))
+            }
+            .foregroundColor(.gymBroNeutral400)
+            .padding(.horizontal, 8)
+            .padding(.vertical, 4)
+            .background(Color.gymBroNeutral100)
+            .clipShape(Capsule())
+        }
+        .buttonStyle(.plain)
+    }
 
     private func timeAgo(from isoString: String) -> String {
         let formatter = ISO8601DateFormatter()
