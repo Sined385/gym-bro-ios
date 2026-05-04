@@ -244,22 +244,64 @@ struct PaywallView: View {
 
     // MARK: - Restore
 
+    @State private var isRestoring: Bool = false
+    @State private var restoreMessage: String?
+
     private var restoreButton: some View {
         Button {
-            Task { await subscriptionManager.restorePurchases() }
+            Task {
+                isRestoring = true
+                restoreMessage = nil
+                await subscriptionManager.restorePurchases()
+                isRestoring = false
+                if subscriptionManager.isPremium {
+                    restoreMessage = "Purchase restored successfully!"
+                } else {
+                    restoreMessage = "No active subscription found."
+                }
+            }
         } label: {
-            Text("Restore Purchases")
-                .font(.system(size: 14, weight: .medium))
-                .foregroundColor(.gymBroTextSecondary)
+            if isRestoring {
+                ProgressView()
+                    .tint(.gymBroTextSecondary)
+            } else {
+                Text("Restore Purchases")
+                    .font(.system(size: 14, weight: .medium))
+                    .foregroundColor(.gymBroTextSecondary)
+            }
+        }
+        .disabled(isRestoring)
+        .overlay(alignment: .bottom) {
+            if let message = restoreMessage {
+                Text(message)
+                    .font(.system(size: 12, weight: .medium))
+                    .foregroundColor(subscriptionManager.isPremium ? Color(hex: "30C08D") : Color(hex: "A1A1A1"))
+                    .offset(y: 20)
+            }
         }
     }
 
     // MARK: - Terms
 
     private var termsSection: some View {
-        Text("Subscriptions auto-renew. Cancel anytime in Settings.")
-            .font(.system(size: 12, weight: .medium))
-            .foregroundColor(Color(hex: "A1A1A1"))
-            .multilineTextAlignment(.center)
+        VStack(spacing: 8) {
+            Text("Subscriptions auto-renew. Cancel anytime in Settings.")
+                .font(.system(size: 12, weight: .medium))
+                .foregroundColor(Color(hex: "A1A1A1"))
+                .multilineTextAlignment(.center)
+
+            HStack(spacing: 16) {
+                Link("Privacy Policy", destination: URL(string: "https://gyymjaam.com/privacy")!)
+                    .font(.system(size: 12, weight: .medium))
+                    .foregroundColor(.gymBroTextSecondary)
+
+                Text("·")
+                    .foregroundColor(Color(hex: "A1A1A1"))
+
+                Link("Terms of Use", destination: URL(string: "https://gyymjaam.com/terms")!)
+                    .font(.system(size: 12, weight: .medium))
+                    .foregroundColor(.gymBroTextSecondary)
+            }
+        }
     }
 }

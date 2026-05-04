@@ -47,6 +47,9 @@ final class SubscriptionManager: ObservableObject {
     // MARK: - Load Status from API
 
     func loadStatus() async {
+        // Sync entitlement status with backend first
+        await syncEntitlementWithBackend()
+
         do {
             let status = try await networkService.request(
                 SubscriptionRouter.getStatus.endpoint,
@@ -57,6 +60,37 @@ final class SubscriptionManager: ObservableObject {
             coachMessagesLimit = status.coachMessagesLimit ?? 20
         } catch {
             print("[SubscriptionManager] Failed to load status: \(error)")
+        }
+    }
+
+    // MARK: - Sync Entitlement with Backend
+
+    private func syncEntitlementWithBackend() async {
+        var activeTransactionId: String?
+        var activeProductId: String?
+        var hasActive = false
+
+        for await result in Transaction.currentEntitlements {
+            if let transaction = try? checkVerified(result) {
+                hasActive = true
+                activeTransactionId = String(transaction.id)
+                activeProductId = transaction.productID
+                break
+            }
+        }
+
+        do {
+            let response = try await networkService.request(
+                SubscriptionRouter.sync(
+                    hasActiveEntitlement: hasActive,
+                    transactionId: activeTransactionId,
+                    productId: activeProductId
+                ).endpoint,
+                responseType: SyncResponse.self
+            )
+            isPremium = response.isPremium
+        } catch {
+            print("[SubscriptionManager] Sync failed: \(error)")
         }
     }
 

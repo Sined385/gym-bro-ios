@@ -15,6 +15,10 @@ struct SubscriptionStatusResponse: Decodable {
     let coachMessagesLimit: Int?
 }
 
+struct SyncResponse: Decodable {
+    let isPremium: Bool
+}
+
 enum PremiumFeature: String {
     case coachChat = "coach_chat"
     case customExercises = "custom_exercises"

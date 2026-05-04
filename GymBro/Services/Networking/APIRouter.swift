@@ -730,6 +730,7 @@ enum SubscriptionRouter: APIRouter {
     case getStatus
     case verify(transactionId: String, productId: String)
     case restore(transactionId: String, productId: String)
+    case sync(hasActiveEntitlement: Bool, transactionId: String?, productId: String?)
 
     var path: String {
         switch self {
@@ -739,13 +740,15 @@ enum SubscriptionRouter: APIRouter {
             return "/api/v1/subscription/verify"
         case .restore:
             return "/api/v1/subscription/restore"
+        case .sync:
+            return "/api/v1/subscription/sync"
         }
     }
 
     var method: HTTPMethod {
         switch self {
         case .getStatus: return .get
-        case .verify, .restore: return .post
+        case .verify, .restore, .sync: return .post
         }
     }
 
@@ -756,13 +759,18 @@ enum SubscriptionRouter: APIRouter {
         case .verify(let transactionId, let productId),
              .restore(let transactionId, let productId):
             return ["transaction_id": transactionId, "product_id": productId]
+        case .sync(let hasActive, let transactionId, let productId):
+            var params: [String: Any] = ["has_active_entitlement": hasActive]
+            if let transactionId { params["transaction_id"] = transactionId }
+            if let productId { params["product_id"] = productId }
+            return params
         }
     }
 
     var encoding: ParameterEncoding {
         switch self {
         case .getStatus: return .url
-        case .verify, .restore: return .json
+        case .verify, .restore, .sync: return .json
         }
     }
 }

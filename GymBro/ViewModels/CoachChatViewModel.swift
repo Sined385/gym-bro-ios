@@ -108,6 +108,8 @@ final class CoachChatViewModel: ObservableObject {
         "I only have dumbbells"
     ]
 
+    private var cancellables = Set<AnyCancellable>()
+
     // MARK: - Initialization
 
     init(networkService: NetworkServiceProtocol, sessionManager: ActiveSessionManager, appDataState: AppDataState, analyticsService: AnalyticsTrackingServiceProtocol, subscriptionManager: SubscriptionManager) {
@@ -116,6 +118,15 @@ final class CoachChatViewModel: ObservableObject {
         self.appDataState = appDataState
         self.analyticsService = analyticsService
         self.subscriptionManager = subscriptionManager
+
+        // When premium activates, clear limit blocker
+        subscriptionManager.$isPremium
+            .dropFirst()
+            .filter { $0 }
+            .sink { [weak self] _ in
+                self?.isLimitReached = false
+            }
+            .store(in: &cancellables)
     }
 
     // MARK: - Load History

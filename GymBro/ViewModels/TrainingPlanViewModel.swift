@@ -46,6 +46,20 @@ final class TrainingPlanViewModel: ObservableObject {
                 }
             }
             .store(in: &cancellables)
+
+        // When premium status changes, forward to view and reload plan
+        subscriptionManager.$isPremium
+            .dropFirst()
+            .removeDuplicates()
+            .sink { [weak self] isPremium in
+                self?.objectWillChange.send()
+                if isPremium {
+                    Task { [weak self] in
+                        await self?.loadPlan()
+                    }
+                }
+            }
+            .store(in: &cancellables)
     }
 
     // MARK: - Load If Needed
