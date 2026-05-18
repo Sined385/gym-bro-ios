@@ -15,6 +15,7 @@ struct ExerciseLibraryItem: Decodable, Identifiable, Hashable {
     let muscleGroup: String
     let equipment: String
     let isSystem: Bool
+    var isFavorite: Bool = false
     var images: [String]? = nil
     var externalId: String? = nil
 }
@@ -67,6 +68,21 @@ struct PreviousSet: Decodable, Identifiable {
     let weight: Double?
     let weightUnit: String
     let reps: Int
+    let isBodyweight: Bool
+
+    private enum CodingKeys: String, CodingKey {
+        case setNumber, weight, weightUnit, reps, isBodyweight
+    }
+
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        self.setNumber = try c.decode(Int.self, forKey: .setNumber)
+        self.weight = try c.decodeIfPresent(Double.self, forKey: .weight)
+        self.weightUnit = try c.decodeIfPresent(String.self, forKey: .weightUnit) ?? "kg"
+        self.reps = try c.decode(Int.self, forKey: .reps)
+        self.isBodyweight = try c.decodeIfPresent(Bool.self, forKey: .isBodyweight) ?? false
+    }
+
     var id: Int { setNumber }
 }
 
@@ -87,6 +103,10 @@ struct ActiveSessionExercise: Identifiable, Equatable, Codable {
     var targetReps: Int
     var imageUrl: String?
     var externalId: String?
+    // Defaults to false; the FavoritesService is the live source of truth and
+    // the heart icon reads from there. This field exists so the model round-trips
+    // through SwiftData persistence cleanly if we ever switch to it.
+    var isFavorite: Bool = false
 
     static func == (lhs: Self, rhs: Self) -> Bool {
         lhs.id == rhs.id
@@ -102,6 +122,9 @@ struct ActiveSet: Identifiable, Equatable, Codable {
     var weightUnit: String
     var reps: Int?
     var isCompleted: Bool
+    // Defaults to false so existing CachedSession blobs in UserDefaults decode
+    // without a migration. New sets honor the user's bodyweight toggle.
+    var isBodyweight: Bool = false
 }
 
 // MARK: - Superset Group
@@ -193,6 +216,22 @@ struct SetResponse: Decodable, Identifiable {
     let weightUnit: String
     let reps: Int
     let isCompleted: Bool
+    let isBodyweight: Bool
+
+    private enum CodingKeys: String, CodingKey {
+        case id, setNumber, weight, weightUnit, reps, isCompleted, isBodyweight
+    }
+
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        self.id = try c.decode(String.self, forKey: .id)
+        self.setNumber = try c.decode(Int.self, forKey: .setNumber)
+        self.weight = try c.decodeIfPresent(Double.self, forKey: .weight)
+        self.weightUnit = try c.decodeIfPresent(String.self, forKey: .weightUnit) ?? "kg"
+        self.reps = try c.decode(Int.self, forKey: .reps)
+        self.isCompleted = try c.decode(Bool.self, forKey: .isCompleted)
+        self.isBodyweight = try c.decodeIfPresent(Bool.self, forKey: .isBodyweight) ?? false
+    }
 }
 
 struct SupersetResponse: Decodable {

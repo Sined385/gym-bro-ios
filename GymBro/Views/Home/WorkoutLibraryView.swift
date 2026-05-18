@@ -11,6 +11,7 @@ struct WorkoutLibraryView: View {
     @StateObject private var viewModel: WorkoutTemplatesViewModel = DependencyContainer.shared.resolve(WorkoutTemplatesViewModel.self)
     @StateObject private var exerciseVM: ExerciseLibraryViewModel = DependencyContainer.shared.resolve(ExerciseLibraryViewModel.self)
     @EnvironmentObject var sessionManager: ActiveSessionManager
+    @EnvironmentObject var favoritesService: FavoritesService
     @Environment(\.dismiss) private var dismiss
 
     private enum LibraryTab: String, CaseIterable {
@@ -162,7 +163,7 @@ struct WorkoutLibraryView: View {
             } else {
                 ScrollView(.vertical, showsIndicators: false) {
                     LazyVStack(spacing: 12) {
-                        ForEach(exerciseVM.filteredExercises) { item in
+                        ForEach(exerciseVM.filteredExercises(favoriteIds: favoritesService.favoriteIds)) { item in
                             exerciseCard(item)
                         }
                     }

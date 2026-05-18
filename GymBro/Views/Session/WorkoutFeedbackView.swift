@@ -3,11 +3,10 @@ import SwiftUI
 struct WorkoutFeedbackView: View {
     @ObservedObject var viewModel: SessionFlowViewModel
     @EnvironmentObject var sessionManager: ActiveSessionManager
+    @EnvironmentObject var appDataState: AppDataState
     var onDismiss: () -> Void
 
     @State private var isSubmitting: Bool = false
-    @State private var showShareSheet: Bool = false
-    @State private var completionDurationMinutes: Int?
     @State private var showError: Bool = false
     @State private var errorMessage: String = ""
 
@@ -122,8 +121,22 @@ struct WorkoutFeedbackView: View {
                         let response = await viewModel.submitFeedbackAndComplete()
                         isSubmitting = false
                         if let response {
-                            completionDurationMinutes = response.durationMinutes
-                            showShareSheet = true
+                            // Snapshot the data the share screen needs BEFORE
+                            // tearing down the session — once onDismiss fires,
+                            // the SessionFlowViewModel is gone.
+                            let shareData = CompletedWorkoutShareData(
+                                sessionId: viewModel.sessionId,
+                                sessionTitle: viewModel.sessionTitle,
+                                exercises: viewModel.exercises,
+                                effortLevel: viewModel.effortLevel,
+                                energyLevel: viewModel.energyLevel,
+                                durationMinutes: response.durationMinutes
+                            )
+                            appDataState.pendingShareData = shareData
+                            // Fully end the session — MainTabView will present
+                            // the share sheet from appDataState as a decoupled
+                            // overlay on top of the home tab.
+                            onDismiss()
                         } else {
                             errorMessage = "Failed to save workout. Please try again."
                             showError = true
@@ -165,14 +178,6 @@ struct WorkoutFeedbackView: View {
             Button("OK", role: .cancel) { }
         } message: {
             Text(errorMessage)
-        }
-        .sheet(isPresented: $showShareSheet) {
-            ShareSessionView(
-                viewModel: viewModel,
-                sessionDurationMinutes: completionDurationMinutes,
-                onShare: { _ in onDismiss() },
-                onSkip: { onDismiss() }
-            )
         }
     }
 

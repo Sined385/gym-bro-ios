@@ -60,7 +60,9 @@ final class AuthViewModel: ObservableObject {
         isLoading = false
     }
 
-    /// Sign in with Google — launches Google Sign-In SDK, then passes ID token to Supabase
+    /// Sign in with Google — launches Google Sign-In SDK, then hands the ID
+    /// token plus the captured profile (name/avatar) to the auth service so
+    /// Supabase user_metadata gets seeded for onboarding pre-fill.
     func signInWithGoogle() async {
         isLoading = true
         errorMessage = nil
@@ -82,24 +84,16 @@ final class AuthViewModel: ObservableObject {
                 return
             }
 
-            // Pass token to Supabase
-            let session = try await SupabaseConfig.client.auth.signInWithIdToken(
-                credentials: .init(provider: .google, idToken: idToken)
+            let profile = result.user.profile
+            let user = try await authService.signInWithGoogle(
+                idToken: idToken,
+                fullName: profile?.name,
+                avatarURL: profile?.imageURL(withDimension: 200)?.absoluteString
             )
-
-            let user = session.user
-            let authUser = AuthUser(
-                id: user.id.uuidString,
-                email: user.email,
-                fullName: result.user.profile?.name,
-                avatarURL: result.user.profile?.imageURL(withDimension: 200)?.absoluteString,
-                provider: .google,
-                createdAt: user.createdAt
-            )
-            currentUser = authUser
+            currentUser = user
             isAuthenticated = true
-            Analytics.setUserID(authUser.id)
-            trackSignIn(method: "google", userId: authUser.id)
+            Analytics.setUserID(user.id)
+            trackSignIn(method: "google", userId: user.id)
             await checkOnboardingStatus()
         } catch let error as GIDSignInError where error.code == .canceled {
             errorMessage = nil // User cancelled

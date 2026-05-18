@@ -21,7 +21,6 @@ final class SessionFlowViewModel: ObservableObject {
     @Published var exercises: [ActiveSessionExercise] = []
     @Published var isLoading: Bool = false
     @Published var errorMessage: String?
-    @Published var pendingExerciseId: String?
 
     // Feedback
     @Published var effortLevel: Int = 0
@@ -202,7 +201,8 @@ final class SessionFlowViewModel: ObservableObject {
             targetSets: 0,
             targetReps: 0,
             imageUrl: ExerciseImageURLBuilder.thumbnailURL(for: item.externalId)?.absoluteString ?? item.images?.first,
-            externalId: item.externalId
+            externalId: item.externalId,
+            isFavorite: item.isFavorite
         )
         exercises.append(newExercise)
 
@@ -212,43 +212,6 @@ final class SessionFlowViewModel: ObservableObject {
         ])
 
         notifySessionChanged()
-    }
-
-    func addExercisePending(_ item: ExerciseLibraryItem) async -> String {
-        let newExercise = ActiveSessionExercise(
-            id: UUID().uuidString,
-            libraryExerciseId: item.id,
-            name: item.name,
-            muscleGroup: item.muscleGroup,
-            equipment: item.equipment,
-            accentColor: nextAccentColor(),
-            stepNumber: exercises.count + 1,
-            sets: [],
-            supersetGroupId: nil,
-            supersetOrder: nil,
-            targetSets: 0,
-            targetReps: 0,
-            imageUrl: ExerciseImageURLBuilder.thumbnailURL(for: item.externalId)?.absoluteString ?? item.images?.first,
-            externalId: item.externalId
-        )
-        exercises.append(newExercise)
-        pendingExerciseId = newExercise.id
-        return newExercise.id
-    }
-
-    func confirmPendingExercise() {
-        guard let pendingId = pendingExerciseId else { return }
-        pendingExerciseId = nil
-        notifySessionChanged()
-        analyticsService.track("pending_exercise_confirmed", properties: [
-            "exercise_id": pendingId
-        ])
-    }
-
-    func discardPendingExercise() {
-        guard let pendingId = pendingExerciseId else { return }
-        exercises.removeAll { $0.id == pendingId }
-        pendingExerciseId = nil
     }
 
     func addSuperset(_ exerciseIds: [String]) async {
@@ -312,25 +275,24 @@ final class SessionFlowViewModel: ObservableObject {
 
     // MARK: - Set Management
 
-    func completeSet(exerciseId: String, setId: String, weight: Double?, reps: Int) async {
+    func completeSet(exerciseId: String, setId: String, weight: Double?, reps: Int, isBodyweight: Bool = false) async {
         sessionManager.cancelStillThereNotification()
 
         guard let exerciseIndex = exercises.firstIndex(where: { $0.id == exerciseId }),
               let setIndex = exercises[exerciseIndex].sets.firstIndex(where: { $0.id == setId }) else { return }
 
-        exercises[exerciseIndex].sets[setIndex].weight = weight
+        // When the user flipped the bodyweight toggle, force the stored weight
+        // to nil so display sites never read a stale value.
+        exercises[exerciseIndex].sets[setIndex].weight = isBodyweight ? nil : weight
         exercises[exerciseIndex].sets[setIndex].reps = reps
         exercises[exerciseIndex].sets[setIndex].isCompleted = true
+        exercises[exerciseIndex].sets[setIndex].isBodyweight = isBodyweight
 
-        if exerciseId == pendingExerciseId {
-            confirmPendingExercise()
-        } else {
-            notifySessionChanged()
-        }
+        notifySessionChanged()
 
         sessionManager.updateLastCompletedSet(
             exerciseName: exercises[exerciseIndex].name,
-            weight: weight,
+            weight: isBodyweight ? nil : weight,
             weightUnit: exercises[exerciseIndex].sets[setIndex].weightUnit,
             reps: reps
         )
@@ -338,11 +300,12 @@ final class SessionFlowViewModel: ObservableObject {
         Analytics.logEvent("set_logged", parameters: [
             "exercise_name": exercises[exerciseIndex].name,
             "weight": weight ?? 0,
-            "reps": reps
+            "reps": reps,
+            "is_bodyweight": isBodyweight
         ] as [String: Any])
     }
 
-    func logSet(exerciseId: String, weight: Double?, weightUnit: String = "kg", reps: Int) async {
+    func logSet(exerciseId: String, weight: Double?, weightUnit: String = "kg", reps: Int, isBodyweight: Bool = false) async {
         sessionManager.cancelStillThereNotification()
 
         guard let exerciseIndex = exercises.firstIndex(where: { $0.id == exerciseId }) else { return }
@@ -351,32 +314,35 @@ final class SessionFlowViewModel: ObservableObject {
         let newSet = ActiveSet(
             id: UUID().uuidString,
             setNumber: setNumber,
-            weight: weight,
+            weight: isBodyweight ? nil : weight,
             weightUnit: weightUnit,
             reps: reps,
-            isCompleted: true
+            isCompleted: true,
+            isBodyweight: isBodyweight
         )
         exercises[exerciseIndex].sets.append(newSet)
 
-        if exerciseId == pendingExerciseId {
-            confirmPendingExercise()
-        } else {
-            notifySessionChanged()
-        }
+        notifySessionChanged()
 
         sessionManager.updateLastCompletedSet(
             exerciseName: exercises[exerciseIndex].name,
-            weight: weight,
+            weight: isBodyweight ? nil : weight,
             weightUnit: weightUnit,
             reps: reps
         )
     }
 
-    func updateSet(exerciseId: String, setId: String, weight: Double?, weightUnit: String?, reps: Int?, isCompleted: Bool?) async {
+    func updateSet(exerciseId: String, setId: String, weight: Double?, weightUnit: String?, reps: Int?, isCompleted: Bool?, isBodyweight: Bool? = nil) async {
         guard let exerciseIndex = exercises.firstIndex(where: { $0.id == exerciseId }),
               let setIndex = exercises[exerciseIndex].sets.firstIndex(where: { $0.id == setId }) else { return }
 
-        if let weight = weight { exercises[exerciseIndex].sets[setIndex].weight = weight }
+        if let isBodyweight { exercises[exerciseIndex].sets[setIndex].isBodyweight = isBodyweight }
+        // If the set is now bodyweight, clear the weight; otherwise accept the new value.
+        if exercises[exerciseIndex].sets[setIndex].isBodyweight {
+            exercises[exerciseIndex].sets[setIndex].weight = nil
+        } else if let weight = weight {
+            exercises[exerciseIndex].sets[setIndex].weight = weight
+        }
         if let weightUnit = weightUnit { exercises[exerciseIndex].sets[setIndex].weightUnit = weightUnit }
         if let reps = reps { exercises[exerciseIndex].sets[setIndex].reps = reps }
         if let isCompleted = isCompleted { exercises[exerciseIndex].sets[setIndex].isCompleted = isCompleted }
@@ -465,8 +431,9 @@ final class SessionFlowViewModel: ObservableObject {
                             setNumber: set.setNumber,
                             reps: set.reps ?? 0,
                             isCompleted: set.isCompleted,
-                            weight: set.weight,
-                            weightUnit: set.weightUnit
+                            weight: set.isBodyweight ? nil : set.weight,
+                            weightUnit: set.weightUnit,
+                            isBodyweight: set.isBodyweight
                         )
                     },
                     libraryExerciseId: ex.libraryExerciseId,
@@ -498,7 +465,9 @@ final class SessionFlowViewModel: ObservableObject {
                 responseType: SessionResponse.self
             )
 
-            // Success — remove from disk
+            // Success — remove the retry payload from disk. The session is
+            // torn down by WorkoutFeedbackView right after, which handles all
+            // cache + notification cleanup via endSession().
             completionCacheService.remove(id: pendingCompletion.id)
 
             analyticsService.track("workout_completed", properties: [

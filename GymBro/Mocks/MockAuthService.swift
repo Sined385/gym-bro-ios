@@ -49,12 +49,12 @@ final class MockAuthService: AuthServiceProtocol {
         return user
     }
 
-    func signInWithGoogle(idToken: String) async throws -> AuthUser {
+    func signInWithGoogle(idToken: String, fullName: String?, avatarURL: String?) async throws -> AuthUser {
         let user = AuthUser(
             id: UUID().uuidString,
             email: "test@example.com",
-            fullName: "Test User",
-            avatarURL: nil,
+            fullName: fullName ?? "Test User",
+            avatarURL: avatarURL,
             provider: .google,
             createdAt: Date()
         )

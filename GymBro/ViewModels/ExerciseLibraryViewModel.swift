@@ -24,11 +24,15 @@ final class ExerciseLibraryViewModel: ObservableObject {
 
     private let networkService: NetworkServiceProtocol
     private let analyticsService: AnalyticsTrackingServiceProtocol
+    private let favoritesService: FavoritesService
     let subscriptionManager: SubscriptionManager
 
     // MARK: - Computed Properties
 
-    var filteredExercises: [ExerciseLibraryItem] {
+    /// Apply user filters, then partition favorites-first while preserving the
+    /// in-set ordering. Favorites observe `favoritesService.favoriteIds` so a
+    /// toggle from anywhere reshuffles the list automatically.
+    func filteredExercises(favoriteIds: Set<String>) -> [ExerciseLibraryItem] {
         var result = exercises
 
         if let group = selectedMuscleGroup {
@@ -43,15 +47,23 @@ final class ExerciseLibraryViewModel: ObservableObject {
             result = result.filter { $0.name.localizedCaseInsensitiveContains(searchText) }
         }
 
-        return result
+        let favorites = result.filter { favoriteIds.contains($0.id) }
+        let rest = result.filter { !favoriteIds.contains($0.id) }
+        return favorites + rest
     }
 
     // MARK: - Initialization
 
-    init(networkService: NetworkServiceProtocol, analyticsService: AnalyticsTrackingServiceProtocol, subscriptionManager: SubscriptionManager) {
+    init(
+        networkService: NetworkServiceProtocol,
+        analyticsService: AnalyticsTrackingServiceProtocol,
+        subscriptionManager: SubscriptionManager,
+        favoritesService: FavoritesService
+    ) {
         self.networkService = networkService
         self.analyticsService = analyticsService
         self.subscriptionManager = subscriptionManager
+        self.favoritesService = favoritesService
     }
 
     // MARK: - Data Loading
@@ -63,6 +75,7 @@ final class ExerciseLibraryViewModel: ObservableObject {
         do {
             let response = try await networkService.request(ExerciseRouter.list.endpoint, responseType: ExerciseLibraryResponse.self)
             exercises = response.exercises
+            favoritesService.seedFromLibrary(response.exercises)
         } catch {
             print("[ExerciseLibrary] API failed, using mock data. Error: \(error)")
             exercises = Self.mockExercises

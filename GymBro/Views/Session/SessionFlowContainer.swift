@@ -73,14 +73,15 @@ struct SessionFlowContainer: View {
                         onTapSuperset: { groupId in
                             navigationPath.append(SessionRoute.supersetLogging(groupId: groupId))
                         },
+                        onStartWorkout: { sessionManager.startWorkout() },
                         onEndWorkout: { navigationPath.append(SessionRoute.workoutFeedback) },
-                        onCancelWorkout: onDismiss,
                         onSaveTemplate: { showSaveTemplate = true }
                     )
                 } else {
                     SessionStartedView(
                         viewModel: viewModel,
                         onAddExercise: { navigationPath.append(SessionRoute.exerciseLibrary) },
+                        onStartWorkout: { sessionManager.startWorkout() },
                         onCancelWorkout: onDismiss,
                         onDismiss: onCollapse
                     )
@@ -94,9 +95,13 @@ struct SessionFlowContainer: View {
                         viewModel: libraryViewModel,
                         addedExerciseIds: Set(viewModel.exercises.compactMap { $0.libraryExerciseId }),
                         onExerciseSelected: { item in
-                            Task {
-                                let exerciseId = await viewModel.addExercisePending(item)
-                                navigationPath.append(SessionRoute.exerciseLogging(exerciseId: exerciseId))
+                            // Tap toggles membership: if already in the workout,
+                            // tapping again removes it. Lets the user undo a
+                            // mis-tap without leaving the library.
+                            if let existing = viewModel.exercises.first(where: { $0.libraryExerciseId == item.id }) {
+                                Task { await viewModel.removeExercise(existing.id) }
+                            } else {
+                                Task { await viewModel.addExercise(item) }
                             }
                         },
                         onStartSuperset: {
@@ -145,11 +150,6 @@ struct SessionFlowContainer: View {
                         onDismiss: onDismiss
                     )
                 }
-            }
-        }
-        .onChange(of: navigationPath.count) { _, newCount in
-            if viewModel.pendingExerciseId != nil && newCount <= 1 {
-                viewModel.discardPendingExercise()
             }
         }
         .sheet(isPresented: $showSaveTemplate) {

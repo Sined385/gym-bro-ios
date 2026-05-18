@@ -110,6 +110,13 @@ final class DependencyContainer {
                 appDataState: resolver.resolve(AppDataState.self)!
             )
         }.inObjectScope(.container)
+
+        // Favorites Service (singleton)
+        container.register(FavoritesService.self) { resolver in
+            FavoritesService(
+                networkService: resolver.resolve(NetworkServiceProtocol.self)!
+            )
+        }.inObjectScope(.container)
     }
 
     private func registerViewModels() {
@@ -175,7 +182,8 @@ final class DependencyContainer {
             ExerciseLibraryViewModel(
                 networkService: resolver.resolve(NetworkServiceProtocol.self)!,
                 analyticsService: resolver.resolve(AnalyticsTrackingServiceProtocol.self)!,
-                subscriptionManager: resolver.resolve(SubscriptionManager.self)!
+                subscriptionManager: resolver.resolve(SubscriptionManager.self)!,
+                favoritesService: resolver.resolve(FavoritesService.self)!
             )
         }
 

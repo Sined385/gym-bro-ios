@@ -9,6 +9,7 @@ import SwiftUI
 
 struct ExerciseLoggingView: View {
     @EnvironmentObject var sessionManager: ActiveSessionManager
+    @EnvironmentObject var favoritesService: FavoritesService
     @ObservedObject var viewModel: SessionFlowViewModel
 
     // Individual mode
@@ -21,6 +22,7 @@ struct ExerciseLoggingView: View {
     @State private var showAddSetSheet: Bool = false
     @State private var addSetWeight: String = ""
     @State private var addSetReps: String = ""
+    @State private var addSetIsBodyweight: Bool = false
 
     // Edit mode: when non-nil, the modal edits an existing set instead of adding
     @State private var editingSetInfo: (exerciseId: String, setId: String)?
@@ -33,10 +35,11 @@ struct ExerciseLoggingView: View {
     // Inline editing state for pre-populated sets
     @State private var editWeights: [String: String] = [:]
     @State private var editReps: [String: String] = [:]
+    @State private var editBodyweight: [String: Bool] = [:]
 
     // Superset step-through state
     @State private var supersetStepIndex: Int = 0
-    @State private var supersetSetEntries: [(exerciseId: String, weight: Double?, reps: Int)] = []
+    @State private var supersetSetEntries: [(exerciseId: String, weight: Double?, reps: Int, isBodyweight: Bool)] = []
     @State private var roundOffsets: [Int: CGFloat] = [:]
     @State private var editingRoundIndex: Int? = nil
 
@@ -149,12 +152,39 @@ struct ExerciseLoggingView: View {
             }
 
             Spacer()
-            // Balance the back button width
-            Color.clear.frame(width: 38, height: 38)
+
+            if let libraryId = exercise?.libraryExerciseId {
+                favoriteHeartButton(libraryExerciseId: libraryId)
+            } else {
+                // Balance the back button width when no heart is shown.
+                Color.clear.frame(width: 38, height: 38)
+            }
         }
         .padding(.horizontal, 24)
         .padding(.top, 12)
         .padding(.bottom, 8)
+    }
+
+    private func favoriteHeartButton(libraryExerciseId: String) -> some View {
+        let isFavorite = favoritesService.isFavorite(libraryExerciseId)
+        return Button {
+            Task { await favoritesService.toggle(exerciseId: libraryExerciseId) }
+        } label: {
+            ZStack {
+                Circle()
+                    .fill(Color.white)
+                    .frame(width: 38, height: 38)
+                    .overlay(
+                        Circle()
+                            .stroke(Color.gymBroNeutral100, lineWidth: 1)
+                    )
+                    .shadow(color: .black.opacity(0.05), radius: 1.5, y: 1)
+                Image(systemName: isFavorite ? "heart.fill" : "heart")
+                    .font(.system(size: 16, weight: .semibold))
+                    .foregroundColor(isFavorite ? .gymBroPrimary : .gymBroNeutral900)
+            }
+        }
+        .buttonStyle(.plain)
     }
 
     // MARK: - Individual Content
@@ -385,20 +415,24 @@ struct ExerciseLoggingView: View {
                 previousWeight: prevSet?.weight,
                 previousReps: prevSet?.reps,
                 previousWeightUnit: prevUnit,
+                previousIsBodyweight: prevSet?.isBodyweight ?? false,
                 weight: weightBinding(for: set, previous: prefillWeight),
                 reps: repsBinding(for: set, previous: prefillReps),
+                isBodyweight: bodyweightBinding(for: set, exercise: exercise),
                 isCompleted: set.isCompleted,
                 onComplete: {
+                    let isBW = editBodyweight[set.id] ?? set.isBodyweight
                     let wStr: String = editWeights[set.id] ?? set.weight.map { $0.formattedWeight } ?? prefillWeight.map { $0.formattedWeight } ?? ""
                     let rStr: String = editReps[set.id] ?? set.reps.map { "\($0)" } ?? prefillReps.map { "\($0)" } ?? ""
-                    let w = Double(wStr)
+                    let w = isBW ? nil : Double(wStr)
                     let r = Int(rStr) ?? 0
                     Task {
                         await viewModel.completeSet(
                             exerciseId: exercise.id,
                             setId: set.id,
                             weight: w,
-                            reps: r
+                            reps: r,
+                            isBodyweight: isBW
                         )
                     }
                     sessionManager.startRestTimer()
@@ -407,6 +441,7 @@ struct ExerciseLoggingView: View {
                     editingSetInfo = (exerciseId: exercise.id, setId: set.id)
                     addSetWeight = set.weight.map { $0.formattedWeight } ?? ""
                     addSetReps = set.reps.map { "\($0)" } ?? ""
+                    addSetIsBodyweight = set.isBodyweight
                     showAddSetSheet = true
                 }
             )
@@ -418,13 +453,31 @@ struct ExerciseLoggingView: View {
             Task {
                 await viewModel.logSet(
                     exerciseId: exercise.id,
-                    weight: set.weight,
+                    weight: set.isBodyweight ? nil : set.weight,
                     weightUnit: set.weightUnit,
-                    reps: set.reps ?? 0
+                    reps: set.reps ?? 0,
+                    isBodyweight: set.isBodyweight
                 )
                 sessionManager.startRestTimer()
             }
         }
+    }
+
+    private func bodyweightBinding(for set: ActiveSet, exercise: ActiveSessionExercise) -> Binding<Bool> {
+        Binding(
+            get: {
+                // 1. User-toggled value in this session always wins.
+                if let override = editBodyweight[set.id] { return override }
+                // 2. Persisted on the set itself (re-edit of a completed bodyweight set).
+                if set.isBodyweight { return true }
+                // 3. New row on a Bodyweight-equipment exercise defaults ON.
+                return !set.isCompleted && exercise.equipment == "Bodyweight"
+            },
+            set: { newValue in
+                editBodyweight[set.id] = newValue
+                if newValue { editWeights[set.id] = "" }
+            }
+        )
     }
 
     private func lastSessionSets(for exerciseId: String) -> [PreviousSet] {
@@ -465,14 +518,17 @@ struct ExerciseLoggingView: View {
                 editingSetInfo = nil
                 // Pre-fill: last completed today's set → previous session set
                 let lastCompleted = exercise.sets.filter { $0.isCompleted }.last
-                if let lc = lastCompleted, (lc.weight != nil || lc.reps != nil) {
+                if let lc = lastCompleted, (lc.weight != nil || lc.reps != nil || lc.isBodyweight) {
                     addSetWeight = lc.weight.map { $0.formattedWeight } ?? ""
                     addSetReps = lc.reps.map { "\($0)" } ?? ""
+                    addSetIsBodyweight = lc.isBodyweight
                 } else {
                     let nextSetNumber = exercise.sets.count + 1
                     let prevSet = lastSets.first { $0.setNumber == nextSetNumber }
                     addSetWeight = prevSet?.weight.map { $0.formattedWeight } ?? ""
                     addSetReps = prevSet.map { "\($0.reps)" } ?? ""
+                    // No history → equipment default.
+                    addSetIsBodyweight = prevSet?.isBodyweight ?? (exercise.equipment == "Bodyweight")
                 }
                 showAddSetSheet = true
             }
@@ -515,18 +571,14 @@ struct ExerciseLoggingView: View {
                                 .foregroundColor(.gymBroNeutral400)
                                 .frame(width: 48, alignment: .leading)
 
-                            if let w = set.weight {
-                                Text("\(w.formattedWeight) \(set.weightUnit)")
-                                    .font(.system(size: 14, weight: .semibold))
-                                    .foregroundColor(.gymBroNeutral900)
-                                Text("  \u{00D7}  ")
-                                    .font(.system(size: 13))
-                                    .foregroundColor(.gymBroNeutral400)
-                            }
-
-                            Text("\(set.reps) reps")
-                                .font(.system(size: 14, weight: .semibold))
-                                .foregroundColor(.gymBroNeutral900)
+                            Text(SetDisplay.line(
+                                weight: set.weight,
+                                weightUnit: set.weightUnit,
+                                reps: set.reps,
+                                isBodyweight: set.isBodyweight
+                            ))
+                            .font(.system(size: 14, weight: .semibold))
+                            .foregroundColor(.gymBroNeutral900)
 
                             Spacer()
                         }
@@ -632,6 +684,8 @@ struct ExerciseLoggingView: View {
                 supersetSetEntries = []
                 addSetWeight = ""
                 addSetReps = ""
+                // Default the first step's toggle from the first exercise's equipment.
+                addSetIsBodyweight = group.exercises.first?.equipment == "Bodyweight"
                 editingSetInfo = nil
                 showAddSetSheet = true
             }
@@ -721,15 +775,14 @@ struct ExerciseLoggingView: View {
 
                             Spacer()
 
-                            Text(set.weight.map { $0.formattedWeight } ?? "--")
-                                .font(.system(size: 14, weight: .semibold))
-                                .foregroundColor(.gymBroNeutral900)
-                            Text("kg  \u{00D7}")
-                                .font(.system(size: 12))
-                                .foregroundColor(.gymBroNeutral400)
-                            Text(set.reps.map { "\($0)" } ?? "--")
-                                .font(.system(size: 14, weight: .semibold))
-                                .foregroundColor(.gymBroNeutral900)
+                            Text(SetDisplay.line(
+                                weight: set.weight,
+                                weightUnit: set.weightUnit,
+                                reps: set.reps,
+                                isBodyweight: set.isBodyweight
+                            ))
+                            .font(.system(size: 14, weight: .semibold))
+                            .foregroundColor(.gymBroNeutral900)
                         }
                     }
                 }
@@ -925,7 +978,14 @@ struct ExerciseLoggingView: View {
         for ex in group.exercises {
             guard roundIndex < ex.sets.count else { continue }
             let set = ex.sets[roundIndex]
-            Task { await viewModel.logSet(exerciseId: ex.id, weight: set.weight, reps: set.reps ?? 0) }
+            Task {
+                await viewModel.logSet(
+                    exerciseId: ex.id,
+                    weight: set.isBodyweight ? nil : set.weight,
+                    reps: set.reps ?? 0,
+                    isBodyweight: set.isBodyweight
+                )
+            }
         }
     }
 
@@ -938,9 +998,11 @@ struct ExerciseLoggingView: View {
             let set = firstEx.sets[roundIndex]
             addSetWeight = set.weight.map { $0.formattedWeight } ?? ""
             addSetReps = set.reps.map { "\($0)" } ?? ""
+            addSetIsBodyweight = set.isBodyweight
         } else {
             addSetWeight = ""
             addSetReps = ""
+            addSetIsBodyweight = group.exercises.first?.equipment == "Bodyweight"
         }
         showAddSetSheet = true
     }
@@ -1001,7 +1063,7 @@ struct ExerciseLoggingView: View {
                             .font(.system(size: 13, weight: .medium))
                             .foregroundColor(.gymBroNeutral400)
                     }
-                    .padding(.top, 4)
+                    .padding(.top, 28)
 
                     Text(currentEx.name)
                         .font(.system(size: 20, weight: .bold))
@@ -1011,7 +1073,7 @@ struct ExerciseLoggingView: View {
                 Text(editingSetInfo != nil ? "Edit Set" : (editingRoundIndex != nil ? "Edit Round" : "Log Set"))
                     .font(.system(size: 20, weight: .bold))
                     .foregroundColor(.gymBroNeutral900)
-                    .padding(.top, 8)
+                    .padding(.top, 28)
             }
 
             // Progress dots for superset
@@ -1033,19 +1095,33 @@ struct ExerciseLoggingView: View {
                         .tracking(0.8)
                         .foregroundColor(.gymBroNeutral400)
 
-                    TextField("0", text: $addSetWeight)
-                        .font(.system(size: 22, weight: .bold))
-                        .foregroundColor(.gymBroNeutral900)
-                        .multilineTextAlignment(.center)
-                        .keyboardType(.decimalPad)
-                        .frame(height: 52)
-                        .background(Color.gymBroNeutral100)
-                        .clipShape(RoundedRectangle(cornerRadius: 16))
-                        .overlay(
-                            RoundedRectangle(cornerRadius: 16)
-                                .stroke(Color.gymBroNeutral200, lineWidth: 1)
-                        )
-                        .simultaneousGesture(TapGesture().onEnded { addSetWeight = "" })
+                    if addSetIsBodyweight {
+                        Text("BW")
+                            .font(.system(size: 22, weight: .bold))
+                            .foregroundColor(.gymBroPrimary)
+                            .frame(maxWidth: .infinity)
+                            .frame(height: 52)
+                            .background(Color.gymBroPrimary.opacity(0.08))
+                            .clipShape(RoundedRectangle(cornerRadius: 16))
+                            .overlay(
+                                RoundedRectangle(cornerRadius: 16)
+                                    .stroke(Color.gymBroPrimary.opacity(0.3), lineWidth: 1)
+                            )
+                    } else {
+                        TextField("0", text: $addSetWeight)
+                            .font(.system(size: 22, weight: .bold))
+                            .foregroundColor(.gymBroNeutral900)
+                            .multilineTextAlignment(.center)
+                            .keyboardType(.decimalPad)
+                            .frame(height: 52)
+                            .background(Color.gymBroNeutral100)
+                            .clipShape(RoundedRectangle(cornerRadius: 16))
+                            .overlay(
+                                RoundedRectangle(cornerRadius: 16)
+                                    .stroke(Color.gymBroNeutral200, lineWidth: 1)
+                            )
+                            .simultaneousGesture(TapGesture().onEnded { addSetWeight = "" })
+                    }
                 }
 
                 VStack(alignment: .leading, spacing: 6) {
@@ -1069,6 +1145,26 @@ struct ExerciseLoggingView: View {
                         .simultaneousGesture(TapGesture().onEnded { addSetReps = "" })
                 }
             }
+
+            // Bodyweight checkbox — lives below the inputs so it reads as a
+            // modifier on the weight field rather than a separate concept.
+            Button {
+                addSetIsBodyweight.toggle()
+                if addSetIsBodyweight { addSetWeight = "" }
+            } label: {
+                HStack(spacing: 10) {
+                    Image(systemName: addSetIsBodyweight ? "checkmark.square.fill" : "square")
+                        .font(.system(size: 18, weight: .semibold))
+                        .foregroundColor(addSetIsBodyweight ? .gymBroPrimary : .gymBroNeutral400)
+                    Text("Use bodyweight")
+                        .font(.system(size: 14, weight: .semibold))
+                        .foregroundColor(.gymBroNeutral900)
+                    Spacer()
+                }
+                .padding(.horizontal, 4)
+                .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
 
             // Action button
             Button {
@@ -1104,7 +1200,7 @@ struct ExerciseLoggingView: View {
                 .shadow(color: (isSupersetModal && !isLastSupersetStep ? purpleAccent : greenAccent).opacity(0.3), radius: 8, y: 4)
             }
             .buttonStyle(.plain)
-            .disabled(addSetWeight.isEmpty && addSetReps.isEmpty)
+            .disabled(!addSetIsBodyweight && addSetWeight.isEmpty && addSetReps.isEmpty)
         }
         .padding(.horizontal, 24)
         .padding(.bottom, 20)
@@ -1113,7 +1209,8 @@ struct ExerciseLoggingView: View {
     // MARK: - Submit New Set
 
     private func submitNewSet() {
-        let weight = Double(addSetWeight.replacingOccurrences(of: ",", with: "."))
+        let isBW = addSetIsBodyweight
+        let weight: Double? = isBW ? nil : Double(addSetWeight.replacingOccurrences(of: ",", with: "."))
         let reps = Int(addSetReps) ?? 0
 
         // Edit existing set
@@ -1125,7 +1222,8 @@ struct ExerciseLoggingView: View {
                     weight: weight,
                     weightUnit: nil,
                     reps: reps,
-                    isCompleted: nil
+                    isCompleted: nil,
+                    isBodyweight: isBW
                 )
             }
             showAddSetSheet = false
@@ -1136,7 +1234,7 @@ struct ExerciseLoggingView: View {
         if isSupersetModal {
             // Store entry for current exercise
             if let currentEx = currentSupersetExercise {
-                supersetSetEntries.append((exerciseId: currentEx.id, weight: weight, reps: reps))
+                supersetSetEntries.append((exerciseId: currentEx.id, weight: weight, reps: reps, isBodyweight: isBW))
             }
 
             if isLastSupersetStep {
@@ -1153,7 +1251,8 @@ struct ExerciseLoggingView: View {
                                     weight: entry.weight,
                                     weightUnit: nil,
                                     reps: entry.reps,
-                                    isCompleted: nil
+                                    isCompleted: nil,
+                                    isBodyweight: entry.isBodyweight
                                 )
                             }
                         }
@@ -1166,7 +1265,8 @@ struct ExerciseLoggingView: View {
                             await viewModel.logSet(
                                 exerciseId: entry.exerciseId,
                                 weight: entry.weight,
-                                reps: entry.reps
+                                reps: entry.reps,
+                                isBodyweight: entry.isBodyweight
                             )
                         }
                     }
@@ -1177,7 +1277,8 @@ struct ExerciseLoggingView: View {
             } else {
                 // Advance to next exercise
                 supersetStepIndex += 1
-                // Pre-fill with existing data when editing a round
+                // Pre-fill with existing data when editing a round; otherwise
+                // default the bodyweight toggle from the next exercise's equipment.
                 if let editingRound = editingRoundIndex,
                    let group = supersetGroup,
                    supersetStepIndex < group.exercises.count {
@@ -1186,10 +1287,17 @@ struct ExerciseLoggingView: View {
                         let nextSet = nextEx.sets[editingRound]
                         addSetWeight = nextSet.weight.map { $0.formattedWeight } ?? ""
                         addSetReps = nextSet.reps.map { "\($0)" } ?? ""
+                        addSetIsBodyweight = nextSet.isBodyweight
                     } else {
                         addSetWeight = ""
                         addSetReps = ""
+                        addSetIsBodyweight = nextEx.equipment == "Bodyweight"
                     }
+                } else if let group = supersetGroup, supersetStepIndex < group.exercises.count {
+                    let nextEx = group.exercises[supersetStepIndex]
+                    addSetWeight = ""
+                    addSetReps = ""
+                    addSetIsBodyweight = nextEx.equipment == "Bodyweight"
                 } else {
                     addSetWeight = ""
                     addSetReps = ""
@@ -1202,7 +1310,8 @@ struct ExerciseLoggingView: View {
                     await viewModel.logSet(
                         exerciseId: exercise.id,
                         weight: weight,
-                        reps: reps
+                        reps: reps,
+                        isBodyweight: isBW
                     )
                 }
             }

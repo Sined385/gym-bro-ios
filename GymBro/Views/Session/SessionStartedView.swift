@@ -4,6 +4,7 @@ struct SessionStartedView: View {
     @ObservedObject var viewModel: SessionFlowViewModel
     @EnvironmentObject var sessionManager: ActiveSessionManager
     var onAddExercise: () -> Void
+    var onStartWorkout: () -> Void
     var onCancelWorkout: () -> Void
     var onDismiss: () -> Void
 
@@ -83,25 +84,44 @@ struct SessionStartedView: View {
                 }
                 .buttonStyle(.plain)
 
-                // Cancel Workout button (outlined white) — no exercises to start with
-                Button(action: onCancelWorkout) {
-                    HStack(spacing: 8) {
-                        Image(systemName: "xmark")
-                            .font(.system(size: 14, weight: .bold))
-                        Text("Cancel Workout")
-                            .font(.system(size: 16, weight: .bold))
+                if sessionManager.isWorkoutStarted {
+                    // Workout is live, no exercises yet — cancel exits the session.
+                    Button(action: onCancelWorkout) {
+                        HStack(spacing: 8) {
+                            Image(systemName: "xmark")
+                                .font(.system(size: 14, weight: .bold))
+                            Text("Cancel Workout")
+                                .font(.system(size: 16, weight: .bold))
+                        }
+                        .foregroundColor(.gymBroNeutral900)
+                        .frame(maxWidth: .infinity)
+                        .frame(height: 56)
+                        .background(Color.white)
+                        .clipShape(RoundedRectangle(cornerRadius: 20))
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 20)
+                                .stroke(Color.gymBroNeutral200, lineWidth: 1)
+                        )
                     }
-                    .foregroundColor(.gymBroNeutral900)
-                    .frame(maxWidth: .infinity)
-                    .frame(height: 56)
-                    .background(Color.white)
-                    .clipShape(RoundedRectangle(cornerRadius: 20))
-                    .overlay(
-                        RoundedRectangle(cornerRadius: 20)
-                            .stroke(Color.gymBroNeutral200, lineWidth: 1)
-                    )
+                    .buttonStyle(.plain)
+                } else {
+                    // Pre-active: tap to start the timer / live activity.
+                    Button(action: onStartWorkout) {
+                        HStack(spacing: 8) {
+                            Image(systemName: "play.fill")
+                                .font(.system(size: 14, weight: .bold))
+                            Text("Start Workout")
+                                .font(.system(size: 16, weight: .bold))
+                        }
+                        .foregroundColor(.white)
+                        .frame(maxWidth: .infinity)
+                        .frame(height: 56)
+                        .background(Color(hex: "2D3240"))
+                        .clipShape(RoundedRectangle(cornerRadius: 20))
+                        .shadow(color: Color.black.opacity(0.15), radius: 8, y: 4)
+                    }
+                    .buttonStyle(.plain)
                 }
-                .buttonStyle(.plain)
             }
             .padding(.horizontal, 20)
             .padding(.bottom, 40)

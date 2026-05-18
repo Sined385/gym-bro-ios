@@ -35,10 +35,13 @@ struct CommunityPost: Decodable, Identifiable, Equatable {
     }
 
     func withReactions(_ newReactions: [PostReaction], reactionCount newCount: Int) -> CommunityPost {
-        CommunityPost(
+        let heartReaction = newReactions.first(where: { $0.emoji == "heart" })
+        let newIsLiked = heartReaction?.isReacted ?? isLiked
+        let newLikeCount = heartReaction?.count ?? likeCount
+        return CommunityPost(
             id: id, user: user, content: content, visibility: visibility,
             photoUrl: photoUrl, workoutAttachment: workoutAttachment,
-            likeCount: newCount, commentCount: commentCount, isLiked: isLiked,
+            likeCount: newLikeCount, commentCount: commentCount, isLiked: newIsLiked,
             reactions: newReactions, reactionCount: newCount,
             isFollowingAuthor: isFollowingAuthor, isOwnPost: isOwnPost, createdAt: createdAt
         )
@@ -89,6 +92,21 @@ struct AttachmentSetData: Decodable, Equatable, Identifiable {
     let weight: Double?
     let weightUnit: String?
     let reps: Int
+    let isBodyweight: Bool
+
+    private enum CodingKeys: String, CodingKey {
+        case setNumber, weight, weightUnit, reps, isBodyweight
+    }
+
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        self.setNumber = try c.decode(Int.self, forKey: .setNumber)
+        self.weight = try c.decodeIfPresent(Double.self, forKey: .weight)
+        self.weightUnit = try c.decodeIfPresent(String.self, forKey: .weightUnit)
+        self.reps = try c.decode(Int.self, forKey: .reps)
+        self.isBodyweight = try c.decodeIfPresent(Bool.self, forKey: .isBodyweight) ?? false
+    }
+
     var id: Int { setNumber }
 }
 

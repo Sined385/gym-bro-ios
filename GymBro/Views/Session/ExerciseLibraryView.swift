@@ -2,6 +2,7 @@ import SwiftUI
 
 struct ExerciseLibraryView: View {
     @ObservedObject var viewModel: ExerciseLibraryViewModel
+    @EnvironmentObject var favoritesService: FavoritesService
     var addedExerciseIds: Set<String>
     var onExerciseSelected: (ExerciseLibraryItem) -> Void
     var onStartSuperset: () -> Void
@@ -87,11 +88,13 @@ struct ExerciseLibraryView: View {
             } else {
                 ScrollView(.vertical, showsIndicators: false) {
                     LazyVStack(spacing: 12) {
-                        ForEach(viewModel.filteredExercises) { item in
+                        ForEach(viewModel.filteredExercises(favoriteIds: favoritesService.favoriteIds)) { item in
                             let isAdded = addedExerciseIds.contains(item.id)
                             exerciseCard(item, isAdded: isAdded)
                                 .onTapGesture {
-                                    guard !isAdded else { return }
+                                    // Tap toggles: add → remove → add. Selection
+                                    // visuals (green border + checkmark) reflect
+                                    // current state.
                                     onExerciseSelected(item)
                                 }
                         }
@@ -141,7 +144,6 @@ struct ExerciseLibraryView: View {
                         .aspectRatio(16/9, contentMode: .fit)
                 }
                 .clipped()
-                .opacity(isAdded ? 0.5 : 1)
             } else {
                 TabView {
                     ForEach(urls, id: \.self) { url in
@@ -161,14 +163,13 @@ struct ExerciseLibraryView: View {
                 }
                 .tabViewStyle(.page(indexDisplayMode: .automatic))
                 .aspectRatio(16/9, contentMode: .fit)
-                .opacity(isAdded ? 0.5 : 1)
             }
 
             // Details
             VStack(alignment: .leading, spacing: 6) {
                 Text(item.name)
                     .font(.system(size: 14, weight: .semibold))
-                    .foregroundColor(isAdded ? .gymBroNeutral400 : .gymBroNeutral900)
+                    .foregroundColor(.gymBroNeutral900)
                     .lineLimit(2)
                     .fixedSize(horizontal: false, vertical: true)
 
@@ -178,7 +179,7 @@ struct ExerciseLibraryView: View {
                         .foregroundColor(.white)
                         .padding(.horizontal, 6)
                         .padding(.vertical, 2)
-                        .background(Color(hex: "2D3240").opacity(isAdded ? 0.4 : 0.7))
+                        .background(Color(hex: "2D3240").opacity(0.7))
                         .clipShape(Capsule())
 
                     Text(item.equipment)
@@ -187,6 +188,8 @@ struct ExerciseLibraryView: View {
                         .lineLimit(1)
 
                     Spacer()
+
+                    favoriteHeart(for: item)
 
                     Image(systemName: isAdded ? "checkmark.circle.fill" : "plus.circle")
                         .font(.system(size: 18, weight: .medium))
@@ -197,9 +200,30 @@ struct ExerciseLibraryView: View {
         }
         .background(Color.gymBroBackground)
         .clipShape(RoundedRectangle(cornerRadius: 12))
+        // "Already added" indicator: green border replaces the prior whole-card
+        // opacity dim, which made added cards look broken rather than confirmed.
+        .overlay(
+            RoundedRectangle(cornerRadius: 12)
+                .stroke(isAdded ? Color(hex: "30C08D") : .clear, lineWidth: 2)
+        )
         .shadow(color: .black.opacity(0.06), radius: 4, x: 0, y: 2)
-        .opacity(isAdded ? 0.7 : 1)
         .contentShape(Rectangle())
+    }
+
+    private func favoriteHeart(for item: ExerciseLibraryItem) -> some View {
+        let isFavorite = favoritesService.isFavorite(item.id)
+        return Image(systemName: isFavorite ? "heart.fill" : "heart")
+            .font(.system(size: 18, weight: .medium))
+            .foregroundColor(isFavorite ? .gymBroPrimary : .gymBroNeutral400)
+            .frame(width: 36, height: 36)
+            .contentShape(Rectangle())
+            // Run before the card-level onTapGesture so the heart tap doesn't
+            // also fire the "select this exercise" action.
+            .highPriorityGesture(
+                TapGesture().onEnded {
+                    Task { await favoritesService.toggle(exerciseId: item.id) }
+                }
+            )
     }
 
     private func exercisePlaceholder(isAdded: Bool) -> some View {

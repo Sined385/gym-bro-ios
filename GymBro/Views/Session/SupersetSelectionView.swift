@@ -9,6 +9,7 @@ import SwiftUI
 
 struct SupersetSelectionView: View {
     @ObservedObject var libraryViewModel: ExerciseLibraryViewModel
+    @EnvironmentObject var favoritesService: FavoritesService
     var addedExerciseIds: Set<String>
     var onSave: ([ExerciseLibraryItem]) -> Void
 
@@ -81,7 +82,7 @@ struct SupersetSelectionView: View {
             // Exercise list
             ScrollView(.vertical, showsIndicators: false) {
                 LazyVStack(spacing: 12) {
-                    ForEach(libraryViewModel.filteredExercises) { item in
+                    ForEach(libraryViewModel.filteredExercises(favoriteIds: favoritesService.favoriteIds)) { item in
                         exerciseCard(item, isAlreadyInSession: addedExerciseIds.contains(item.id))
                     }
                 }

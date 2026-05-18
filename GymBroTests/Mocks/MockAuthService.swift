@@ -75,7 +75,7 @@ final class MockAuthService: AuthServiceProtocol {
         return user
     }
 
-    func signInWithGoogle(idToken: String) async throws -> AuthUser {
+    func signInWithGoogle(idToken: String, fullName: String?, avatarURL: String?) async throws -> AuthUser {
         signInWithGoogleCallCount += 1
 
         if shouldFail {

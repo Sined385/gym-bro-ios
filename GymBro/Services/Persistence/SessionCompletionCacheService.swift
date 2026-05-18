@@ -15,6 +15,7 @@ struct CompletionSet: Codable {
     let isCompleted: Bool
     let weight: Double?
     let weightUnit: String
+    let isBodyweight: Bool
 
     enum CodingKeys: String, CodingKey {
         case setNumber = "set_number"
@@ -22,6 +23,28 @@ struct CompletionSet: Codable {
         case isCompleted = "is_completed"
         case weight
         case weightUnit = "weight_unit"
+        case isBodyweight = "is_bodyweight"
+    }
+
+    init(setNumber: Int, reps: Int, isCompleted: Bool, weight: Double?, weightUnit: String, isBodyweight: Bool = false) {
+        self.setNumber = setNumber
+        self.reps = reps
+        self.isCompleted = isCompleted
+        self.weight = weight
+        self.weightUnit = weightUnit
+        self.isBodyweight = isBodyweight
+    }
+
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        self.setNumber = try c.decode(Int.self, forKey: .setNumber)
+        self.reps = try c.decode(Int.self, forKey: .reps)
+        self.isCompleted = try c.decode(Bool.self, forKey: .isCompleted)
+        self.weight = try c.decodeIfPresent(Double.self, forKey: .weight)
+        self.weightUnit = try c.decodeIfPresent(String.self, forKey: .weightUnit) ?? "kg"
+        // Default false so previously-cached PendingSessionCompletion blobs
+        // (queued before this field existed) decode and replay safely.
+        self.isBodyweight = try c.decodeIfPresent(Bool.self, forKey: .isBodyweight) ?? false
     }
 }
 
@@ -89,9 +112,10 @@ struct SessionCompletionPayload: Codable {
                         var setDict: [String: Any] = [
                             "set_number": set.setNumber,
                             "reps": set.reps,
-                            "is_completed": set.isCompleted
+                            "is_completed": set.isCompleted,
+                            "is_bodyweight": set.isBodyweight
                         ]
-                        if let weight = set.weight { setDict["weight"] = weight }
+                        if let weight = set.weight, !set.isBodyweight { setDict["weight"] = weight }
                         setDict["weight_unit"] = set.weightUnit
                         return setDict
                     }

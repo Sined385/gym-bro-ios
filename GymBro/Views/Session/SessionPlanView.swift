@@ -3,19 +3,14 @@ import SwiftUI
 struct SessionPlanView: View {
     @ObservedObject var viewModel: SessionFlowViewModel
     @EnvironmentObject var sessionManager: ActiveSessionManager
+    @EnvironmentObject var favoritesService: FavoritesService
     var onCollapse: () -> Void
     var onAddExercise: () -> Void
     var onTapExercise: (String) -> Void
     var onTapSuperset: (String) -> Void
+    var onStartWorkout: () -> Void
     var onEndWorkout: () -> Void
-    var onCancelWorkout: () -> Void
     var onSaveTemplate: () -> Void
-
-    private var hasLoggedSets: Bool {
-        viewModel.exercises.contains { exercise in
-            exercise.sets.contains { $0.isCompleted }
-        }
-    }
 
     var body: some View {
         ZStack(alignment: .bottom) {
@@ -65,7 +60,9 @@ struct SessionPlanView: View {
                 }
                 .buttonStyle(.plain)
 
-                TimerBadge(time: sessionManager.formattedTime)
+                if sessionManager.isWorkoutStarted {
+                    TimerBadge(time: sessionManager.formattedTime)
+                }
             }
             .padding(.horizontal, 20)
             .padding(.top, 16)
@@ -123,8 +120,10 @@ struct SessionPlanView: View {
                     }
                     .buttonStyle(.plain)
 
-                    if hasLoggedSets {
-                        // Complete Workout button
+                    if sessionManager.isWorkoutStarted {
+                        // Active session with ≥1 exercise — Complete is the
+                        // primary path; cancelling now requires swiping all
+                        // exercises off first (which falls back to SessionStartedView).
                         Button(action: onEndWorkout) {
                             HStack(spacing: 8) {
                                 Image(systemName: "flag.fill")
@@ -141,23 +140,20 @@ struct SessionPlanView: View {
                         }
                         .buttonStyle(.plain)
                     } else {
-                        // Cancel Workout button
-                        Button(action: onCancelWorkout) {
+                        // Pre-active: exercises queued but timer not started yet.
+                        Button(action: onStartWorkout) {
                             HStack(spacing: 8) {
-                                Image(systemName: "xmark")
+                                Image(systemName: "play.fill")
                                     .font(.system(size: 14, weight: .bold))
-                                Text("Cancel Workout")
+                                Text("Start Workout")
                                     .font(.system(size: 16, weight: .bold))
                             }
-                            .foregroundColor(.gymBroNeutral900)
+                            .foregroundColor(.white)
                             .frame(maxWidth: .infinity)
                             .frame(height: 64)
-                            .background(Color.white)
+                            .background(Color(hex: "2D3240"))
                             .clipShape(RoundedRectangle(cornerRadius: 24))
-                            .overlay(
-                                RoundedRectangle(cornerRadius: 24)
-                                    .stroke(Color.gymBroNeutral200, lineWidth: 1)
-                            )
+                            .shadow(color: Color.black.opacity(0.15), radius: 8, y: 4)
                         }
                         .buttonStyle(.plain)
                     }
@@ -228,6 +224,10 @@ struct SessionPlanView: View {
 
             Spacer()
 
+            if let libraryId = exercise.libraryExerciseId {
+                favoriteHeart(libraryExerciseId: libraryId)
+            }
+
             if exercise.targetSets > 0 && exercise.sets.filter({ $0.isCompleted }).count >= exercise.targetSets {
                 Image(systemName: "checkmark.circle.fill")
                     .font(.system(size: 24))
@@ -244,6 +244,20 @@ struct SessionPlanView: View {
         .background(Color.white)
         .clipShape(RoundedRectangle(cornerRadius: 24))
         .shadow(color: .black.opacity(0.03), radius: 10, x: 0, y: 4)
+    }
+
+    private func favoriteHeart(libraryExerciseId: String) -> some View {
+        let isFavorite = favoritesService.isFavorite(libraryExerciseId)
+        return Image(systemName: isFavorite ? "heart.fill" : "heart")
+            .font(.system(size: 18, weight: .medium))
+            .foregroundColor(isFavorite ? .gymBroPrimary : .gymBroNeutral400)
+            .frame(width: 36, height: 36)
+            .contentShape(Rectangle())
+            .highPriorityGesture(
+                TapGesture().onEnded {
+                    Task { await favoritesService.toggle(exerciseId: libraryExerciseId) }
+                }
+            )
     }
 
     @ViewBuilder

@@ -138,33 +138,56 @@ final class ActiveSessionManager: ObservableObject {
 
     // MARK: - Session Lifecycle
 
-    func openSession(_ session: SessionResponse) {
-        print("🟡 openSession called: \(session.title), liveActivityService = \(liveActivityService)")
+    func openSession(_ session: SessionResponse, autoStart: Bool = true) {
+        print("🟡 openSession called: \(session.title), autoStart=\(autoStart), liveActivityService = \(liveActivityService)")
         sessionId = session.id
         sessionTitle = session.title
         sessionExercises = session.exercises
         elapsedSeconds = 0
-        isWorkoutStarted = true
-        sessionStartDate = Date()
+        isWorkoutStarted = false
+        sessionStartDate = nil
         presentationState = .expanded
-        startTimer()
-        scheduleStillThereNotification()
-
-        liveActivityService.startActivity(
-            title: session.title,
-            startDate: sessionStartDate!,
-            exerciseCount: session.exercises.count
-        )
 
         Analytics.logEvent("workout_opened", parameters: [
             "session_type": session.type,
             "is_ai_generated": (session.aiGenerated ?? false) ? "true" : "false"
         ])
-        Analytics.logEvent("workout_started", parameters: [:])
+
+        if autoStart {
+            beginWorkout(title: session.title, exerciseCount: session.exercises.count)
+        }
 
         // Persist session metadata immediately so backgrounding before
         // SessionFlowViewModel's initial save doesn't lose the session
         saveSession(exercises: [], effortLevel: 0, energyLevel: 0, painDiscomfort: "")
+    }
+
+    /// Transition the currently-open session out of the pre-active "Add
+    /// exercises / Start workout" state into a live workout (timer, live
+    /// activity, still-there notification). Safe to call only once per session.
+    func startWorkout() {
+        guard !isWorkoutStarted, let title = sessionTitle else { return }
+        beginWorkout(title: title, exerciseCount: sessionExercises.count)
+        saveSession(
+            exercises: lastSavedExercises ?? [],
+            effortLevel: lastSavedFeedback?.effort ?? 0,
+            energyLevel: lastSavedFeedback?.energy ?? 0,
+            painDiscomfort: lastSavedFeedback?.pain ?? ""
+        )
+    }
+
+    private func beginWorkout(title: String, exerciseCount: Int) {
+        isWorkoutStarted = true
+        sessionStartDate = Date()
+        elapsedSeconds = 0
+        startTimer()
+        scheduleStillThereNotification()
+        liveActivityService.startActivity(
+            title: title,
+            startDate: sessionStartDate!,
+            exerciseCount: exerciseCount
+        )
+        Analytics.logEvent("workout_started", parameters: [:])
     }
 
     func refreshInactivityTimer() {
@@ -382,7 +405,10 @@ final class ActiveSessionManager: ObservableObject {
     // MARK: - "Still There?" Notification
 
     /// Schedules a local notification after a set is completed.
-    /// Cancelled automatically when a new set is logged or session ends.
+    /// Repeats every `stillThereDelaySeconds` until the user takes any
+    /// in-app action that calls `cancelStillThereNotification`
+    /// (set logged, session ended/cancelled, etc.). This is what gives the
+    /// "ping every 10 min while idle" cadence — the OS handles re-firing.
     private func scheduleStillThereNotification() {
         let center = UNUserNotificationCenter.current()
         cancelStillThereNotification()
@@ -394,7 +420,7 @@ final class ActiveSessionManager: ObservableObject {
 
         let trigger = UNTimeIntervalNotificationTrigger(
             timeInterval: Self.stillThereDelaySeconds,
-            repeats: false
+            repeats: true
         )
         let request = UNNotificationRequest(
             identifier: Self.stillThereNotificationId,

@@ -145,6 +145,8 @@ enum ExerciseRouter: APIRouter {
     case create(name: String, muscleGroup: String, equipment: String)
     case detail(exerciseId: String)
     case previousSets(exerciseId: String)
+    case favorite(exerciseId: String)
+    case unfavorite(exerciseId: String)
 
     var path: String {
         switch self {
@@ -154,19 +156,22 @@ enum ExerciseRouter: APIRouter {
             return "/api/v1/exercises/\(exerciseId)"
         case .previousSets(let exerciseId):
             return "/api/v1/exercises/\(exerciseId)/previous-sets"
+        case .favorite(let exerciseId), .unfavorite(let exerciseId):
+            return "/api/v1/exercises/\(exerciseId)/favorite"
         }
     }
 
     var method: HTTPMethod {
         switch self {
         case .list, .detail, .previousSets: return .get
-        case .create: return .post
+        case .create, .favorite: return .post
+        case .unfavorite: return .delete
         }
     }
 
     var parameters: [String: Any]? {
         switch self {
-        case .list, .detail, .previousSets:
+        case .list, .detail, .previousSets, .favorite, .unfavorite:
             return nil
         case .create(let name, let muscleGroup, let equipment):
             return [

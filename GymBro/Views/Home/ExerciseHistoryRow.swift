@@ -99,11 +99,13 @@ struct ExerciseHistoryRow: View {
                 .tracking(0.5)
                 .foregroundColor(labelColor)
 
-            if let weight = setData.weight {
-                Text("\(weight.formattedWeight) \(setData.weightUnit)")
-                    .font(.system(size: 12, weight: .bold))
-                    .foregroundColor(.gymBroNeutral900)
-            }
+            Text(SetDisplay.weightChunk(
+                weight: setData.weight,
+                weightUnit: setData.weightUnit,
+                isBodyweight: setData.isBodyweight
+            ))
+            .font(.system(size: 12, weight: .bold))
+            .foregroundColor(setData.isBodyweight ? .gymBroPrimary : .gymBroNeutral900)
 
             Text("\(setData.reps) reps")
                 .font(.system(size: 13, weight: .bold))

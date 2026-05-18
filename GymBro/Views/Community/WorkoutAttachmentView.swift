@@ -236,14 +236,12 @@ struct WorkoutAttachmentView: View {
     }
 
     private func setChip(_ set: AttachmentSetData) -> some View {
-        let text: String = {
-            if let weight = set.weight, weight > 0 {
-                let unit = set.weightUnit ?? "kg"
-                return "\(weight.formattedWeight)\(unit) \u{00D7} \(set.reps)"
-            } else {
-                return "\u{00D7} \(set.reps)"
-            }
-        }()
+        let text = SetDisplay.line(
+            weight: set.weight,
+            weightUnit: set.weightUnit,
+            reps: set.reps,
+            isBodyweight: set.isBodyweight
+        )
 
         return Text(text)
             .font(.system(size: 11, weight: .semibold))

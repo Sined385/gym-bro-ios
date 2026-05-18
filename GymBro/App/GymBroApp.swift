@@ -59,6 +59,14 @@ struct GymBroApp: App {
         DependencyContainer.shared.resolve(ActiveSessionManager.self)
     }()
 
+    @StateObject private var favoritesService: FavoritesService = {
+        DependencyContainer.shared.resolve(FavoritesService.self)
+    }()
+
+    @StateObject private var appDataState: AppDataState = {
+        DependencyContainer.shared.resolve(AppDataState.self)
+    }()
+
     @StateObject private var deepLinkRouter: DeepLinkRouter = {
         DependencyContainer.shared.resolve(DeepLinkRouter.self)
     }()
@@ -96,6 +104,8 @@ struct GymBroApp: App {
                 case .home:
                     MainTabView()
                         .environmentObject(sessionManager)
+                        .environmentObject(favoritesService)
+                        .environmentObject(appDataState)
                         .environmentObject(coordinator)
                         .environmentObject(deepLinkRouter)
                 }

@@ -11,6 +11,7 @@ import Combine
 struct MainTabView: View {
     @EnvironmentObject var sessionManager: ActiveSessionManager
     @EnvironmentObject var deepLinkRouter: DeepLinkRouter
+    @EnvironmentObject var appDataState: AppDataState
     @ObservedObject private var subscriptionManager: SubscriptionManager = DependencyContainer.shared.resolve(SubscriptionManager.self)
     @State private var hasAttemptedRestore = false
     @State private var selectedTab = 0
@@ -148,6 +149,16 @@ struct MainTabView: View {
                 SharedTemplatePreviewView(shareCode: code)
                     .environmentObject(sessionManager)
             }
+        }
+        // Post-workout share screen — appears after the session is fully torn
+        // down on the server, so dismissing it (or force-quitting from it) has
+        // zero effect on session state. Purely an optional add-on.
+        .sheet(item: $appDataState.pendingShareData) { data in
+            ShareSessionView(
+                data: data,
+                onShare: { _ in appDataState.pendingShareData = nil },
+                onSkip: { appDataState.pendingShareData = nil }
+            )
         }
         .fullScreenCover(isPresented: $subscriptionManager.showPaywall) {
             NavigationStack {

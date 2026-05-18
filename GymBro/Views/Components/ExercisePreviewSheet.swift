@@ -208,18 +208,14 @@ struct ExercisePreviewSheet: View {
                                 .foregroundColor(.gymBroNeutral400)
                                 .frame(width: 48, alignment: .leading)
 
-                            if let w = set.weight {
-                                Text("\(w.formattedWeight) \(set.weightUnit)")
-                                    .font(.system(size: 14, weight: .semibold))
-                                    .foregroundColor(.gymBroNeutral900)
-                                Text("  \u{00D7}  ")
-                                    .font(.system(size: 13))
-                                    .foregroundColor(.gymBroNeutral400)
-                            }
-
-                            Text("\(set.reps) reps")
-                                .font(.system(size: 14, weight: .semibold))
-                                .foregroundColor(.gymBroNeutral900)
+                            Text(SetDisplay.line(
+                                weight: set.weight,
+                                weightUnit: set.weightUnit,
+                                reps: set.reps,
+                                isBodyweight: set.isBodyweight
+                            ))
+                            .font(.system(size: 14, weight: .semibold))
+                            .foregroundColor(.gymBroNeutral900)
 
                             Spacer()
 

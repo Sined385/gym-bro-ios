@@ -137,6 +137,29 @@ struct ExerciseSetData: Decodable, Identifiable {
     let weight: Double?
     let weightUnit: String
     let reps: Int
+    let isBodyweight: Bool
+
+    private enum CodingKeys: String, CodingKey {
+        case setNumber, weight, weightUnit, reps, isBodyweight
+    }
+
+    init(setNumber: Int, weight: Double?, weightUnit: String, reps: Int, isBodyweight: Bool = false) {
+        self.setNumber = setNumber
+        self.weight = weight
+        self.weightUnit = weightUnit
+        self.reps = reps
+        self.isBodyweight = isBodyweight
+    }
+
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        self.setNumber = try c.decode(Int.self, forKey: .setNumber)
+        self.weight = try c.decodeIfPresent(Double.self, forKey: .weight)
+        self.weightUnit = try c.decodeIfPresent(String.self, forKey: .weightUnit) ?? "kg"
+        self.reps = try c.decode(Int.self, forKey: .reps)
+        self.isBodyweight = try c.decodeIfPresent(Bool.self, forKey: .isBodyweight) ?? false
+    }
+
     var id: Int { setNumber }
 }
 
@@ -343,7 +366,9 @@ final class HomeViewModel: ObservableObject {
                     HomeRouter.createSession(title: "Custom Session", type: "custom").endpoint,
                     responseType: SessionResponse.self
                 )
-                self.sessionManager.openSession(response)
+                // Custom workouts open in pre-active mode — user picks exercises
+                // then taps "Start Workout" to begin the timer.
+                self.sessionManager.openSession(response, autoStart: false)
             } catch {
                 let mockResponse = SessionResponse(
                     id: UUID().uuidString,
@@ -358,7 +383,7 @@ final class HomeViewModel: ObservableObject {
                     aiMessage: nil,
                     exercises: []
                 )
-                self.sessionManager.openSession(mockResponse)
+                self.sessionManager.openSession(mockResponse, autoStart: false)
                 self.errorMessage = nil
             }
 

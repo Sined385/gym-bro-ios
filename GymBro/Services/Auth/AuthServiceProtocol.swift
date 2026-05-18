@@ -30,9 +30,12 @@ protocol AuthServiceProtocol: AnyObject {
     func signInWithApple(_ authorization: ASAuthorization) async throws -> AuthUser
 
     /// Sign in with Google using ID token
-    /// - Parameter idToken: Google ID token from Google Sign-In SDK
+    /// - Parameters:
+    ///   - idToken: Google ID token from Google Sign-In SDK
+    ///   - fullName: Optional profile name from the Google SDK (used to seed Supabase `user_metadata` when the ID token doesn't carry the name claim)
+    ///   - avatarURL: Optional profile image URL from the Google SDK
     /// - Returns: Authenticated user
-    func signInWithGoogle(idToken: String) async throws -> AuthUser
+    func signInWithGoogle(idToken: String, fullName: String?, avatarURL: String?) async throws -> AuthUser
 
     /// Sign out current user
     func signOut() async throws

@@ -9,10 +9,16 @@ import SwiftUI
 import Supabase
 
 struct ShareSessionView: View {
-    @ObservedObject var viewModel: SessionFlowViewModel
-    let sessionDurationMinutes: Int?
+    let data: CompletedWorkoutShareData
     var onShare: (CommunityPost) -> Void
     var onSkip: () -> Void
+
+    // Convenience accessors so the rest of the view reads naturally.
+    private var sessionDurationMinutes: Int? { data.durationMinutes }
+    private var exercises: [ActiveSessionExercise] { data.exercises }
+    private var effortLevel: Int { data.effortLevel }
+    private var energyLevel: Int { data.energyLevel }
+    private var sessionId: String { data.sessionId }
 
     @State private var postContent: String = ""
     @State private var visibility: String = "global"
@@ -121,7 +127,7 @@ struct ShareSessionView: View {
                         Text("\u{2022}")
                             .font(.system(size: 12))
                             .foregroundColor(.gymBroTextSecondary)
-                        Text("\(viewModel.exercises.count) EXERCISE\(viewModel.exercises.count == 1 ? "" : "S")")
+                        Text("\(exercises.count) EXERCISE\(exercises.count == 1 ? "" : "S")")
                             .font(.system(size: 12, weight: .semibold))
                             .foregroundColor(.gymBroTextSecondary)
                     }
@@ -134,14 +140,14 @@ struct ShareSessionView: View {
                 // Effort
                 statPill(
                     label: "Effort",
-                    value: "\(viewModel.effortLevel)/10",
+                    value: "\(effortLevel)/10",
                     color: .gymBroPrimary
                 )
 
                 // Energy
                 statPill(
                     label: "Energy",
-                    value: energyEmoji(for: viewModel.energyLevel),
+                    value: energyEmoji(for: energyLevel),
                     color: Color(hex: "F5A623")
                 )
 
@@ -161,7 +167,7 @@ struct ShareSessionView: View {
             }
 
             // Exercises
-            if !viewModel.exercises.isEmpty {
+            if !exercises.isEmpty {
                 VStack(alignment: .leading, spacing: 8) {
                     Text("EXERCISES")
                         .font(.system(size: 11, weight: .bold))
@@ -402,12 +408,12 @@ struct ShareSessionView: View {
                 CommunityRouter.createPost(
                     content: content,
                     visibility: visibility,
-                    workoutSessionId: viewModel.sessionId,
+                    workoutSessionId: sessionId,
                     photoUrl: uploadedPhotoUrl
                 ).endpoint,
                 responseType: CommunityPost.self
             )
-            analytics.track("post_shared_after_workout", properties: ["session_id": viewModel.sessionId])
+            analytics.track("post_shared_after_workout", properties: ["session_id": sessionId])
             isSharing = false
             onShare(post)
             dismiss()
@@ -472,7 +478,7 @@ struct ShareSessionView: View {
         var supersetMap: [String: [ActiveSessionExercise]] = [:]
         var emitted: Set<String> = []
 
-        for exercise in viewModel.exercises {
+        for exercise in exercises {
             if let groupId = exercise.supersetGroupId {
                 if supersetMap[groupId] == nil {
                     supersetMap[groupId] = []
@@ -481,7 +487,7 @@ struct ShareSessionView: View {
             }
         }
 
-        for exercise in viewModel.exercises {
+        for exercise in exercises {
             if let groupId = exercise.supersetGroupId {
                 if !emitted.contains(groupId) {
                     emitted.insert(groupId)
@@ -557,13 +563,12 @@ struct ShareSessionView: View {
         if !completedSets.isEmpty {
             HStack(spacing: 4) {
                 ForEach(completedSets) { set in
-                    let text: String = {
-                        if let weight = set.weight, weight > 0 {
-                            return "\(weight.formattedWeight)\(set.weightUnit) \u{00D7} \(set.reps ?? 0)"
-                        } else {
-                            return "\u{00D7} \(set.reps ?? 0)"
-                        }
-                    }()
+                    let text = SetDisplay.line(
+                        weight: set.weight,
+                        weightUnit: set.weightUnit,
+                        reps: set.reps,
+                        isBodyweight: set.isBodyweight
+                    )
                     Text(text)
                         .font(.system(size: 11, weight: .semibold))
                         .foregroundColor(Color(hex: "737373"))

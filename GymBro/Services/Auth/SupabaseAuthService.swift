@@ -77,6 +77,14 @@ final class SupabaseAuthService: AuthServiceProtocol {
             throw AuthError.invalidCredentials
         }
 
+        // Apple only sends fullName/email on the FIRST sign-in via the credential.
+        // The ID token typically lacks a name claim, so capture them here and
+        // persist into Supabase user_metadata so future restores get the name too.
+        let appleFullName = appleIDCredential.fullName.flatMap { components -> String? in
+            let formatted = PersonNameComponentsFormatter().string(from: components)
+            return formatted.isEmpty ? nil : formatted
+        }
+
         do {
             let session = try await supabase.auth.signInWithIdToken(
                 credentials: OpenIDConnectCredentials(
@@ -85,7 +93,13 @@ final class SupabaseAuthService: AuthServiceProtocol {
                 )
             )
 
-            let authUser = convertToAuthUser(from: session.user)
+            let enrichedUser = try await enrichUserMetadataIfNeeded(
+                sessionUser: session.user,
+                fullName: appleFullName,
+                avatarURL: nil
+            )
+
+            let authUser = convertToAuthUser(from: enrichedUser)
             cachedUser = authUser
             return authUser
 
@@ -96,7 +110,7 @@ final class SupabaseAuthService: AuthServiceProtocol {
         }
     }
 
-    func signInWithGoogle(idToken: String) async throws -> AuthUser {
+    func signInWithGoogle(idToken: String, fullName: String?, avatarURL: String?) async throws -> AuthUser {
         do {
             let session = try await supabase.auth.signInWithIdToken(
                 credentials: OpenIDConnectCredentials(
@@ -105,7 +119,13 @@ final class SupabaseAuthService: AuthServiceProtocol {
                 )
             )
 
-            let authUser = convertToAuthUser(from: session.user)
+            let enrichedUser = try await enrichUserMetadataIfNeeded(
+                sessionUser: session.user,
+                fullName: fullName,
+                avatarURL: avatarURL
+            )
+
+            let authUser = convertToAuthUser(from: enrichedUser)
             cachedUser = authUser
             return authUser
 
@@ -114,6 +134,38 @@ final class SupabaseAuthService: AuthServiceProtocol {
         } catch {
             throw AuthError.networkError(error)
         }
+    }
+
+    /// Fills in `full_name` / `avatar_url` on the Supabase auth user when the IdP
+    /// session arrived without them. Returns the (possibly updated) `User`.
+    private func enrichUserMetadataIfNeeded(
+        sessionUser: User,
+        fullName: String?,
+        avatarURL: String?
+    ) async throws -> User {
+        var patch: [String: AnyJSON] = [:]
+        if let name = fullName, !name.isEmpty,
+           metadataString(sessionUser.userMetadata["full_name"]).map(\.isEmpty) ?? true {
+            patch["full_name"] = .string(name)
+        }
+        if let url = avatarURL, !url.isEmpty,
+           metadataString(sessionUser.userMetadata["avatar_url"]).map(\.isEmpty) ?? true {
+            patch["avatar_url"] = .string(url)
+        }
+
+        guard !patch.isEmpty else { return sessionUser }
+
+        do {
+            return try await supabase.auth.update(user: UserAttributes(data: patch))
+        } catch {
+            // Metadata enrichment is best-effort — never block sign-in on it.
+            return sessionUser
+        }
+    }
+
+    private func metadataString(_ value: AnyJSON?) -> String? {
+        guard let value, case let .string(s) = value else { return nil }
+        return s
     }
 
     func signOut() async throws {
