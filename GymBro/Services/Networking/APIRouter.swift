@@ -354,7 +354,7 @@ enum WorkoutRouter: APIRouter {
 enum CommunityRouter: APIRouter {
     case feed(tab: String, cursor: String?, limit: Int)
     case getPost(postId: String)
-    case createPost(content: String, visibility: String, workoutSessionId: String?, photoUrl: String?)
+    case createPost(content: String, visibility: String, workoutSessionId: String?, photoUrl: String?, shareConfig: [String: Any]?, cardImageUrl: String?)
     case deletePost(postId: String)
     case toggleLike(postId: String)
     case toggleReaction(postId: String, emoji: String)
@@ -448,10 +448,12 @@ enum CommunityRouter: APIRouter {
             var params: [String: Any] = ["tab": tab, "limit": limit]
             if let cursor { params["cursor"] = cursor }
             return params
-        case .createPost(let content, let visibility, let workoutSessionId, let photoUrl):
+        case .createPost(let content, let visibility, let workoutSessionId, let photoUrl, let shareConfig, let cardImageUrl):
             var params: [String: Any] = ["content": content, "visibility": visibility]
             if let workoutSessionId { params["workout_session_id"] = workoutSessionId }
             if let photoUrl { params["photo_url"] = photoUrl }
+            if let shareConfig { params["share_config"] = shareConfig }
+            if let cardImageUrl { params["card_image_url"] = cardImageUrl }
             return params
         case .createComment(_, let content):
             return ["content": content]

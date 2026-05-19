@@ -59,7 +59,9 @@ final class NewPostViewModel: ObservableObject {
                     content: content.trimmingCharacters(in: .whitespacesAndNewlines),
                     visibility: "global",
                     workoutSessionId: nil,
-                    photoUrl: uploadedPhotoUrl
+                    photoUrl: uploadedPhotoUrl,
+                    shareConfig: nil,
+                    cardImageUrl: nil
                 ).endpoint,
                 responseType: CommunityPost.self
             )

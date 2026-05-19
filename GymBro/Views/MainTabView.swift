@@ -154,7 +154,7 @@ struct MainTabView: View {
         // down on the server, so dismissing it (or force-quitting from it) has
         // zero effect on session state. Purely an optional add-on.
         .sheet(item: $appDataState.pendingShareData) { data in
-            ShareSessionView(
+            ShareEditorView(
                 data: data,
                 onShare: { _ in appDataState.pendingShareData = nil },
                 onSkip: { appDataState.pendingShareData = nil }

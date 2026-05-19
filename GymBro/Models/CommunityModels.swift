@@ -15,6 +15,8 @@ struct CommunityPost: Decodable, Identifiable, Equatable {
     let content: String
     let visibility: String
     let photoUrl: String?
+    let shareConfig: ShareConfig?
+    let cardImageUrl: String?
     let workoutAttachment: WorkoutAttachment?
     let likeCount: Int
     let commentCount: Int
@@ -34,13 +36,56 @@ struct CommunityPost: Decodable, Identifiable, Equatable {
         lhs.isFollowingAuthor == rhs.isFollowingAuthor
     }
 
+    init(
+        id: String, user: PostUser, content: String, visibility: String,
+        photoUrl: String?, shareConfig: ShareConfig? = nil, cardImageUrl: String? = nil,
+        workoutAttachment: WorkoutAttachment?,
+        likeCount: Int, commentCount: Int, isLiked: Bool,
+        reactions: [PostReaction]?, reactionCount: Int?,
+        isFollowingAuthor: Bool, isOwnPost: Bool, createdAt: String
+    ) {
+        self.id = id; self.user = user; self.content = content; self.visibility = visibility
+        self.photoUrl = photoUrl; self.shareConfig = shareConfig; self.cardImageUrl = cardImageUrl
+        self.workoutAttachment = workoutAttachment
+        self.likeCount = likeCount; self.commentCount = commentCount; self.isLiked = isLiked
+        self.reactions = reactions; self.reactionCount = reactionCount
+        self.isFollowingAuthor = isFollowingAuthor; self.isOwnPost = isOwnPost; self.createdAt = createdAt
+    }
+
+    private enum CodingKeys: String, CodingKey {
+        case id, user, content, visibility, photoUrl, shareConfig, cardImageUrl
+        case workoutAttachment, likeCount, commentCount, isLiked, reactions, reactionCount
+        case isFollowingAuthor, isOwnPost, createdAt
+    }
+
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        self.id = try c.decode(String.self, forKey: .id)
+        self.user = try c.decode(PostUser.self, forKey: .user)
+        self.content = try c.decode(String.self, forKey: .content)
+        self.visibility = try c.decode(String.self, forKey: .visibility)
+        self.photoUrl = try c.decodeIfPresent(String.self, forKey: .photoUrl)
+        self.shareConfig = try c.decodeIfPresent(ShareConfig.self, forKey: .shareConfig)
+        self.cardImageUrl = try c.decodeIfPresent(String.self, forKey: .cardImageUrl)
+        self.workoutAttachment = try c.decodeIfPresent(WorkoutAttachment.self, forKey: .workoutAttachment)
+        self.likeCount = try c.decode(Int.self, forKey: .likeCount)
+        self.commentCount = try c.decode(Int.self, forKey: .commentCount)
+        self.isLiked = try c.decode(Bool.self, forKey: .isLiked)
+        self.reactions = try c.decodeIfPresent([PostReaction].self, forKey: .reactions)
+        self.reactionCount = try c.decodeIfPresent(Int.self, forKey: .reactionCount)
+        self.isFollowingAuthor = try c.decode(Bool.self, forKey: .isFollowingAuthor)
+        self.isOwnPost = try c.decode(Bool.self, forKey: .isOwnPost)
+        self.createdAt = try c.decode(String.self, forKey: .createdAt)
+    }
+
     func withReactions(_ newReactions: [PostReaction], reactionCount newCount: Int) -> CommunityPost {
         let heartReaction = newReactions.first(where: { $0.emoji == "heart" })
         let newIsLiked = heartReaction?.isReacted ?? isLiked
         let newLikeCount = heartReaction?.count ?? likeCount
         return CommunityPost(
             id: id, user: user, content: content, visibility: visibility,
-            photoUrl: photoUrl, workoutAttachment: workoutAttachment,
+            photoUrl: photoUrl, shareConfig: shareConfig, cardImageUrl: cardImageUrl,
+            workoutAttachment: workoutAttachment,
             likeCount: newLikeCount, commentCount: commentCount, isLiked: newIsLiked,
             reactions: newReactions, reactionCount: newCount,
             isFollowingAuthor: isFollowingAuthor, isOwnPost: isOwnPost, createdAt: createdAt
@@ -50,7 +95,8 @@ struct CommunityPost: Decodable, Identifiable, Equatable {
     func withCommentCount(_ count: Int) -> CommunityPost {
         CommunityPost(
             id: id, user: user, content: content, visibility: visibility,
-            photoUrl: photoUrl, workoutAttachment: workoutAttachment,
+            photoUrl: photoUrl, shareConfig: shareConfig, cardImageUrl: cardImageUrl,
+            workoutAttachment: workoutAttachment,
             likeCount: likeCount, commentCount: count, isLiked: isLiked,
             reactions: reactions, reactionCount: reactionCount,
             isFollowingAuthor: isFollowingAuthor, isOwnPost: isOwnPost, createdAt: createdAt
@@ -60,7 +106,8 @@ struct CommunityPost: Decodable, Identifiable, Equatable {
     func withFollowing(_ following: Bool) -> CommunityPost {
         CommunityPost(
             id: id, user: user, content: content, visibility: visibility,
-            photoUrl: photoUrl, workoutAttachment: workoutAttachment,
+            photoUrl: photoUrl, shareConfig: shareConfig, cardImageUrl: cardImageUrl,
+            workoutAttachment: workoutAttachment,
             likeCount: likeCount, commentCount: commentCount, isLiked: isLiked,
             reactions: reactions, reactionCount: reactionCount,
             isFollowingAuthor: following, isOwnPost: isOwnPost, createdAt: createdAt
