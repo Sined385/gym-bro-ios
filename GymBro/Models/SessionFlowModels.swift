@@ -18,6 +18,46 @@ struct ExerciseLibraryItem: Decodable, Identifiable, Hashable {
     var isFavorite: Bool = false
     var images: [String]? = nil
     var externalId: String? = nil
+
+    init(
+        id: String,
+        name: String,
+        muscleGroup: String,
+        equipment: String,
+        isSystem: Bool,
+        isFavorite: Bool = false,
+        images: [String]? = nil,
+        externalId: String? = nil
+    ) {
+        self.id = id
+        self.name = name
+        self.muscleGroup = muscleGroup
+        self.equipment = equipment
+        self.isSystem = isSystem
+        self.isFavorite = isFavorite
+        self.images = images
+        self.externalId = externalId
+    }
+
+    private enum CodingKeys: String, CodingKey {
+        case id, name, muscleGroup, equipment, isSystem, isFavorite, images, externalId
+    }
+
+    // Why: synthesized Decodable doesn't honor default values for missing keys,
+    // so a backend that hasn't shipped `is_favorite` yet would throw on decode and
+    // drop the entire library to the mock fallback (which has no externalId, so
+    // exercise demo images go blank). decodeIfPresent keeps the client tolerant.
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        self.id = try c.decode(String.self, forKey: .id)
+        self.name = try c.decode(String.self, forKey: .name)
+        self.muscleGroup = try c.decode(String.self, forKey: .muscleGroup)
+        self.equipment = try c.decode(String.self, forKey: .equipment)
+        self.isSystem = try c.decodeIfPresent(Bool.self, forKey: .isSystem) ?? true
+        self.isFavorite = try c.decodeIfPresent(Bool.self, forKey: .isFavorite) ?? false
+        self.images = try c.decodeIfPresent([String].self, forKey: .images)
+        self.externalId = try c.decodeIfPresent(String.self, forKey: .externalId)
+    }
 }
 
 struct ExerciseLibraryResponse: Decodable {
@@ -103,10 +143,64 @@ struct ActiveSessionExercise: Identifiable, Equatable, Codable {
     var targetReps: Int
     var imageUrl: String?
     var externalId: String?
-    // Defaults to false; the FavoritesService is the live source of truth and
-    // the heart icon reads from there. This field exists so the model round-trips
-    // through SwiftData persistence cleanly if we ever switch to it.
     var isFavorite: Bool = false
+
+    init(
+        id: String,
+        libraryExerciseId: String?,
+        name: String,
+        muscleGroup: String,
+        equipment: String,
+        accentColor: String,
+        stepNumber: Int,
+        sets: [ActiveSet],
+        supersetGroupId: String?,
+        supersetOrder: String?,
+        targetSets: Int,
+        targetReps: Int,
+        imageUrl: String?,
+        externalId: String?,
+        isFavorite: Bool = false
+    ) {
+        self.id = id
+        self.libraryExerciseId = libraryExerciseId
+        self.name = name
+        self.muscleGroup = muscleGroup
+        self.equipment = equipment
+        self.accentColor = accentColor
+        self.stepNumber = stepNumber
+        self.sets = sets
+        self.supersetGroupId = supersetGroupId
+        self.supersetOrder = supersetOrder
+        self.targetSets = targetSets
+        self.targetReps = targetReps
+        self.imageUrl = imageUrl
+        self.externalId = externalId
+        self.isFavorite = isFavorite
+    }
+
+    private enum CodingKeys: String, CodingKey {
+        case id, libraryExerciseId, name, muscleGroup, equipment, accentColor, stepNumber, sets, supersetGroupId, supersetOrder, targetSets, targetReps, imageUrl, externalId, isFavorite
+    }
+
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        self.id = try c.decode(String.self, forKey: .id)
+        self.libraryExerciseId = try c.decodeIfPresent(String.self, forKey: .libraryExerciseId)
+        self.name = try c.decode(String.self, forKey: .name)
+        self.muscleGroup = try c.decode(String.self, forKey: .muscleGroup)
+        self.equipment = try c.decode(String.self, forKey: .equipment)
+        self.accentColor = try c.decode(String.self, forKey: .accentColor)
+        self.stepNumber = try c.decode(Int.self, forKey: .stepNumber)
+        self.sets = try c.decodeIfPresent([ActiveSet].self, forKey: .sets) ?? []
+        self.supersetGroupId = try c.decodeIfPresent(String.self, forKey: .supersetGroupId)
+        self.supersetOrder = try c.decodeIfPresent(String.self, forKey: .supersetOrder)
+        self.targetSets = try c.decodeIfPresent(Int.self, forKey: .targetSets) ?? 0
+        self.targetReps = try c.decodeIfPresent(Int.self, forKey: .targetReps) ?? 0
+        self.imageUrl = try c.decodeIfPresent(String.self, forKey: .imageUrl)
+        self.externalId = try c.decodeIfPresent(String.self, forKey: .externalId)
+        self.isFavorite = try c.decodeIfPresent(Bool.self, forKey: .isFavorite) ?? false
+    }
 
     static func == (lhs: Self, rhs: Self) -> Bool {
         lhs.id == rhs.id
@@ -122,9 +216,40 @@ struct ActiveSet: Identifiable, Equatable, Codable {
     var weightUnit: String
     var reps: Int?
     var isCompleted: Bool
-    // Defaults to false so existing CachedSession blobs in UserDefaults decode
-    // without a migration. New sets honor the user's bodyweight toggle.
     var isBodyweight: Bool = false
+
+    init(
+        id: String,
+        setNumber: Int,
+        weight: Double? = nil,
+        weightUnit: String,
+        reps: Int? = nil,
+        isCompleted: Bool,
+        isBodyweight: Bool = false
+    ) {
+        self.id = id
+        self.setNumber = setNumber
+        self.weight = weight
+        self.weightUnit = weightUnit
+        self.reps = reps
+        self.isCompleted = isCompleted
+        self.isBodyweight = isBodyweight
+    }
+
+    private enum CodingKeys: String, CodingKey {
+        case id, setNumber, weight, weightUnit, reps, isCompleted, isBodyweight
+    }
+
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        self.id = try c.decode(String.self, forKey: .id)
+        self.setNumber = try c.decode(Int.self, forKey: .setNumber)
+        self.weight = try c.decodeIfPresent(Double.self, forKey: .weight)
+        self.weightUnit = try c.decodeIfPresent(String.self, forKey: .weightUnit) ?? "kg"
+        self.reps = try c.decodeIfPresent(Int.self, forKey: .reps)
+        self.isCompleted = try c.decodeIfPresent(Bool.self, forKey: .isCompleted) ?? false
+        self.isBodyweight = try c.decodeIfPresent(Bool.self, forKey: .isBodyweight) ?? false
+    }
 }
 
 // MARK: - Superset Group

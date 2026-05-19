@@ -83,7 +83,10 @@ struct SessionFlowContainer: View {
                         onAddExercise: { navigationPath.append(SessionRoute.exerciseLibrary) },
                         onStartWorkout: { sessionManager.startWorkout() },
                         onCancelWorkout: onDismiss,
-                        onDismiss: onCollapse
+                        // Empty session: top X ends the session too. Collapsing
+                        // to mini-player isn't useful with nothing logged, and
+                        // pre-active state otherwise has no exit path.
+                        onDismiss: onDismiss
                     )
                 }
             }
