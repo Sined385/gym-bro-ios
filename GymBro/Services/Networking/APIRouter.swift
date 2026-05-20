@@ -509,6 +509,45 @@ enum CommunityRouter: APIRouter {
     }
 }
 
+// MARK: - Share Router
+
+enum ShareRouter: APIRouter {
+    case createSharedCard(cardImageUrl: String, shareConfig: [String: Any]?, workoutSessionId: String?)
+
+    var path: String {
+        switch self {
+        case .createSharedCard:
+            return "/api/v1/share-cards"
+        }
+    }
+
+    var method: HTTPMethod {
+        switch self {
+        case .createSharedCard:
+            return .post
+        }
+    }
+
+    var parameters: [String: Any]? {
+        switch self {
+        case .createSharedCard(let cardImageUrl, let shareConfig, let workoutSessionId):
+            var params: [String: Any] = ["card_image_url": cardImageUrl]
+            if let shareConfig { params["share_config"] = shareConfig }
+            if let workoutSessionId { params["workout_session_id"] = workoutSessionId }
+            return params
+        }
+    }
+
+    var encoding: ParameterEncoding {
+        return .json
+    }
+}
+
+struct SharedCardResponse: Decodable {
+    let id: String
+    let shareUrl: String
+}
+
 // MARK: - Notification Router
 
 enum NotificationRouter: APIRouter {

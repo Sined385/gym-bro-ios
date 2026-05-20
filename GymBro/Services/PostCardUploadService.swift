@@ -21,7 +21,7 @@ enum PostCardUploadService {
         config: ShareConfig,
         workout: WorkoutSnapshot
     ) async throws -> String {
-        guard let image = ShareCardRasterizer.render(config: config, workout: workout) else {
+        guard let image = await ShareCardRasterizer.render(config: config, workout: workout) else {
             throw NSError(
                 domain: "PostCardUploadService",
                 code: -1,

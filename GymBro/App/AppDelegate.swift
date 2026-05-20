@@ -16,11 +16,32 @@ class AppDelegate: NSObject, UIApplicationDelegate, MessagingDelegate, UNUserNot
         _ application: UIApplication,
         didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]? = nil
     ) -> Bool {
-        FirebaseApp.configure()
+        configureFirebase()
         Messaging.messaging().delegate = self
         UNUserNotificationCenter.current().delegate = self
         application.registerForRemoteNotifications()
         return true
+    }
+
+    /// Each Firebase iOS app entry is bound to a single bundle id. Staging and
+    /// prod ship separate plists (`GoogleService-Info-Staging.plist` for
+    /// `*.staging`, `GoogleService-Info.plist` for prod). Pick the right one
+    /// at runtime from the running bundle id — no build phases, no fragile
+    /// per-config file swapping.
+    private func configureFirebase() {
+        let bundleID = Bundle.main.bundleIdentifier ?? ""
+        let plistName = bundleID.contains(".staging")
+            ? "GoogleService-Info-Staging"
+            : "GoogleService-Info"
+        guard
+            let path = Bundle.main.path(forResource: plistName, ofType: "plist"),
+            let options = FirebaseOptions(contentsOfFile: path)
+        else {
+            assertionFailure("Missing \(plistName).plist for bundle \(bundleID)")
+            FirebaseApp.configure()
+            return
+        }
+        FirebaseApp.configure(options: options)
     }
 
     func application(

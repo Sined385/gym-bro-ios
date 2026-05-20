@@ -2,6 +2,9 @@
 // Assign to Release build configuration (or a Debug-Prod configuration) in Xcode project settings
 
 API_BASE_URL = https:/$()/gym-bro-api-production.up.railway.app
+SHARE_DOMAIN = https:/$()/gyymjaam.com
 SUPABASE_URL = https:/$()/pzyjxzhdnamkljjeayno.supabase.co
 SUPABASE_ANON_KEY = sb_publishable_dRg8kfSg53w385Z205QITA_dlRWDEiF
+GID_CLIENT_ID = 63791394907-78i5niur4ab86hhgatenl3upm3klb62j.apps.googleusercontent.com
+GID_REVERSED_CLIENT_ID = com.googleusercontent.apps.63791394907-78i5niur4ab86hhgatenl3upm3klb62j
 SWIFT_ACTIVE_COMPILATION_CONDITIONS = $(inherited) PRODUCTION

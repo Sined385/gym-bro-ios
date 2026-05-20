@@ -11,6 +11,10 @@ import SwiftUI
 struct ShareCardView: View {
     let config: ShareConfig
     let workout: WorkoutSnapshot
+    // When set, used instead of CachedAsyncImage for the photo background.
+    // ImageRenderer is synchronous and can't wait on async image loads, so the
+    // rasterizer pre-fetches the photo and passes the UIImage in here.
+    var prerenderedBackground: UIImage? = nil
 
     var body: some View {
         GeometryReader { geo in
@@ -42,7 +46,18 @@ struct ShareCardView: View {
             .frame(width: geo.size.width, height: geo.size.height, alignment: .topLeading)
             .background {
                 ZStack {
-                    if let url = config.background.photoURL {
+                    // Opaque white base so low-opacity gradient stops (e.g.
+                    // the paper preset's 6%-opacity purple) compose against
+                    // white. Without this, ImageRenderer (which uses a black
+                    // canvas) bleeds dark through the transparent parts,
+                    // making rasterized cards look totally different from
+                    // the in-app preview.
+                    Color.white
+                    if let prerendered = prerenderedBackground {
+                        Image(uiImage: prerendered)
+                            .resizable()
+                            .aspectRatio(contentMode: .fill)
+                    } else if let url = config.background.photoURL {
                         CachedAsyncImage(url: url) { image in
                             image
                                 .resizable()
@@ -96,21 +111,38 @@ struct ShareCardView: View {
     }
 
     private func statsRow(scale s: CGFloat, palette: Palette) -> some View {
-        HStack(spacing: 0) {
-            ForEach(Array(visibleStats.enumerated()), id: \.offset) { idx, stat in
-                VStack(alignment: .leading, spacing: 2 * s) {
-                    Text(stat.shortLabel)
-                        .font(.system(size: 8 * s, weight: .heavy))
-                        .tracking(0.7 * s)
-                        .foregroundColor(palette.statLabel)
-                    Text(workout.value(for: stat))
-                        .font(.system(size: 18 * s, weight: .heavy))
-                        .foregroundColor(stat == .prs && workout.prCount > 0 ? Color.gymBroPrimary : palette.title)
-                        .monospacedDigit()
-                }
-                .frame(maxWidth: .infinity, alignment: .leading)
-                if idx < visibleStats.count - 1 {
-                    Spacer(minLength: 4 * s)
+        // Cramming 5-6 columns into one row truncates the longer labels
+        // ("CALORIES", "AVG HR") and visually jams everything together. Wrap to
+        // a second row when there are enough stats that the grid breathes.
+        let cols: Int = {
+            switch visibleStats.count {
+            case 0...3: return max(visibleStats.count, 1)
+            case 4:     return 2
+            default:    return 3
+            }
+        }()
+        let rows = stride(from: 0, to: visibleStats.count, by: cols).map {
+            Array(visibleStats[$0..<min($0 + cols, visibleStats.count)])
+        }
+        return VStack(alignment: .leading, spacing: 14 * s) {
+            ForEach(Array(rows.enumerated()), id: \.offset) { _, row in
+                HStack(spacing: 0) {
+                    ForEach(Array(row.enumerated()), id: \.offset) { idx, stat in
+                        statColumn(stat, scale: s, palette: palette)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                        if idx < row.count - 1 {
+                            Spacer(minLength: 4 * s)
+                        }
+                    }
+                    // Keep the last row left-aligned when it's short of `cols`.
+                    // maxHeight:0 prevents Color.clear from pulling the HStack
+                    // to fill vertically (which made the tile balloon).
+                    if row.count < cols {
+                        ForEach(0..<(cols - row.count), id: \.self) { _ in
+                            Color.clear
+                                .frame(maxWidth: .infinity, maxHeight: 0)
+                        }
+                    }
                 }
             }
         }
@@ -129,6 +161,24 @@ struct ShareCardView: View {
             RoundedRectangle(cornerRadius: 12 * s)
                 .stroke(palette.divider, lineWidth: 1)
         )
+    }
+
+    private func statColumn(_ stat: StatKey, scale s: CGFloat, palette: Palette) -> some View {
+        VStack(alignment: .leading, spacing: 2 * s) {
+            Text(stat.shortLabel)
+                .font(.system(size: 8 * s, weight: .heavy))
+                .tracking(0.7 * s)
+                .foregroundColor(palette.statLabel)
+                .lineLimit(1)
+                .minimumScaleFactor(0.7)
+                .fixedSize(horizontal: false, vertical: true)
+            Text(workout.value(for: stat))
+                .font(.system(size: 18 * s, weight: .heavy))
+                .foregroundColor(stat == .prs && workout.prCount > 0 ? Color.gymBroPrimary : palette.title)
+                .monospacedDigit()
+                .lineLimit(1)
+                .minimumScaleFactor(0.7)
+        }
     }
 
     private func exerciseList(scale s: CGFloat, palette: Palette) -> some View {

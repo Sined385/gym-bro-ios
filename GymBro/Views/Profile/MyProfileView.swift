@@ -13,12 +13,13 @@ struct MyProfileView: View {
     }()
     @State private var showSettings = false
     @State private var showEditProfile = false
-    @State private var isSharingWorkout = false
-    @State private var shareURL: URL?
     @State private var showFollowList = false
     @State private var followListInitialTab: FollowListTab = .followers
+    // Post deep-link share still uses the native activity sheet (workout share
+    // now goes through the builder via appDataState.pendingShareData).
+    @State private var shareURL: URL?
+    @EnvironmentObject private var appDataState: AppDataState
 
-    private let networkService: NetworkServiceProtocol = DependencyContainer.shared.resolve(NetworkServiceProtocol.self)
     private let analytics: AnalyticsTrackingServiceProtocol = DependencyContainer.shared.resolve(AnalyticsTrackingServiceProtocol.self)
     @State private var profileAppearTime: Date?
 
@@ -43,7 +44,7 @@ struct MyProfileView: View {
                             hasMore: viewModel.hasMoreWorkouts,
                             onLoadMore: { await viewModel.loadMoreWorkouts() },
                             onShare: { workout in
-                                Task { await shareWorkout(workout) }
+                                shareWorkout(workout)
                             }
                         )
 
@@ -155,23 +156,48 @@ struct MyProfileView: View {
 
     // MARK: - Share Workout
 
-    private func shareWorkout(_ workout: ProfileWorkout) async {
-        guard !isSharingWorkout else { return }
-        isSharingWorkout = true
-        do {
-            let template = try await networkService.request(
-                TemplateRouter.create(name: workout.title, sessionIds: [workout.id]).endpoint,
-                responseType: WorkoutTemplate.self
+    /// Routes the profile share button into the same builder that the
+    /// post-completion screen and the home history section use. Builds a
+    /// CompletedWorkoutShareData from the ProfileWorkout — MainTabView
+    /// presents ShareEditorView automatically when pendingShareData is set.
+    private func shareWorkout(_ workout: ProfileWorkout) {
+        let activeExercises = workout.exercises.map { he in
+            ActiveSessionExercise(
+                id: he.id,
+                libraryExerciseId: nil,
+                name: he.name,
+                muscleGroup: he.muscleGroup ?? "Other",
+                equipment: "",
+                accentColor: he.accentColor,
+                stepNumber: he.stepNumber,
+                sets: he.sets.map { sd in
+                    ActiveSet(
+                        id: UUID().uuidString,
+                        setNumber: sd.setNumber,
+                        weight: sd.weight,
+                        weightUnit: sd.weightUnit,
+                        reps: sd.reps,
+                        isCompleted: true,
+                        isBodyweight: sd.isBodyweight
+                    )
+                },
+                supersetGroupId: nil,
+                supersetOrder: nil,
+                targetSets: he.sets.count,
+                targetReps: 0,
+                imageUrl: he.imageUrl,
+                externalId: he.externalId
             )
-            let response = try await networkService.request(
-                TemplateRouter.share(templateId: template.id).endpoint,
-                responseType: ShareTemplateResponse.self
-            )
-            isSharingWorkout = false
-            shareURL = URL(string: response.shareUrl)
-        } catch {
-            isSharingWorkout = false
         }
+        appDataState.pendingShareData = CompletedWorkoutShareData(
+            sessionId: workout.id,
+            sessionTitle: workout.title,
+            exercises: activeExercises,
+            effortLevel: 0,
+            energyLevel: 0,
+            durationMinutes: workout.durationMinutes
+        )
+        analytics.track("profile_workout_share_opened", properties: ["session_id": workout.id])
     }
 
     // MARK: - Header Card
@@ -492,7 +518,7 @@ struct MyProfileView: View {
                             },
                             isCommentsExpanded: viewModel.expandedComments.contains(post.id),
                             onShare: {
-                                shareURL = URL(string: "https://gyymjaam.com/p/\(post.id)")
+                                shareURL = URL(string: "\(AppEnvironment.current.shareDomain)/p/\(post.id)")
                             }
                         )
 

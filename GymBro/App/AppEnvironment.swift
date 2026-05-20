@@ -43,4 +43,15 @@ enum AppEnvironment {
         }
         return key
     }
+
+    /// Public share domain — set via xcconfig → Info.plist. Used wherever the
+    /// client builds a share URL for an existing post (`/p/{id}`); the backend
+    /// also stamps fresh share-card and template URLs server-side, but
+    /// post-share URLs are constructed client-side from the post id.
+    var shareDomain: String {
+        guard let url = Bundle.main.infoDictionary?["SHARE_DOMAIN"] as? String, !url.isEmpty else {
+            fatalError("SHARE_DOMAIN not set in Info.plist. Check your xcconfig.")
+        }
+        return url
+    }
 }

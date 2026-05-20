@@ -50,6 +50,7 @@ struct ShareEditorView: View {
                 ScrollView(.vertical, showsIndicators: false) {
                     VStack(spacing: 18) {
                         preview
+                        titleField
                         backgroundSection
                         statsSection
                         exercisesSection
@@ -368,6 +369,25 @@ struct ShareEditorView: View {
         .buttonStyle(.plain)
     }
 
+    // MARK: Title
+
+    private var titleField: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            sectionLabel("TITLE")
+            TextField("Workout title", text: $config.title)
+                .font(.system(size: 16, weight: .semibold))
+                .foregroundColor(.gymBroNeutral900)
+                .padding(12)
+                .background(Color.white)
+                .clipShape(RoundedRectangle(cornerRadius: 12))
+                .overlay(
+                    RoundedRectangle(cornerRadius: 12)
+                        .stroke(Color(hex: "ECECF0"), lineWidth: 1)
+                )
+                .submitLabel(.done)
+        }
+    }
+
     // MARK: Caption
 
     private var captionField: some View {
@@ -395,16 +415,16 @@ struct ShareEditorView: View {
                 Task { await postToCommunity() }
             }
             railButton("Stories",   systemImage: "camera.fill", tint: Color(hex: "E1306C")) {
-                shareToStories()
+                Task { await shareToStories() }
             }
             railButton("WhatsApp",  systemImage: "message.fill", tint: Color(hex: "25D366")) {
-                shareToWhatsApp()
+                Task { await shareToWhatsApp() }
             }
             railButton("Save",      systemImage: "square.and.arrow.down", tint: .gymBroNeutral900, neutral: true) {
-                saveCardToPhotos()
+                Task { await saveCardToPhotos() }
             }
-            railButton("More",      systemImage: "ellipsis", tint: .gymBroNeutral900, neutral: true) {
-                exportRasterShare()
+            railButton("Link",      systemImage: "link", tint: .gymBroNeutral900, neutral: true) {
+                Task { await shareLink() }
             }
         }
         .padding(.horizontal, 12)
@@ -457,25 +477,17 @@ struct ShareEditorView: View {
             .padding(.horizontal, 4)
     }
 
-    /// Generic system share sheet — used by the "More" button.
-    private func exportRasterShare() {
-        guard let image = renderedCardImage() else { return }
-        pendingActivityItems = [image]
-        showActivity = true
-        analytics.track("share_card_exported", properties: ["session_id": data.sessionId, "target": "more"])
-    }
-
     /// Instagram Stories direct hand-off via the documented `instagram-stories://share`
     /// URL scheme + pasteboard. Falls back to the generic share sheet if IG isn't installed.
-    private func shareToStories() {
-        guard let image = renderedCardImage(), let png = image.pngData() else { return }
+    private func shareToStories() async {
+        guard let image = await renderedCardImage(), let png = image.pngData() else { return }
         let url = URL(string: "instagram-stories://share")!
         if UIApplication.shared.canOpenURL(url) {
             UIPasteboard.general.setItems(
                 [["com.instagram.sharedSticker.backgroundImage": png]],
                 options: [.expirationDate: Date().addingTimeInterval(60 * 5)]
             )
-            UIApplication.shared.open(url)
+            _ = await UIApplication.shared.open(url)
             analytics.track("share_card_exported", properties: ["session_id": data.sessionId, "target": "stories"])
         } else {
             // IG not installed — fall back to generic sheet so the user can still send the image.
@@ -488,8 +500,8 @@ struct ShareEditorView: View {
     /// (WhatsApp's own `whatsapp://send` doesn't accept image payloads from
     /// outside the WhatsApp Documents folder; the activity sheet is the
     /// reliable path and the system will surface WhatsApp if installed.)
-    private func shareToWhatsApp() {
-        guard let image = renderedCardImage() else { return }
+    private func shareToWhatsApp() async {
+        guard let image = await renderedCardImage() else { return }
         pendingActivityItems = [image]
         showActivity = true
         analytics.track("share_card_exported", properties: ["session_id": data.sessionId, "target": "whatsapp"])
@@ -497,14 +509,14 @@ struct ShareEditorView: View {
 
     /// Save directly to Photos via UIImageWriteToSavedPhotosAlbum (Photos
     /// add-only permission via Info.plist's NSPhotoLibraryAddUsageDescription).
-    private func saveCardToPhotos() {
-        guard let image = renderedCardImage() else { return }
+    private func saveCardToPhotos() async {
+        guard let image = await renderedCardImage() else { return }
         UIImageWriteToSavedPhotosAlbum(image, nil, nil, nil)
         analytics.track("share_card_exported", properties: ["session_id": data.sessionId, "target": "save"])
     }
 
-    private func renderedCardImage() -> UIImage? {
-        if let image = ShareCardRasterizer.render(config: config, workout: workout) {
+    private func renderedCardImage() async -> UIImage? {
+        if let image = await ShareCardRasterizer.render(config: config, workout: workout) {
             return image
         }
         errorMessage = "Couldn't render the share card."
@@ -520,6 +532,47 @@ struct ShareEditorView: View {
         } catch {
             errorMessage = "Couldn't upload that photo: \(error.localizedDescription)"
         }
+    }
+
+    /// Decoupled from posts: uploads the rasterized card to Storage, creates a
+    /// SharedCard row on the backend (no community post), and hands off the
+    /// resulting gyymjaam.com/c/{id} URL to the system share sheet. iMessage /
+    /// Slack / Twitter unfurl the link via the og:image set by /c/:shareId.
+    private func shareLink() async {
+        guard !isSharing else { return }
+        isSharing = true
+        defer { isSharing = false }
+        let cardImageUrl: String
+        do {
+            cardImageUrl = try await PostCardUploadService.uploadCardImage(
+                config: config,
+                workout: workout
+            )
+        } catch {
+            errorMessage = "Couldn't upload the share image: \(error.localizedDescription)"
+            return
+        }
+        let response: SharedCardResponse
+        do {
+            response = try await networkService.request(
+                ShareRouter.createSharedCard(
+                    cardImageUrl: cardImageUrl,
+                    shareConfig: config.toDictionary(),
+                    workoutSessionId: data.sessionId
+                ).endpoint,
+                responseType: SharedCardResponse.self
+            )
+        } catch {
+            errorMessage = "Couldn't create share link: \(error.localizedDescription)"
+            return
+        }
+        guard let url = URL(string: response.shareUrl) else {
+            errorMessage = "Couldn't build share link."
+            return
+        }
+        pendingActivityItems = [url]
+        showActivity = true
+        analytics.track("share_card_exported", properties: ["session_id": data.sessionId, "target": "link"])
     }
 
     private func postToCommunity() async {

@@ -11,7 +11,7 @@
 			<string>Google Sign-In</string>
 			<key>CFBundleURLSchemes</key>
 			<array>
-				<string>com.googleusercontent.apps.63791394907-78i5niur4ab86hhgatenl3upm3klb62j</string>
+				<string>$(GID_REVERSED_CLIENT_ID)</string>
 			</array>
 		</dict>
 		<dict>
@@ -24,7 +24,7 @@
 		</dict>
 	</array>
 	<key>GIDClientID</key>
-	<string>63791394907-78i5niur4ab86hhgatenl3upm3klb62j.apps.googleusercontent.com</string>
+	<string>$(GID_CLIENT_ID)</string>
 	<key>LSApplicationQueriesSchemes</key>
 	<array>
 		<string>instagram-stories</string>
@@ -37,6 +37,8 @@
 	</dict>
 	<key>NSPhotoLibraryAddUsageDescription</key>
 	<string>Save your shared workout cards to Photos.</string>
+	<key>SHARE_DOMAIN</key>
+	<string>$(SHARE_DOMAIN)</string>
 	<key>SUPABASE_ANON_KEY</key>
 	<string>$(SUPABASE_ANON_KEY)</string>
 	<key>SUPABASE_URL</key>

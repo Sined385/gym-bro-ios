@@ -876,7 +876,7 @@ struct UserProfileView: View {
                         onUserTap: { _ in },
                         isCommentsExpanded: viewModel.expandedComments.contains(post.id),
                         onShare: {
-                            shareURL = URL(string: "https://gyymjaam.com/p/\(post.id)")
+                            shareURL = URL(string: "\(AppEnvironment.current.shareDomain)/p/\(post.id)")
                         }
                     )
 
