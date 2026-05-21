@@ -401,6 +401,11 @@ final class SessionFlowViewModel: ObservableObject {
 
     func completeSetFromWatch(exerciseId: String, setId: String, weight: Double?, reps: Int) async {
         await completeSet(exerciseId: exerciseId, setId: setId, weight: weight, reps: reps)
+        // Match the iPhone inline-checkmark flow — the rest timer is what
+        // tells both screens (and the Watch via WCSession push) that we're
+        // resting now. Without this the user just sees "set logged" and no
+        // countdown on either device.
+        sessionManager.startRestTimer()
     }
 
     // MARK: - Session Completion

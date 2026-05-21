@@ -16,6 +16,7 @@ struct CommunityFeedView: View {
     @StateObject private var viewModel: CommunityFeedViewModel = DependencyContainer.shared.resolve(CommunityFeedViewModel.self)
     @EnvironmentObject var deepLinkRouter: DeepLinkRouter
     @EnvironmentObject var sessionManager: ActiveSessionManager
+    @EnvironmentObject var appDataState: AppDataState
     @State private var navigationPath = NavigationPath()
     @State private var shareURL: URL?
     @State private var reportTarget: (contentType: String, contentId: String)?
@@ -104,6 +105,15 @@ struct CommunityFeedView: View {
             }
             .refreshable {
                 await viewModel.loadFeed()
+            }
+            // ShareEditorView drops the freshly-posted post into this slot
+            // before dismissing. Inject it at the top of the feed, then clear
+            // the slot so navigating away + back doesn't re-insert it.
+            .onChange(of: appDataState.pendingFeedPost) { _, post in
+                if let post {
+                    viewModel.onPostCreated(post)
+                    appDataState.pendingFeedPost = nil
+                }
             }
             .sheet(isPresented: $viewModel.isShowingNewPost) {
                 NewPostView { post in

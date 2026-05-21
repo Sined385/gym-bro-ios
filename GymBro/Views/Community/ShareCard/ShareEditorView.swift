@@ -22,6 +22,10 @@ struct ShareEditorView: View {
     @State private var pendingActivityItems: [Any]? = nil
     @State private var showActivity: Bool = false
     @State private var showBackgroundPhotoPicker: Bool = false
+    @State private var authorHandle: String?
+    @State private var toastMessage: ToastMessage?
+
+    @EnvironmentObject private var appDataState: AppDataState
     @State private var isUploadingBackgroundPhoto: Bool = false
 
     @Environment(\.dismiss) private var dismiss
@@ -30,7 +34,7 @@ struct ShareEditorView: View {
     private let analytics: AnalyticsTrackingServiceProtocol = DependencyContainer.shared.resolve(AnalyticsTrackingServiceProtocol.self)
 
     private var workout: WorkoutSnapshot {
-        WorkoutSnapshot.from(data)
+        WorkoutSnapshot.from(data, authorHandle: authorHandle)
     }
 
     init(data: CompletedWorkoutShareData, onShare: @escaping (CommunityPost) -> Void, onSkip: @escaping () -> Void) {
@@ -77,6 +81,33 @@ struct ShareEditorView: View {
             .imageSourcePicker(isPresented: $showBackgroundPhotoPicker) { data in
                 Task { await uploadBackgroundPhoto(data: data) }
             }
+            .task { await loadAuthorHandle() }
+            .overlay(alignment: .top) {
+                if let toast = toastMessage {
+                    ToastBanner(message: toast)
+                        .padding(.top, 60)
+                        .padding(.horizontal, 20)
+                        .zIndex(10)
+                }
+            }
+            .animation(.spring(response: 0.35, dampingFraction: 0.85), value: toastMessage)
+        }
+    }
+
+    /// Pulls the signed-in user's @handle so the card footer shows it on
+    /// rasterized output (Save / Stories / Link). Without this, the editor
+    /// renders the card with no handle even though the live feed card has it.
+    private func loadAuthorHandle() async {
+        guard authorHandle == nil else { return }
+        do {
+            let profile = try await networkService.request(
+                CommunityRouter.myProfile.endpoint,
+                responseType: MyProfileResponse.self
+            )
+            authorHandle = profile.user.username
+        } catch {
+            // Non-fatal — card just renders without the handle line.
+            print("[ShareEditor] couldn't load profile for @handle: \(error.localizedDescription)")
         }
     }
 
@@ -98,19 +129,14 @@ struct ShareEditorView: View {
                 .font(.system(size: 16, weight: .heavy))
                 .foregroundColor(.gymBroNeutral900)
             Spacer()
-            Button {
-                Task { await postToCommunity() }
-            } label: {
-                Text(isSharing ? "Posting…" : "Share")
-                    .font(.system(size: 14, weight: .heavy))
-                    .foregroundColor(.white)
-                    .padding(.horizontal, 16)
-                    .padding(.vertical, 8)
-                    .background(Color.gymBroPrimary)
-                    .clipShape(Capsule())
-            }
-            .buttonStyle(.plain)
-            .disabled(isSharing)
+            // Symmetric spacing — Cancel sits at the leading edge, so reserve
+            // an equivalent invisible spacer on the trailing side to keep the
+            // title centered now that the top-right Share pill is gone
+            // (it was redundant with the Community rail button below).
+            Text("Cancel")
+                .font(.system(size: 15, weight: .semibold))
+                .opacity(0)
+                .accessibilityHidden(true)
         }
         .padding(.horizontal, 16)
         .padding(.top, 16)
@@ -411,19 +437,59 @@ struct ShareEditorView: View {
 
     private var shareRail: some View {
         HStack(spacing: 0) {
-            railButton("Community", systemImage: "person.2.fill", tint: .gymBroPrimary, primary: true) {
+            railButton(
+                label: "Community",
+                background: AnyShapeStyle(LinearGradient(
+                    colors: [.gymBroPrimary, .gymBroPrimary],
+                    startPoint: .topLeading, endPoint: .bottomTrailing
+                )),
+                labelColor: .gymBroPrimary,
+                shadow: Color.gymBroPrimary.opacity(0.35)
+            ) {
+                Image(systemName: "person.2.fill")
+                    .font(.system(size: 18, weight: .semibold))
+                    .foregroundColor(.white)
+            } action: {
                 Task { await postToCommunity() }
             }
-            railButton("Stories",   systemImage: "camera.fill", tint: Color(hex: "E1306C")) {
+
+            railButton(
+                label: "Stories",
+                background: AnyShapeStyle(LinearGradient(
+                    // Instagram brand gradient (yellow → orange → pink → purple).
+                    colors: [Color(hex: "FEDA77"), Color(hex: "F58529"),
+                             Color(hex: "DD2A7B"), Color(hex: "8134AF"),
+                             Color(hex: "515BD4")],
+                    startPoint: .bottomLeading, endPoint: .topTrailing
+                )),
+                labelColor: .gymBroNeutral600
+            ) {
+                instagramGlyph
+            } action: {
                 Task { await shareToStories() }
             }
-            railButton("WhatsApp",  systemImage: "message.fill", tint: Color(hex: "25D366")) {
-                Task { await shareToWhatsApp() }
-            }
-            railButton("Save",      systemImage: "square.and.arrow.down", tint: .gymBroNeutral900, neutral: true) {
+
+            railButton(
+                label: "Save",
+                background: AnyShapeStyle(Color.gymBroNeutral100),
+                labelColor: .gymBroNeutral600
+            ) {
+                Image(systemName: "square.and.arrow.down")
+                    .font(.system(size: 18, weight: .semibold))
+                    .foregroundColor(.gymBroNeutral900)
+            } action: {
                 Task { await saveCardToPhotos() }
             }
-            railButton("Link",      systemImage: "link", tint: .gymBroNeutral900, neutral: true) {
+
+            railButton(
+                label: "Link",
+                background: AnyShapeStyle(Color.gymBroNeutral100),
+                labelColor: .gymBroNeutral600
+            ) {
+                Image(systemName: "link")
+                    .font(.system(size: 18, weight: .semibold))
+                    .foregroundColor(.gymBroNeutral900)
+            } action: {
                 Task { await shareLink() }
             }
         }
@@ -439,28 +505,44 @@ struct ShareEditorView: View {
         )
     }
 
-    private func railButton(
-        _ label: String,
-        systemImage: String,
-        tint: Color,
-        primary: Bool = false,
-        neutral: Bool = false,
+    /// Hand-drawn Instagram camera glyph (rounded square + center circle +
+    /// upper-right indicator dot). Avoids needing a bundled brand asset.
+    private var instagramGlyph: some View {
+        ZStack {
+            RoundedRectangle(cornerRadius: 6)
+                .stroke(Color.white, lineWidth: 2)
+                .frame(width: 22, height: 22)
+            Circle()
+                .stroke(Color.white, lineWidth: 2)
+                .frame(width: 10, height: 10)
+            Circle()
+                .fill(Color.white)
+                .frame(width: 3, height: 3)
+                .offset(x: 6, y: -6)
+        }
+        .frame(width: 24, height: 24)
+    }
+
+    private func railButton<Icon: View>(
+        label: String,
+        background: AnyShapeStyle,
+        labelColor: Color,
+        shadow: Color = .clear,
+        @ViewBuilder icon: () -> Icon,
         action: @escaping () -> Void
     ) -> some View {
         Button(action: action) {
             VStack(spacing: 5) {
                 ZStack {
                     Circle()
-                        .fill(neutral ? Color.gymBroNeutral100 : tint)
+                        .fill(background)
                         .frame(width: 46, height: 46)
-                    Image(systemName: systemImage)
-                        .font(.system(size: 18, weight: .semibold))
-                        .foregroundColor(neutral ? Color.gymBroNeutral900 : .white)
+                    icon()
                 }
-                .shadow(color: primary ? tint.opacity(0.35) : .clear, radius: 8, x: 0, y: 4)
+                .shadow(color: shadow, radius: 8, x: 0, y: 4)
                 Text(label)
                     .font(.system(size: 10, weight: .heavy))
-                    .foregroundColor(primary ? .gymBroPrimary : .gymBroNeutral600)
+                    .foregroundColor(labelColor)
             }
             .frame(maxWidth: .infinity)
         }
@@ -477,42 +559,55 @@ struct ShareEditorView: View {
             .padding(.horizontal, 4)
     }
 
-    /// Instagram Stories direct hand-off via the documented `instagram-stories://share`
-    /// URL scheme + pasteboard. Falls back to the generic share sheet if IG isn't installed.
+    /// Instagram Stories hand-off. IG requires `source_application` (a Facebook
+    /// App ID registered in the FB Developer console — IG rejects the share
+    /// with "this app doesn't support Stories sharing" without it). The FB App
+    /// ID is read from Info.plist's `FacebookAppID`; if it's missing or still
+    /// the placeholder, we fall back to the system share sheet so the user
+    /// can at least send the image manually.
     private func shareToStories() async {
         guard let image = await renderedCardImage(), let png = image.pngData() else { return }
-        let url = URL(string: "instagram-stories://share")!
-        if UIApplication.shared.canOpenURL(url) {
+        let scheme = URL(string: "instagram-stories://share")!
+        let fbAppID = (Bundle.main.object(forInfoDictionaryKey: "FacebookAppID") as? String) ?? ""
+        let canHandIG = UIApplication.shared.canOpenURL(scheme)
+            && !fbAppID.isEmpty
+            && fbAppID != "$(FACEBOOK_APP_ID)"
+            && !fbAppID.contains("REPLACE_ME")
+
+        if canHandIG, let igURL = URL(string: "instagram-stories://share?source_application=\(fbAppID)") {
             UIPasteboard.general.setItems(
                 [["com.instagram.sharedSticker.backgroundImage": png]],
                 options: [.expirationDate: Date().addingTimeInterval(60 * 5)]
             )
-            _ = await UIApplication.shared.open(url)
+            _ = await UIApplication.shared.open(igURL)
             analytics.track("share_card_exported", properties: ["session_id": data.sessionId, "target": "stories"])
         } else {
-            // IG not installed — fall back to generic sheet so the user can still send the image.
+            // No FB App ID configured → IG would reject. Use system share sheet.
             pendingActivityItems = [image]
             showActivity = true
         }
     }
 
-    /// Pre-filter the system share sheet to nudge toward WhatsApp.
-    /// (WhatsApp's own `whatsapp://send` doesn't accept image payloads from
-    /// outside the WhatsApp Documents folder; the activity sheet is the
-    /// reliable path and the system will surface WhatsApp if installed.)
-    private func shareToWhatsApp() async {
-        guard let image = await renderedCardImage() else { return }
-        pendingActivityItems = [image]
-        showActivity = true
-        analytics.track("share_card_exported", properties: ["session_id": data.sessionId, "target": "whatsapp"])
-    }
-
     /// Save directly to Photos via UIImageWriteToSavedPhotosAlbum (Photos
     /// add-only permission via Info.plist's NSPhotoLibraryAddUsageDescription).
+    /// Fires a success-style haptic and a small toast on completion so the user
+    /// gets immediate native-style confirmation that the image hit the album.
     private func saveCardToPhotos() async {
         guard let image = await renderedCardImage() else { return }
         UIImageWriteToSavedPhotosAlbum(image, nil, nil, nil)
+        UINotificationFeedbackGenerator().notificationOccurred(.success)
+        showToast(text: "Saved to Photos", systemImage: "checkmark.circle.fill")
         analytics.track("share_card_exported", properties: ["session_id": data.sessionId, "target": "save"])
+    }
+
+    private func showToast(text: String, systemImage: String) {
+        toastMessage = ToastMessage(text: text, systemImage: systemImage)
+        Task {
+            try? await Task.sleep(nanoseconds: 1_800_000_000)
+            await MainActor.run {
+                if toastMessage?.text == text { toastMessage = nil }
+            }
+        }
     }
 
     private func renderedCardImage() async -> UIImage? {
@@ -610,13 +705,49 @@ struct ShareEditorView: View {
                 responseType: CommunityPost.self
             )
             analytics.track("post_shared_after_workout", properties: ["session_id": data.sessionId])
+            UINotificationFeedbackGenerator().notificationOccurred(.success)
             isSharing = false
+            // Set the redirect signal BEFORE dismissing so MainTabView sees it
+            // when the sheet closes. Feed will switch tabs + prepend the post.
+            appDataState.pendingFeedPost = post
             onShare(post)
             dismiss()
         } catch {
             errorMessage = "Failed to share: \(error.localizedDescription)"
             isSharing = false
         }
+    }
+}
+
+// MARK: - Toast
+
+/// Small native-feeling confirmation banner. Holds the text + SF Symbol for the
+/// glyph; the editor's `.overlay` renders + auto-dismisses it after ~1.8s.
+struct ToastMessage: Equatable {
+    let text: String
+    let systemImage: String
+}
+
+struct ToastBanner: View {
+    let message: ToastMessage
+
+    var body: some View {
+        HStack(spacing: 8) {
+            Image(systemName: message.systemImage)
+                .font(.system(size: 15, weight: .bold))
+                .foregroundColor(Color(hex: "30C08D"))
+            Text(message.text)
+                .font(.system(size: 14, weight: .semibold))
+                .foregroundColor(.white)
+        }
+        .padding(.horizontal, 16)
+        .padding(.vertical, 10)
+        .background(
+            RoundedRectangle(cornerRadius: 14, style: .continuous)
+                .fill(Color.black.opacity(0.82))
+        )
+        .shadow(color: .black.opacity(0.18), radius: 12, x: 0, y: 6)
+        .transition(.move(edge: .top).combined(with: .opacity))
     }
 }
 

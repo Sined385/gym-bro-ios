@@ -421,7 +421,11 @@ struct ExerciseLoggingView: View {
                 isBodyweight: bodyweightBinding(for: set, exercise: exercise),
                 isCompleted: set.isCompleted,
                 onComplete: {
-                    let isBW = editBodyweight[set.id] ?? set.isBodyweight
+                    // Default BW state mirrors `bodyweightBinding` so the
+                    // inline checkmark on a planned BW-equipment set completes
+                    // as bodyweight (matches what the row already displays).
+                    let defaultBW = set.isBodyweight || exercise.equipment == "Bodyweight"
+                    let isBW = editBodyweight[set.id] ?? defaultBW
                     let wStr: String = editWeights[set.id] ?? set.weight.map { $0.formattedWeight } ?? prefillWeight.map { $0.formattedWeight } ?? ""
                     let rStr: String = editReps[set.id] ?? set.reps.map { "\($0)" } ?? prefillReps.map { "\($0)" } ?? ""
                     let w = isBW ? nil : Double(wStr)
@@ -438,10 +442,19 @@ struct ExerciseLoggingView: View {
                     sessionManager.startRestTimer()
                 },
                 onTapCompleted: {
+                    // Fires for both planned and completed sets now. Pre-fill
+                    // the popup with the existing values, falling back to the
+                    // prefill (last completed today → previous session) so the
+                    // user isn't starting from blank fields on a planned set.
                     editingSetInfo = (exerciseId: exercise.id, setId: set.id)
-                    addSetWeight = set.weight.map { $0.formattedWeight } ?? ""
-                    addSetReps = set.reps.map { "\($0)" } ?? ""
-                    addSetIsBodyweight = set.isBodyweight
+                    addSetWeight = (set.weight ?? prefillWeight).map { $0.formattedWeight } ?? ""
+                    addSetReps = (set.reps ?? prefillReps).map { "\($0)" } ?? ""
+                    // Honor the set's own flag if it was already toggled,
+                    // otherwise fall back to the exercise's equipment default
+                    // (bodyweight exercises start with BW pre-selected).
+                    addSetIsBodyweight = set.isCompleted
+                        ? set.isBodyweight
+                        : (set.isBodyweight || exercise.equipment == "Bodyweight")
                     showAddSetSheet = true
                 }
             )
@@ -1213,18 +1226,35 @@ struct ExerciseLoggingView: View {
         let weight: Double? = isBW ? nil : Double(addSetWeight.replacingOccurrences(of: ",", with: "."))
         let reps = Int(addSetReps) ?? 0
 
-        // Edit existing set
+        // Edit existing set — if the set was still planned (not yet completed),
+        // saving the popup also marks it done. Editing a completed set just
+        // updates values in place without flipping any state.
         if let editing = editingSetInfo {
+            let wasCompleted = viewModel.exercises
+                .first(where: { $0.id == editing.exerciseId })?
+                .sets.first(where: { $0.id == editing.setId })?
+                .isCompleted ?? false
             Task {
-                await viewModel.updateSet(
-                    exerciseId: editing.exerciseId,
-                    setId: editing.setId,
-                    weight: weight,
-                    weightUnit: nil,
-                    reps: reps,
-                    isCompleted: nil,
-                    isBodyweight: isBW
-                )
+                if wasCompleted {
+                    await viewModel.updateSet(
+                        exerciseId: editing.exerciseId,
+                        setId: editing.setId,
+                        weight: weight,
+                        weightUnit: nil,
+                        reps: reps,
+                        isCompleted: nil,
+                        isBodyweight: isBW
+                    )
+                } else {
+                    await viewModel.completeSet(
+                        exerciseId: editing.exerciseId,
+                        setId: editing.setId,
+                        weight: weight,
+                        reps: reps,
+                        isBodyweight: isBW
+                    )
+                    sessionManager.startRestTimer()
+                }
             }
             showAddSetSheet = false
             editingSetInfo = nil

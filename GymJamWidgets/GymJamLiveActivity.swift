@@ -12,8 +12,12 @@ import WidgetKit
 struct GymJamLiveActivity: Widget {
     var body: some WidgetConfiguration {
         ActivityConfiguration(for: WorkoutActivityAttributes.self) { context in
-            // Lock Screen / Banner UI
+            // Lock Screen / Banner UI. .widgetURL gives the Live Activity a
+            // tap target — on watchOS this opens the GymJam Watch app
+            // straight into the active workout view (which is what users
+            // expect when they tap the Smart Stack tile on their wrist).
             lockScreenView(context: context)
+                .widgetURL(URL(string: "gymjam://workout"))
         } dynamicIsland: { context in
             DynamicIsland {
                 DynamicIslandExpandedRegion(.leading) {

@@ -124,13 +124,22 @@ struct WorkoutFeedbackView: View {
                             // Snapshot the data the share screen needs BEFORE
                             // tearing down the session — once onDismiss fires,
                             // the SessionFlowViewModel is gone.
+                            // Prefer Apple Watch summary (real-time HR + active
+                            // calories) when the watch managed the session;
+                            // otherwise fall back to backend-estimated calories.
+                            let watchSummary = sessionManager.watchWorkoutSummary
+                            let calories = watchSummary.map { Int($0.activeCalories) }
+                                ?? response.calories
+                            let avgHR = watchSummary?.averageHeartRate.map { Int($0) }
                             let shareData = CompletedWorkoutShareData(
                                 sessionId: viewModel.sessionId,
                                 sessionTitle: viewModel.sessionTitle,
                                 exercises: viewModel.exercises,
                                 effortLevel: viewModel.effortLevel,
                                 energyLevel: viewModel.energyLevel,
-                                durationMinutes: response.durationMinutes
+                                durationMinutes: response.durationMinutes,
+                                calories: calories,
+                                avgHeartRate: avgHR
                             )
                             appDataState.pendingShareData = shareData
                             // Fully end the session — MainTabView will present

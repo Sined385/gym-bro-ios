@@ -195,7 +195,8 @@ struct MyProfileView: View {
             exercises: activeExercises,
             effortLevel: 0,
             energyLevel: 0,
-            durationMinutes: workout.durationMinutes
+            durationMinutes: workout.durationMinutes,
+            calories: workout.calories
         )
         analytics.track("profile_workout_share_opened", properties: ["session_id": workout.id])
     }

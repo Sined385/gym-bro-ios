@@ -220,10 +220,21 @@ struct ShareCardView: View {
                     .clipShape(RoundedRectangle(cornerRadius: 3 * s))
             }
 
-            Text(ex.bestSetLine)
-                .font(.system(size: 11 * s, weight: .heavy))
-                .foregroundColor(palette.title)
-                .monospacedDigit()
+            HStack(spacing: 6 * s) {
+                if !ex.setChips.isEmpty {
+                    Text("^[\(ex.setChips.count) set](inflect: true)")
+                        .font(.system(size: 9 * s, weight: .heavy))
+                        .foregroundColor(palette.statLabel)
+                        .monospacedDigit()
+                    Rectangle()
+                        .fill(palette.divider)
+                        .frame(width: 1, height: 10 * s)
+                }
+                Text(ex.bestSetLine)
+                    .font(.system(size: 11 * s, weight: .heavy))
+                    .foregroundColor(palette.title)
+                    .monospacedDigit()
+            }
         }
         .padding(.horizontal, 8 * s)
         .padding(.vertical, 6 * s)
@@ -267,11 +278,12 @@ struct ShareCardView: View {
         StatKey.allCases.filter { config.selectedStatKeys.contains($0) }
     }
 
-    /// Show up to 6 exercises on the card to avoid overflow at 9:16.
+    /// Cap at 8 — fits comfortably inside the 9:16 frame; beyond that rows
+    /// start eating into the footer.
     private var visibleExercises: [WorkoutSnapshotExercise] {
         workout.exercises
             .filter { config.selectedExerciseIds.contains($0.id) }
-            .prefix(6)
+            .prefix(8)
             .map { $0 }
     }
 

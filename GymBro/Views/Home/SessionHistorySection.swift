@@ -114,7 +114,8 @@ struct SessionHistorySection: View {
             exercises: activeExercises,
             effortLevel: 0,
             energyLevel: 0,
-            durationMinutes: session.durationMinutes
+            durationMinutes: session.durationMinutes,
+            calories: session.calories
         )
     }
 }

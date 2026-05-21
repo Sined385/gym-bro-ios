@@ -4,6 +4,8 @@
 <dict>
 	<key>API_BASE_URL</key>
 	<string>$(API_BASE_URL)</string>
+	<key>FacebookAppID</key>
+	<string>2824070751304126</string>
 	<key>CFBundleURLTypes</key>
 	<array>
 		<dict>
