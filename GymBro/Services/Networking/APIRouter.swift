@@ -195,6 +195,7 @@ enum ExerciseRouter: APIRouter {
 enum SessionRouter: APIRouter {
     case addExercises(sessionId: String, exercises: [[String: Any]])
     case createSuperset(sessionId: String, exerciseIds: [String])
+    case reorderExercises(sessionId: String, exerciseIds: [String])
     case removeExercise(sessionId: String, exerciseId: String)
     case logSet(sessionId: String, exerciseId: String, setNumber: Int, weight: Any, weightUnit: String, reps: Int)
     case updateSet(sessionId: String, exerciseId: String, setId: String, params: [String: Any])
@@ -208,6 +209,8 @@ enum SessionRouter: APIRouter {
             return "/api/v1/home/sessions/\(sessionId)/exercises"
         case .createSuperset(let sessionId, _):
             return "/api/v1/home/sessions/\(sessionId)/supersets"
+        case .reorderExercises(let sessionId, _):
+            return "/api/v1/home/sessions/\(sessionId)/exercises/reorder"
         case .removeExercise(let sessionId, let exerciseId):
             return "/api/v1/home/sessions/\(sessionId)/exercises/\(exerciseId)"
         case .logSet(let sessionId, let exerciseId, _, _, _, _):
@@ -226,7 +229,7 @@ enum SessionRouter: APIRouter {
     var method: HTTPMethod {
         switch self {
         case .addExercises, .createSuperset, .logSet, .completeSessionFull: return .post
-        case .updateSet, .completeWithFeedback: return .patch
+        case .updateSet, .completeWithFeedback, .reorderExercises: return .patch
         case .removeExercise, .deleteSet: return .delete
         }
     }
@@ -236,6 +239,8 @@ enum SessionRouter: APIRouter {
         case .addExercises(_, let exercises):
             return ["exercises": exercises]
         case .createSuperset(_, let exerciseIds):
+            return ["exercise_ids": exerciseIds]
+        case .reorderExercises(_, let exerciseIds):
             return ["exercise_ids": exerciseIds]
         case .removeExercise, .deleteSet:
             return nil

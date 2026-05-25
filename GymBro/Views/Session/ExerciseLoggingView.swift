@@ -17,6 +17,11 @@ struct ExerciseLoggingView: View {
     // Superset mode
     var supersetGroupId: String? = nil
 
+    /// Replaces the top of the parent's navigation stack with the next standalone exercise.
+    var onSwitchToExercise: ((String) -> Void)? = nil
+    /// Replaces the top of the parent's navigation stack with the next superset.
+    var onSwitchToSuperset: ((String) -> Void)? = nil
+
     @Environment(\.dismiss) private var dismiss
     @State private var previousSessions: [String: [PreviousSessionEntry]] = [:]
     @State private var showAddSetSheet: Bool = false
@@ -36,6 +41,19 @@ struct ExerciseLoggingView: View {
     @State private var editWeights: [String: String] = [:]
     @State private var editReps: [String: String] = [:]
     @State private var editBodyweight: [String: Bool] = [:]
+
+    // Detail view tab — switches between live session UI and the perf graph
+    enum DetailTab: String, CaseIterable, Identifiable {
+        case today, stats
+        var id: String { rawValue }
+        var label: String {
+            switch self {
+            case .today: return "Today"
+            case .stats: return "Stats"
+            }
+        }
+    }
+    @State private var detailTab: DetailTab = .today
 
     // Superset step-through state
     @State private var supersetStepIndex: Int = 0
@@ -64,6 +82,19 @@ struct ExerciseLoggingView: View {
         return "\(idx) OF \(viewModel.exercises.count)"
     }
 
+    private var hasNextTarget: Bool {
+        viewModel.nextWorkoutTarget(
+            afterExerciseId: exerciseId,
+            afterSupersetGroupId: supersetGroupId
+        ) != nil
+    }
+
+    private var bottomScrollClearance: CGFloat {
+        if sessionManager.isResting { return 120 }
+        if hasNextTarget { return 96 }
+        return 40
+    }
+
     var body: some View {
         ZStack(alignment: .bottom) {
             VStack(spacing: 0) {
@@ -80,14 +111,19 @@ struct ExerciseLoggingView: View {
                     }
                     .padding(.horizontal, 24)
                     .padding(.top, 12)
-                    .padding(.bottom, sessionManager.isResting ? 120 : 40)
+                    .padding(.bottom, bottomScrollClearance)
                 }
             }
             .background(Color.gymBroBackground.ignoresSafeArea())
 
-            // Floating rest timer bar
+            // Floating rest timer bar — when running, the timer takes
+            // priority over the up-next peek card to keep the bottom
+            // edge from getting too busy.
             if let remaining = sessionManager.restTimeRemaining {
                 restTimerBar(remaining)
+                    .transition(.move(edge: .bottom).combined(with: .opacity))
+            } else {
+                nextExercisePeekCard
                     .transition(.move(edge: .bottom).combined(with: .opacity))
             }
         }
@@ -163,6 +199,89 @@ struct ExerciseLoggingView: View {
         .padding(.horizontal, 24)
         .padding(.top, 12)
         .padding(.bottom, 8)
+    }
+
+    // MARK: - Next Exercise Peek Card
+
+    /// Bottom-anchored mini card that "peeks" up from the screen edge,
+    /// styled like an Apple Music mini-player. Drag handle at top, "UP
+    /// NEXT" label + exercise name in the body, chevron on the trailing
+    /// edge. Tap to jump to that exercise.
+    @ViewBuilder
+    private var nextExercisePeekCard: some View {
+        if let target = viewModel.nextWorkoutTarget(
+            afterExerciseId: exerciseId,
+            afterSupersetGroupId: supersetGroupId
+        ) {
+            Button {
+                UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                switch target {
+                case .exercise(let id, _):
+                    onSwitchToExercise?(id)
+                case .superset(let groupId, _):
+                    onSwitchToSuperset?(groupId)
+                }
+            } label: {
+                VStack(spacing: 0) {
+                    HStack(spacing: 12) {
+                        // Small accent badge
+                        ZStack {
+                            Circle()
+                                .fill(Color.gymBroPrimary.opacity(0.12))
+                                .frame(width: 32, height: 32)
+                            Image(systemName: "arrow.right")
+                                .font(.system(size: 13, weight: .bold))
+                                .foregroundColor(.gymBroPrimary)
+                        }
+
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text("UP NEXT")
+                                .font(.system(size: 9, weight: .bold))
+                                .tracking(0.9)
+                                .foregroundColor(.gymBroNeutral400)
+                            Text(target.label)
+                                .font(.system(size: 15, weight: .bold))
+                                .foregroundColor(.gymBroNeutral900)
+                                .lineLimit(1)
+                        }
+
+                        Spacer(minLength: 0)
+
+                        Image(systemName: "chevron.right")
+                            .font(.system(size: 13, weight: .bold))
+                            .foregroundColor(.gymBroNeutral400)
+                    }
+                    .padding(.horizontal, 20)
+                    .padding(.top, 14)
+                    .padding(.bottom, 14)
+                }
+                .frame(maxWidth: .infinity)
+                .background(
+                    UnevenRoundedRectangle(
+                        topLeadingRadius: 24,
+                        bottomLeadingRadius: 0,
+                        bottomTrailingRadius: 0,
+                        topTrailingRadius: 24,
+                        style: .continuous
+                    )
+                    .fill(Color.white)
+                    .ignoresSafeArea(edges: .bottom)
+                )
+                .overlay(
+                    UnevenRoundedRectangle(
+                        topLeadingRadius: 24,
+                        bottomLeadingRadius: 0,
+                        bottomTrailingRadius: 0,
+                        topTrailingRadius: 24,
+                        style: .continuous
+                    )
+                    .stroke(Color.gymBroNeutral100, lineWidth: 1)
+                    .ignoresSafeArea(edges: .bottom)
+                )
+                .shadow(color: .black.opacity(0.08), radius: 14, x: 0, y: -4)
+            }
+            .buttonStyle(.plain)
+        }
     }
 
     private func favoriteHeartButton(libraryExerciseId: String) -> some View {
@@ -243,17 +362,51 @@ struct ExerciseLoggingView: View {
                 )
             }
 
-            // Live comparison card
-            liveComparisonCard(for: exercise)
+            // Today / Stats segmented control
+            detailTabPicker
 
-            // Today's sets card
-            todayCard(for: exercise)
+            // Tab content
+            if detailTab == .today {
+                liveComparisonCard(for: exercise)
+                todayCard(for: exercise)
 
-            // Previous sessions history
-            if let sessions = previousSessions[exercise.id], !sessions.isEmpty {
-                previousSessionsSection(sessions)
+                if let sessions = previousSessions[exercise.id], !sessions.isEmpty {
+                    previousSessionsSection(sessions)
+                }
+            } else {
+                ExercisePerformanceView(
+                    exercise: exercise,
+                    previousSessions: previousSessions[exercise.id] ?? []
+                )
             }
         }
+    }
+
+    // MARK: - Detail Tab Picker
+
+    private var detailTabPicker: some View {
+        HStack(spacing: 0) {
+            ForEach(DetailTab.allCases) { tab in
+                Button {
+                    withAnimation(.easeInOut(duration: 0.18)) { detailTab = tab }
+                } label: {
+                    Text(tab.label)
+                        .font(.system(size: 13, weight: .bold))
+                        .foregroundColor(detailTab == tab ? .gymBroNeutral900 : .gymBroNeutral400)
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 8)
+                        .background(
+                            RoundedRectangle(cornerRadius: 9)
+                                .fill(detailTab == tab ? Color.white : .clear)
+                                .shadow(color: detailTab == tab ? .black.opacity(0.06) : .clear, radius: 2, y: 1)
+                        )
+                }
+                .buttonStyle(.plain)
+            }
+        }
+        .padding(3)
+        .background(Color.gymBroNeutral100)
+        .clipShape(RoundedRectangle(cornerRadius: 12))
     }
 
     // MARK: - Live Comparison Card

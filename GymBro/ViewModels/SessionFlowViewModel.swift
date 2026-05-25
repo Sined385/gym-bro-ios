@@ -58,6 +58,61 @@ final class SessionFlowViewModel: ObservableObject {
         !exercises.isEmpty
     }
 
+    // MARK: - Next-target navigation
+
+    enum NextWorkoutTarget: Equatable {
+        case exercise(id: String, label: String)
+        case superset(groupId: String, label: String)
+
+        var label: String {
+            switch self {
+            case .exercise(_, let label), .superset(_, let label): return label
+            }
+        }
+    }
+
+    /// Walks standalone exercises + supersets in step_number order and
+    /// returns the slot after the current one. A superset's step number
+    /// is the min step among its members, so a superset only appears
+    /// once in the sequence.
+    func nextWorkoutTarget(afterExerciseId: String? = nil, afterSupersetGroupId: String? = nil) -> NextWorkoutTarget? {
+        struct Slot {
+            let target: NextWorkoutTarget
+            let stepNumber: Int
+            let matchesExerciseId: String?
+            let matchesGroupId: String?
+        }
+
+        var slots: [Slot] = []
+        for ex in standaloneExercises {
+            slots.append(Slot(
+                target: .exercise(id: ex.id, label: ex.name),
+                stepNumber: ex.stepNumber,
+                matchesExerciseId: ex.id,
+                matchesGroupId: nil
+            ))
+        }
+        for group in supersetGroups {
+            let firstStep = group.exercises.map { $0.stepNumber }.min() ?? Int.max
+            let label = group.exercises.first?.name ?? "Superset"
+            slots.append(Slot(
+                target: .superset(groupId: group.id, label: label),
+                stepNumber: firstStep,
+                matchesExerciseId: nil,
+                matchesGroupId: group.id
+            ))
+        }
+        slots.sort { $0.stepNumber < $1.stepNumber }
+
+        guard let currentIdx = slots.firstIndex(where: { slot in
+            if let exId = afterExerciseId { return slot.matchesExerciseId == exId }
+            if let gid = afterSupersetGroupId { return slot.matchesGroupId == gid }
+            return false
+        }), currentIdx + 1 < slots.count else { return nil }
+
+        return slots[currentIdx + 1].target
+    }
+
     // MARK: - Accent Colors
 
     private static let accentColors = ["#E86A75", "#30C08D", "#7A82F6", "#F5A623"]
@@ -268,6 +323,34 @@ final class SessionFlowViewModel: ObservableObject {
         notifySessionChanged()
     }
 
+    /// Move standalone exercises to a new position. Indexes refer to the
+    /// filtered standalone list — superset members stay in place.
+    ///
+    /// Reorder is local-only during the live session: we restamp stepNumber
+    /// across all exercises and update the in-memory cache so the UI reflects
+    /// the new order immediately. The server-side persist happens when the
+    /// session is completed (completeSessionFull sends each exercise with
+    /// its current stepNumber, so the new order rides along).
+    func reorderStandaloneExercises(from source: IndexSet, to destination: Int) async {
+        var standalone = exercises.filter { $0.supersetGroupId == nil }
+        standalone.move(fromOffsets: source, toOffset: destination)
+
+        var standaloneIter = standalone.makeIterator()
+        var rebuilt: [ActiveSessionExercise] = []
+        for ex in exercises {
+            if ex.supersetGroupId == nil {
+                if let next = standaloneIter.next() { rebuilt.append(next) }
+            } else {
+                rebuilt.append(ex)
+            }
+        }
+        for (idx, _) in rebuilt.enumerated() {
+            rebuilt[idx].stepNumber = idx + 1
+        }
+        exercises = rebuilt
+        notifySessionChanged()
+    }
+
     func removeSuperset(_ groupId: String) async {
         exercises.removeAll { $0.supersetGroupId == groupId }
         notifySessionChanged()
@@ -289,6 +372,7 @@ final class SessionFlowViewModel: ObservableObject {
         exercises[exerciseIndex].sets[setIndex].isBodyweight = isBodyweight
 
         notifySessionChanged()
+        sessionManager.scheduleStartReminder()
 
         sessionManager.updateLastCompletedSet(
             exerciseName: exercises[exerciseIndex].name,
@@ -323,6 +407,7 @@ final class SessionFlowViewModel: ObservableObject {
         exercises[exerciseIndex].sets.append(newSet)
 
         notifySessionChanged()
+        sessionManager.scheduleStartReminder()
 
         sessionManager.updateLastCompletedSet(
             exerciseName: exercises[exerciseIndex].name,
