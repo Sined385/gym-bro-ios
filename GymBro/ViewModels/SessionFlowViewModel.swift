@@ -495,6 +495,28 @@ final class SessionFlowViewModel: ObservableObject {
 
     // MARK: - Session Completion
 
+    /// Cancels the in-progress session server-side. Returns `true` even on
+    /// network failure so the user is never trapped in a discarded workout —
+    /// the row will reconcile on the next dashboard load.
+    func cancelSession() async -> Bool {
+        sessionManager.stopTimer()
+        sessionManager.pushWatchSessionEnded()
+        isLoading = true
+        do {
+            try await networkService.request(
+                HomeRouter.cancelSession(sessionId: sessionId).endpoint
+            )
+        } catch {
+            print("[SessionFlow] cancelSession failed: \(error)")
+        }
+        analyticsService.track("workout_cancelled", properties: [
+            "exercise_count": exercises.count,
+            "elapsed_seconds": sessionManager.elapsedSeconds
+        ] as [String: Any])
+        isLoading = false
+        return true
+    }
+
     func submitFeedbackAndComplete() async -> SessionResponse? {
         sessionManager.stopTimer()
         sessionManager.pushWatchSessionEnded()

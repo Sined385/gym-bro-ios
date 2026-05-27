@@ -11,6 +11,9 @@ struct SessionPlanView: View {
     var onStartWorkout: () -> Void
     var onEndWorkout: () -> Void
     var onSaveTemplate: () -> Void
+    var onCancel: () -> Void
+
+    @State private var showDiscardConfirm = false
 
     var body: some View {
         ZStack(alignment: .bottom) {
@@ -56,6 +59,24 @@ struct SessionPlanView: View {
                         Image(systemName: "bookmark")
                             .font(.system(size: 16, weight: .semibold))
                             .foregroundColor(.gymBroNeutral900)
+                    }
+                }
+                .buttonStyle(.plain)
+
+                Button { showDiscardConfirm = true } label: {
+                    ZStack {
+                        Circle()
+                            .fill(Color.white)
+                            .frame(width: 44, height: 44)
+                            .overlay(
+                                Circle()
+                                    .stroke(Color.gymBroNeutral100, lineWidth: 1)
+                            )
+                            .shadow(color: .black.opacity(0.04), radius: 4, y: 2)
+
+                        Image(systemName: "trash")
+                            .font(.system(size: 16, weight: .semibold))
+                            .foregroundColor(.gymBroPrimary)
                     }
                 }
                 .buttonStyle(.plain)
@@ -185,6 +206,16 @@ struct SessionPlanView: View {
         .animation(.spring(response: 0.4), value: sessionManager.restTimeRemaining)
         .background(Color.gymBroBackground.ignoresSafeArea())
         .navigationBarHidden(true)
+        .confirmationDialog(
+            "Discard workout?",
+            isPresented: $showDiscardConfirm,
+            titleVisibility: .visible
+        ) {
+            Button("Discard", role: .destructive) { onCancel() }
+            Button("Keep going", role: .cancel) {}
+        } message: {
+            Text("Your logged sets will be lost.")
+        }
     }
 
     // MARK: - Exercise Card Content

@@ -75,14 +75,15 @@ struct SessionFlowContainer: View {
                         },
                         onStartWorkout: { sessionManager.startWorkout() },
                         onEndWorkout: { navigationPath.append(SessionRoute.workoutFeedback) },
-                        onSaveTemplate: { showSaveTemplate = true }
+                        onSaveTemplate: { showSaveTemplate = true },
+                        onCancel: cancelAndDismiss
                     )
                 } else {
                     SessionStartedView(
                         viewModel: viewModel,
                         onAddExercise: { navigationPath.append(SessionRoute.exerciseLibrary) },
                         onStartWorkout: { sessionManager.startWorkout() },
-                        onCancelWorkout: onDismiss,
+                        onCancelWorkout: cancelAndDismiss,
                         // Empty session: top X ends the session too. Collapsing
                         // to mini-player isn't useful with nothing logged, and
                         // pre-active state otherwise has no exit path.
@@ -186,6 +187,15 @@ struct SessionFlowContainer: View {
     private func replaceTop(with route: SessionRoute) {
         if !navigationPath.isEmpty { navigationPath.removeLast() }
         navigationPath.append(route)
+    }
+
+    /// Fires the server-side cancel and then tears down the local session.
+    /// Dismiss runs regardless of network outcome so the user isn't trapped.
+    private func cancelAndDismiss() {
+        Task {
+            _ = await viewModel.cancelSession()
+            onDismiss()
+        }
     }
 
 }

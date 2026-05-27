@@ -127,6 +127,9 @@ struct OnboardingContainerView: View {
 
                 case .completeProfile:
                     CompleteProfileView(viewModel: viewModel)
+
+                case .aboutYou:
+                    AboutYouView(viewModel: viewModel)
                 }
             }
             .padding(.horizontal, 24)
@@ -177,7 +180,10 @@ struct OnboardingContainerView: View {
     }
 
     private var continueButtonTitle: String {
-        if viewModel.currentStep == .completeProfile {
+        // About You is the new final step — it owns the "Build My Plan" CTA
+        // and the submit trigger. CompleteProfile is now second-to-last with
+        // a regular Continue button.
+        if viewModel.currentStep == .aboutYou {
             return "Build My Plan"
         } else {
             return "Continue"
@@ -185,7 +191,7 @@ struct OnboardingContainerView: View {
     }
 
     private func handleContinue() {
-        if viewModel.currentStep == .completeProfile {
+        if viewModel.currentStep == .aboutYou {
             // Final step - submit onboarding
             Task {
                 do {

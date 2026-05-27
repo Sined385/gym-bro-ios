@@ -20,12 +20,17 @@ struct OnboardingData: Codable, Equatable {
     var preferredRestTime: RestTime?
     var availableEquipment: Equipment?
     var injuries: [InjuryType] // Array for multi-select
+    /// Free-form text the user wants the AI to always consider — appended to
+    /// every OpenAI prompt (coach chat, plan generation, AI workouts).
+    /// Optional; max 500 chars enforced at the input layer.
+    var aiCoachContext: String = ""
     var completedAt: Date?
 
     init() {
         self.primaryGoals = []
         self.primarySports = []
         self.injuries = []
+        self.aiCoachContext = ""
     }
 
     /// Check if onboarding is complete
@@ -81,6 +86,11 @@ struct OnboardingData: Codable, Equatable {
             } else {
                 return ["type": injury.rawValue, "value": injury.displayName]
             }
+        }
+
+        let trimmedContext = aiCoachContext.trimmingCharacters(in: .whitespacesAndNewlines)
+        if !trimmedContext.isEmpty {
+            json["ai_coach_context"] = trimmedContext
         }
 
         if let completed = completedAt {
@@ -357,6 +367,7 @@ enum OnboardingStep: Int, CaseIterable {
     case equipment = 13
     case injuries = 14
     case completeProfile = 15
+    case aboutYou = 16
 
     var title: String {
         switch self {
@@ -375,6 +386,7 @@ enum OnboardingStep: Int, CaseIterable {
         case .equipment: return "Available equipment?"
         case .injuries: return "Any current injuries?"
         case .completeProfile: return "Complete Your Profile"
+        case .aboutYou: return "Anything else?"
         }
     }
 
@@ -395,6 +407,7 @@ enum OnboardingStep: Int, CaseIterable {
         case .equipment: return "dumbbell.fill"
         case .injuries: return "exclamationmark.triangle.fill"
         case .completeProfile: return "person.crop.circle.fill"
+        case .aboutYou: return "sparkles"
         }
     }
 

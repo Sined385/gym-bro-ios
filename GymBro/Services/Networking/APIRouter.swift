@@ -50,6 +50,7 @@ enum OnboardingRouter: APIRouter {
     case submit(body: [String: Any])
     case fetch
     case updateRestTime(seconds: Int)
+    case updateAiCoachContext(context: String)
 
     var path: String { "/api/v1/onboarding" }
 
@@ -57,7 +58,7 @@ enum OnboardingRouter: APIRouter {
         switch self {
         case .submit: return .put
         case .fetch: return .get
-        case .updateRestTime: return .patch
+        case .updateRestTime, .updateAiCoachContext: return .patch
         }
     }
 
@@ -66,6 +67,7 @@ enum OnboardingRouter: APIRouter {
         case .submit(let body): return body
         case .fetch: return nil
         case .updateRestTime(let seconds): return ["preferred_rest_time": seconds]
+        case .updateAiCoachContext(let context): return ["ai_coach_context": context]
         }
     }
 
@@ -84,8 +86,10 @@ enum HomeRouter: APIRouter {
     case createSession(title: String, type: String)
     case startSession(sessionId: String)
     case completeSession(sessionId: String)
+    case cancelSession(sessionId: String)
     case history(date: String)
     case completedDays(month: String)
+    case completeChallenge(id: String)
 
     var path: String {
         switch self {
@@ -97,18 +101,22 @@ enum HomeRouter: APIRouter {
             return "/api/v1/home/sessions/\(sessionId)/start"
         case .completeSession(let sessionId):
             return "/api/v1/home/sessions/\(sessionId)/complete"
+        case .cancelSession(let sessionId):
+            return "/api/v1/home/sessions/\(sessionId)/cancel"
         case .history:
             return "/api/v1/home/history"
         case .completedDays:
             return "/api/v1/home/completed-days"
+        case .completeChallenge(let id):
+            return "/api/v1/home/challenges/\(id)/complete"
         }
     }
 
     var method: HTTPMethod {
         switch self {
         case .dashboard, .history, .completedDays: return .get
-        case .createSession, .startSession: return .post
-        case .completeSession: return .patch
+        case .createSession, .startSession, .completeChallenge: return .post
+        case .completeSession, .cancelSession: return .patch
         }
     }
 
@@ -122,10 +130,14 @@ enum HomeRouter: APIRouter {
             return nil
         case .completeSession:
             return nil
+        case .cancelSession:
+            return nil
         case .history(let date):
             return ["date": date]
         case .completedDays(let month):
             return ["month": month]
+        case .completeChallenge:
+            return nil
         }
     }
 

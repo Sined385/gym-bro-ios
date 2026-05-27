@@ -25,6 +25,16 @@ struct HomeView: View {
                 headerSection
                     .padding(.top, 8)
 
+                // Daily wellness challenge
+                if let challenge = viewModel.dailyChallenge {
+                    DailyChallengesCard(
+                        challenge: challenge,
+                        onComplete: { id in
+                            Task { await viewModel.completeChallenge(id: id) }
+                        }
+                    )
+                }
+
                 // Motivation card
                 MotivationCard(
                     title: viewModel.motivation?.title,

@@ -491,6 +491,10 @@ final class OnboardingViewModel: ObservableObject {
             let hasValidUsername = username.count >= 3 && username.count <= 30 && usernameError == nil
             let notTaken = usernameAvailable != false // allow nil (check pending) and true
             canContinue = hasName && hasValidUsername && notTaken
+
+        case .aboutYou:
+            // Optional field — the user can always finish onboarding without typing anything.
+            canContinue = true
         }
     }
 
@@ -540,6 +544,8 @@ final class OnboardingViewModel: ObservableObject {
             return true // Always considered complete as it's optional
         case .completeProfile:
             return !displayName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty && username.count >= 3
+        case .aboutYou:
+            return true // Optional — always considered complete
         }
     }
 
@@ -552,6 +558,6 @@ final class OnboardingViewModel: ObservableObject {
 
     /// Check if can submit (on final step with complete data)
     var canSubmit: Bool {
-        return currentStep == .completeProfile && onboardingData.isComplete
+        return currentStep == .aboutYou && onboardingData.isComplete
     }
 }
