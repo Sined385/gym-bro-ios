@@ -1,0 +1,155 @@
+default_platform(:ios)
+
+# Project-wide knobs.
+SCHEME = 'GymBro'
+XCODEPROJ = 'GymBro.xcodeproj'
+RELEASE_BRANCH = 'main'
+DEFAULT_INTERNAL_GROUP = 'Internal Testers'
+DEFAULT_EXTERNAL_GROUP = 'External Testers'
+
+platform :ios do
+  before_all do
+    # Bail out early on anything that would make a half-baked release.
+    ensure_git_status_clean
+    ensure_git_branch(branch: RELEASE_BRANCH)
+    app_store_connect_api_key(
+      key_id: ENV.fetch('APP_STORE_CONNECT_API_KEY_KEY_ID'),
+      issuer_id: ENV.fetch('APP_STORE_CONNECT_API_KEY_ISSUER_ID'),
+      key_filepath: ENV.fetch('APP_STORE_CONNECT_API_KEY_KEY_FILEPATH'),
+      is_key_content_base64: false,
+      in_house: false,
+    )
+  end
+
+  # ── Testers ─────────────────────────────────────────────
+  # Build-number-only bump. Tag: "<version>(<build>)" e.g. 1.3(5).
+  # Distributes the build to internal + external TestFlight groups.
+
+  desc 'Bump build number, build, upload to TestFlight, tag.'
+  lane :testers do
+    increment_build_number(xcodeproj: XCODEPROJ)
+    version = current_version
+    build = current_build_number
+    tag = "#{version}(#{build})"
+    UI.message("Releasing tester build #{tag}")
+
+    ensure_tag_available!(tag)
+
+    build_ipa
+
+    notes = ai_release_notes(mode: :testers, version: version, build: build.to_s)
+
+    upload_to_testflight(
+      changelog: notes,
+      distribute_external: true,
+      notify_external_testers: true,
+      groups: [
+        ENV.fetch('TESTFLIGHT_INTERNAL_GROUP', DEFAULT_INTERNAL_GROUP),
+        ENV.fetch('TESTFLIGHT_EXTERNAL_GROUP', DEFAULT_EXTERNAL_GROUP),
+      ],
+      reject_build_waiting_for_review: false,
+    )
+
+    finalize_git(tag: tag, message: "fastlane: bump to #{tag}")
+  end
+
+  # ── General release ─────────────────────────────────────
+  # Minor version bump, build resets to 1. Tag: "<version>" e.g. 1.4.
+  # AI also writes a new ## v<version> section into release-notes.txt and
+  # the bump commit picks it up.
+
+  desc 'Bump minor version, build, upload to TestFlight, tag, update release notes.'
+  lane :release do
+    increment_version_number(bump_type: 'minor', xcodeproj: XCODEPROJ)
+    increment_build_number(build_number: '1', xcodeproj: XCODEPROJ)
+    version = current_version
+    build = current_build_number
+    tag = version
+    UI.message("Releasing general #{tag}")
+
+    ensure_tag_available!(tag)
+
+    build_ipa
+
+    notes = ai_release_notes(mode: :general, version: version, build: build.to_s)
+    write_release_notes_section(notes)
+    testflight_changelog = extract_testflight_changelog(notes)
+
+    upload_to_testflight(
+      changelog: testflight_changelog,
+      distribute_external: true,
+      notify_external_testers: true,
+      groups: [
+        ENV.fetch('TESTFLIGHT_INTERNAL_GROUP', DEFAULT_INTERNAL_GROUP),
+        ENV.fetch('TESTFLIGHT_EXTERNAL_GROUP', DEFAULT_EXTERNAL_GROUP),
+      ],
+      reject_build_waiting_for_review: false,
+    )
+
+    # Stage the release-notes update on top of the version bump, then one
+    # commit + tag + push covers both.
+    sh('cd .. && git add release-notes.txt') if File.exist?('../release-notes.txt')
+    finalize_git(tag: tag, message: "fastlane: release #{tag}")
+  end
+
+  # ── Helpers ─────────────────────────────────────────────
+
+  def current_version
+    get_version_number(xcodeproj: XCODEPROJ, target: 'GymJam')
+  end
+
+  def current_build_number
+    get_build_number(xcodeproj: XCODEPROJ)
+  end
+
+  def ensure_tag_available!(tag)
+    existing = sh("cd .. && git tag --list '#{tag}'", log: false).strip
+    UI.user_error!("Tag #{tag} already exists — bump didn't take or you're re-running.") unless existing.empty?
+  end
+
+  def build_ipa
+    build_app(
+      scheme: SCHEME,
+      configuration: 'Release',
+      export_method: 'app-store',
+      clean: true,
+      output_directory: 'fastlane/build',
+      output_name: 'GymJam.ipa',
+      include_bitcode: false,
+      include_symbols: true,
+    )
+  end
+
+  def finalize_git(tag:, message:)
+    commit_version_bump(
+      message: "#{message} [skip ci]",
+      xcodeproj: XCODEPROJ,
+      include: ['release-notes.txt'],
+      force: true,
+    )
+    add_git_tag(tag: tag)
+    push_to_git_remote(remote: 'origin', local_branch: RELEASE_BRANCH, remote_branch: RELEASE_BRANCH, tags: true)
+  end
+
+  # Strip the markdown heading/dashes so the TestFlight changelog box gets
+  # plain bullets instead of "## v1.4" + "---" noise.
+  def extract_testflight_changelog(general_notes)
+    lines = general_notes.lines
+    cleaned = lines.reject do |l|
+      stripped = l.strip
+      stripped.start_with?('##') || stripped == '---' || stripped.empty?
+    end
+    cleaned.take(15).join.strip
+  end
+
+  # Prepend the new ## v<version> block to release-notes.txt, keeping the
+  # leading "# GymJam — Release Notes" title intact.
+  def write_release_notes_section(new_section)
+    path = '../release-notes.txt'
+    body = File.exist?(path) ? File.read(path) : "# GymJam — Release Notes\n\n"
+    title, rest = body.split(/\n\n/, 2)
+    rest ||= ''
+    new_block = new_section.strip + "\n\n"
+    File.write(path, "#{title}\n\n#{new_block}#{rest}")
+  end
+end
