@@ -37,3 +37,13 @@ Pods/
 .env
 .env.*
 !.env.example
+
+# Fastlane
+fastlane/AuthKey*.p8
+fastlane/report.xml
+fastlane/Preview.html
+fastlane/screenshots/
+fastlane/test_output/
+fastlane/build/
+fastlane/README.md
+*.app.dSYM.zip
