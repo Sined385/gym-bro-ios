@@ -10,6 +10,9 @@ import SwiftUI
 struct ProfileWorkoutCard: View {
     let workout: ProfileWorkout
     var onShare: (() -> Void)?
+    /// Fixed width for horizontal scrolls (default 300). Pass nil to let the
+    /// card stretch to fill its parent — used by the vertical workouts list.
+    var cardWidth: CGFloat? = 300
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
@@ -59,29 +62,25 @@ struct ProfileWorkoutCard: View {
                 Spacer()
             }
 
-            // Date
-            Text(timeAgo(from: workout.completedAt))
-                .font(.system(size: 11, weight: .medium))
-                .foregroundColor(.gymBroTextSecondary)
+            // Date — explicit calendar date, not "X days ago"
+            HStack(spacing: 6) {
+                Image(systemName: "calendar")
+                    .font(.system(size: 11, weight: .semibold))
+                Text(formattedDate(workout.completedAt))
+                    .font(.system(size: 12, weight: .semibold))
+            }
+            .foregroundColor(.gymBroTextSecondary)
 
-            // Exercises (compact)
+            // Exercises — all of them, with every set listed.
             if !workout.exercises.isEmpty {
-                VStack(spacing: 0) {
-                    ForEach(Array(workout.exercises.prefix(4).enumerated()), id: \.element.id) { index, exercise in
-                        compactExerciseRow(exercise)
+                VStack(spacing: 12) {
+                    ForEach(Array(workout.exercises.enumerated()), id: \.element.id) { index, exercise in
+                        expandedExerciseRow(exercise)
 
-                        if index < min(workout.exercises.count, 4) - 1 {
+                        if index < workout.exercises.count - 1 {
                             Divider()
                                 .background(Color.gymBroNeutral100)
-                                .padding(.vertical, 4)
                         }
-                    }
-
-                    if workout.exercises.count > 4 {
-                        Text("+\(workout.exercises.count - 4) more")
-                            .font(.system(size: 12, weight: .medium))
-                            .foregroundColor(.gymBroTextSecondary)
-                            .padding(.top, 8)
                     }
                 }
             }
@@ -107,7 +106,8 @@ struct ProfileWorkoutCard: View {
             }
         }
         .padding(14)
-        .frame(width: 300)
+        .frame(width: cardWidth, alignment: .leading)
+        .frame(maxWidth: cardWidth == nil ? .infinity : nil, alignment: .leading)
         .background(Color.gymBroCardBackground)
         .clipShape(RoundedRectangle(cornerRadius: 20))
         .overlay(
@@ -117,17 +117,18 @@ struct ProfileWorkoutCard: View {
         .shadow(color: .black.opacity(0.04), radius: 8, x: 0, y: 2)
     }
 
-    private func compactExerciseRow(_ exercise: HistoryExercise) -> some View {
-        HStack(spacing: 8) {
-            RoundedRectangle(cornerRadius: 2)
-                .fill(Color(hex: exercise.accentColor))
-                .frame(width: 4, height: 28)
-
-            VStack(alignment: .leading, spacing: 1) {
+    private func expandedExerciseRow(_ exercise: HistoryExercise) -> some View {
+        // Content VStack first; the accent bar is added as a leading overlay
+        // so it sizes itself to the row's intrinsic height. No greedy
+        // .frame(maxHeight: .infinity) — that was making every row stretch
+        // to fill the card and leaving huge empty space below the last set.
+        VStack(alignment: .leading, spacing: 6) {
+            VStack(alignment: .leading, spacing: 2) {
                 Text(exercise.name)
                     .font(.system(size: 13, weight: .semibold))
                     .foregroundColor(.gymBroNeutral900)
-                    .lineLimit(1)
+                    .lineLimit(2)
+                    .fixedSize(horizontal: false, vertical: true)
 
                 if let muscleGroup = exercise.muscleGroup {
                     Text(muscleGroup.uppercased())
@@ -137,40 +138,51 @@ struct ProfileWorkoutCard: View {
                 }
             }
 
-            Spacer(minLength: 4)
+            if !exercise.sets.isEmpty {
+                VStack(spacing: 3) {
+                    ForEach(exercise.sets) { set in
+                        HStack(spacing: 0) {
+                            Text("Set \(set.setNumber)")
+                                .font(.system(size: 11, weight: .medium))
+                                .foregroundColor(.gymBroTextSecondary)
+                                .frame(width: 44, alignment: .leading)
 
-            Text(exerciseSummary(exercise))
-                .font(.system(size: 12, weight: .medium))
-                .foregroundColor(.gymBroTextSecondary)
-                .lineLimit(1)
+                            Text(setDisplay(set))
+                                .font(.system(size: 12, weight: .semibold))
+                                .foregroundColor(.gymBroNeutral900)
+
+                            Spacer(minLength: 0)
+                        }
+                    }
+                }
+            }
         }
-        .padding(.vertical, 4)
+        .padding(.leading, 12)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .overlay(alignment: .leading) {
+            RoundedRectangle(cornerRadius: 2)
+                .fill(Color(hex: exercise.accentColor))
+                .frame(width: 4)
+        }
     }
 
-    private func exerciseSummary(_ exercise: HistoryExercise) -> String {
-        let sets = exercise.sets.count
-        let totalReps = exercise.sets.reduce(0) { $0 + $1.reps }
-        let maxWeight = exercise.sets.compactMap(\.weight).max()
-
-        if let weight = maxWeight, weight > 0 {
-            let unit = exercise.sets.first?.weightUnit ?? "kg"
-            return "\(sets)×\(totalReps / max(sets, 1)) · \(weight.formattedWeight) \(unit)"
+    private func setDisplay(_ set: ExerciseSetData) -> String {
+        if set.isBodyweight {
+            return "BW × \(set.reps)"
         }
-        return "\(sets)×\(totalReps / max(sets, 1))"
+        if let weight = set.weight, weight > 0 {
+            return "\(weight.formattedWeight) \(set.weightUnit) × \(set.reps)"
+        }
+        return "× \(set.reps)"
     }
 
-    private func timeAgo(from isoString: String) -> String {
+    private func formattedDate(_ isoString: String) -> String {
         let formatter = ISO8601DateFormatter()
-        guard let date = formatter.date(from: isoString) else { return "" }
-        let seconds = Int(Date().timeIntervalSince(date))
-
-        if seconds < 60 { return "Just now" }
-        if seconds < 3600 { return "\(seconds / 60)m ago" }
-        if seconds < 86400 { return "\(seconds / 3600)h ago" }
-        if seconds < 604800 { return "\(seconds / 86400)d ago" }
-
+        formatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+        let date = formatter.date(from: isoString) ?? ISO8601DateFormatter().date(from: isoString)
+        guard let date else { return isoString }
         let df = DateFormatter()
-        df.dateFormat = "MMM d"
+        df.dateFormat = "MMM d, yyyy"
         return df.string(from: date)
     }
 }

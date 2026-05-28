@@ -141,7 +141,26 @@ struct ExerciseLoggingView: View {
         .task {
             await loadPreviousData()
         }
+        // Tell the Watch which exercise the phone has open so it stays in
+        // sync. Cleared on disappear so the Watch can fall back to its own
+        // first-incomplete heuristic when the phone is away from a specific
+        // exercise.
+        .onAppear { sessionManager.setPhoneActiveExercise(activeExerciseIdForWatch) }
+        .onDisappear { sessionManager.setPhoneActiveExercise(nil) }
+        .onChange(of: supersetStepIndex) {
+            sessionManager.setPhoneActiveExercise(activeExerciseIdForWatch)
+        }
         .analyticsScreen("ExerciseLogging")
+    }
+
+    /// What to pin on the Watch for this view: the individual exercise id, or
+    /// the currently-shown step of a superset.
+    private var activeExerciseIdForWatch: String? {
+        if let exerciseId { return exerciseId }
+        if let group = supersetGroup, supersetStepIndex < group.exercises.count {
+            return group.exercises[supersetStepIndex].id
+        }
+        return nil
     }
 
     // MARK: - Header
@@ -371,7 +390,7 @@ struct ExerciseLoggingView: View {
                 todayCard(for: exercise)
 
                 if let sessions = previousSessions[exercise.id], !sessions.isEmpty {
-                    previousSessionsSection(sessions)
+                    previousSessionsSection(sessions, exercise: exercise)
                 }
             } else {
                 ExercisePerformanceView(
@@ -711,7 +730,7 @@ struct ExerciseLoggingView: View {
 
     // MARK: - Previous Sessions Section
 
-    private func previousSessionsSection(_ sessions: [PreviousSessionEntry]) -> some View {
+    private func previousSessionsSection(_ sessions: [PreviousSessionEntry], exercise: ActiveSessionExercise) -> some View {
         VStack(alignment: .leading, spacing: 12) {
             HStack(spacing: 6) {
                 Image(systemName: "clock.arrow.circlepath")
@@ -730,23 +749,10 @@ struct ExerciseLoggingView: View {
                         .font(.system(size: 14, weight: .bold))
                         .foregroundColor(.gymBroNeutral900)
 
-                    ForEach(session.sets) { set in
-                        HStack(spacing: 0) {
-                            Text("Set \(set.setNumber)")
-                                .font(.system(size: 13, weight: .medium))
-                                .foregroundColor(.gymBroNeutral400)
-                                .frame(width: 48, alignment: .leading)
-
-                            Text(SetDisplay.line(
-                                weight: set.weight,
-                                weightUnit: set.weightUnit,
-                                reps: set.reps,
-                                isBodyweight: set.isBodyweight
-                            ))
-                            .font(.system(size: 14, weight: .semibold))
-                            .foregroundColor(.gymBroNeutral900)
-
-                            Spacer()
+                    ForEach(Array(session.sets.enumerated()), id: \.element.id) { idx, set in
+                        previousSetRow(set, exercise: exercise)
+                        if idx < session.sets.count - 1 {
+                            Divider().background(Color.gymBroNeutral100)
                         }
                     }
                 }
@@ -759,6 +765,80 @@ struct ExerciseLoggingView: View {
                 )
             }
         }
+    }
+
+    /// Single row in the history list. Two affordances on the right:
+    /// pencil = open the Log Set modal pre-filled with this set's values
+    /// so the user can tweak before logging; yellow repeat = log it now
+    /// as-is. Repeat button matches the swipe-right repeat on current sets
+    /// so the action reads as the same gesture, different surface.
+    private func previousSetRow(_ set: PreviousSet, exercise: ActiveSessionExercise) -> some View {
+        HStack(spacing: 12) {
+            Text("Set \(set.setNumber)")
+                .font(.system(size: 13, weight: .medium))
+                .foregroundColor(.gymBroNeutral400)
+                .frame(width: 48, alignment: .leading)
+
+            Text(SetDisplay.line(
+                weight: set.weight,
+                weightUnit: set.weightUnit,
+                reps: set.reps,
+                isBodyweight: set.isBodyweight
+            ))
+            .font(.system(size: 14, weight: .semibold))
+            .foregroundColor(.gymBroNeutral900)
+
+            Spacer()
+
+            Button { prefillModalFromPrevious(set) } label: {
+                Image(systemName: "pencil")
+                    .font(.system(size: 13, weight: .semibold))
+                    .foregroundColor(.gymBroNeutral900)
+                    .frame(width: 32, height: 32)
+                    .background(Color.white)
+                    .clipShape(Circle())
+                    .overlay(Circle().stroke(Color.gymBroNeutral200, lineWidth: 1))
+            }
+            .buttonStyle(.plain)
+
+            Button { Task { await repeatPreviousSet(set, on: exercise) } } label: {
+                ZStack {
+                    Circle()
+                        .fill(Color(hex: "F59E0B"))
+                        .frame(width: 32, height: 32)
+                        .shadow(color: Color(hex: "F59E0B").opacity(0.3), radius: 4, y: 2)
+                    Image(systemName: "repeat")
+                        .font(.system(size: 13, weight: .bold))
+                        .foregroundColor(.white)
+                }
+            }
+            .buttonStyle(.plain)
+        }
+        .padding(.vertical, 4)
+    }
+
+    /// Open the existing Log Set modal pre-filled with a previous set's
+    /// values. User can edit weight/reps and confirm to log in the current
+    /// session. `editingSetInfo`/`editingRoundIndex` cleared so it's an
+    /// add-new-set flow, not an edit-existing-set flow.
+    private func prefillModalFromPrevious(_ set: PreviousSet) {
+        addSetWeight = set.weight.map { $0.formattedWeight } ?? ""
+        addSetReps = "\(set.reps)"
+        addSetIsBodyweight = set.isBodyweight
+        editingSetInfo = nil
+        editingRoundIndex = nil
+        showAddSetSheet = true
+    }
+
+    /// Logs the previous set as-is in the current session.
+    private func repeatPreviousSet(_ set: PreviousSet, on exercise: ActiveSessionExercise) async {
+        await viewModel.logSet(
+            exerciseId: exercise.id,
+            weight: set.isBodyweight ? nil : set.weight,
+            weightUnit: set.weightUnit,
+            reps: set.reps,
+            isBodyweight: set.isBodyweight
+        )
     }
 
     private func formattedSessionDate(_ isoDate: String?) -> String {

@@ -75,6 +75,11 @@ final class ActiveSessionManager: ObservableObject {
 
     private let watchConnectivityService: WatchConnectivityServiceProtocol?
     @Published var watchWorkoutSummary: WatchWorkoutSummary?
+    /// Phone-driven hint for the Watch: which exercise the user has actively
+    /// open on the phone. Nil when no specific exercise view is open (plan
+    /// view, library, etc.); the Watch then falls back to its "first
+    /// incomplete" heuristic so watch-only flow keeps working.
+    private(set) var phoneActiveExerciseId: String?
 
     // MARK: - Reload Trigger
 
@@ -671,10 +676,23 @@ final class ActiveSessionManager: ObservableObject {
             isResting: isResting,
             restTimeRemaining: restTimeRemaining,
             restStartDate: restStartDate,
-            restDurationSeconds: restDurationSeconds
+            restDurationSeconds: restDurationSeconds,
+            activeExerciseId: phoneActiveExerciseId
         )
 
         watchService.pushSessionState(state)
+        lastSavedExercises = exercises
+    }
+
+    /// Sets the exercise the user has open on the phone. Pushes the updated
+    /// state to the Watch so it follows along. Passing nil clears the pin
+    /// (e.g. when the user navigates back to the plan view) — the Watch then
+    /// reverts to its "first incomplete" heuristic.
+    func setPhoneActiveExercise(_ exerciseId: String?) {
+        guard phoneActiveExerciseId != exerciseId else { return }
+        phoneActiveExerciseId = exerciseId
+        guard let exercises = lastSavedExercises, isSessionActive else { return }
+        pushStateToWatch(exercises: exercises)
     }
 
     func pushWatchSessionEnded() {

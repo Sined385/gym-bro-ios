@@ -46,9 +46,14 @@ struct SwipeToDeleteCard<Content: View>: View {
             // Card content
             content
                 .offset(x: offset)
-                .gesture(
+                // simultaneousGesture (not gesture) + a horizontal-only filter
+                // so vertical pans pass through to the parent ScrollView and
+                // the list actually scrolls. Without this, the 20pt threshold
+                // drag claims every pan and silently swallows vertical motion.
+                .simultaneousGesture(
                     DragGesture(minimumDistance: 20)
                         .onChanged { value in
+                            guard abs(value.translation.width) > abs(value.translation.height) else { return }
                             let translation = value.translation.width
                             if translation < 0 {
                                 // Swiping left — allow with resistance
@@ -62,6 +67,9 @@ struct SwipeToDeleteCard<Content: View>: View {
                             }
                         }
                         .onEnded { value in
+                            // If the gesture was predominantly vertical we never
+                            // moved offset off zero, so leave the state alone.
+                            guard abs(value.translation.width) > abs(value.translation.height) else { return }
                             withAnimation(.spring(response: 0.35, dampingFraction: 0.75)) {
                                 if offset < deleteThreshold / 2 {
                                     offset = deleteThreshold

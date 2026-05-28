@@ -38,15 +38,7 @@ struct MyProfileView: View {
                         consistencySection(profile.consistencyStats)
                         statsGrid(profile.extendedStats)
 
-                        ProfileWorkoutsSection(
-                            workouts: viewModel.workouts,
-                            isLoading: viewModel.isLoadingWorkouts,
-                            hasMore: viewModel.hasMoreWorkouts,
-                            onLoadMore: { await viewModel.loadMoreWorkouts() },
-                            onShare: { workout in
-                                shareWorkout(workout)
-                            }
-                        )
+                        workoutsNavigationRow
 
                         if !profile.extendedStats.personalRecords.isEmpty {
                             personalRecordsSection(profile.extendedStats.personalRecords)
@@ -152,6 +144,54 @@ struct MyProfileView: View {
                 }
             }
         }
+    }
+
+    // MARK: - Workouts Navigation Row
+
+    private var workoutsNavigationRow: some View {
+        NavigationLink {
+            AllWorkoutsView(viewModel: viewModel, onShare: shareWorkout)
+        } label: {
+            HStack(spacing: 14) {
+                ZStack {
+                    Circle()
+                        .fill(Color.gymBroPrimary.opacity(0.1))
+                        .frame(width: 44, height: 44)
+                    Image(systemName: "dumbbell.fill")
+                        .font(.system(size: 18, weight: .medium))
+                        .foregroundColor(.gymBroPrimary)
+                }
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("Workouts")
+                        .font(.system(size: 16, weight: .semibold))
+                        .foregroundColor(.gymBroNeutral900)
+                    Text(workoutsSubtitle)
+                        .font(.system(size: 13, weight: .medium))
+                        .foregroundColor(.gymBroTextSecondary)
+                }
+                Spacer()
+                Image(systemName: "chevron.right")
+                    .font(.system(size: 14, weight: .semibold))
+                    .foregroundColor(Color(hex: "D4D4D4"))
+            }
+            .padding(16)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .background(Color.gymBroCardBackground)
+            .clipShape(RoundedRectangle(cornerRadius: 24))
+            .overlay(
+                RoundedRectangle(cornerRadius: 24)
+                    .stroke(Color(hex: "F5F5F5"), lineWidth: 1)
+            )
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+    }
+
+    private var workoutsSubtitle: String {
+        let count = viewModel.workouts.count
+        if count == 0 { return "No sessions logged yet" }
+        let suffix = viewModel.hasMoreWorkouts ? "+" : ""
+        return "\(count)\(suffix) past session\(count == 1 ? "" : "s")"
     }
 
     // MARK: - Share Workout

@@ -16,100 +16,25 @@ struct SessionPlanView: View {
     @State private var showDiscardConfirm = false
 
     var body: some View {
-        ZStack(alignment: .bottom) {
         VStack(spacing: 0) {
-            // Top bar
-            HStack(spacing: 14) {
-                // Back button — collapse workout
-                Button { onCollapse() } label: {
-                    ZStack {
-                        Circle()
-                            .fill(Color.white)
-                            .frame(width: 44, height: 44)
-                            .overlay(
-                                Circle()
-                                    .stroke(Color.gymBroNeutral100, lineWidth: 1)
-                            )
-                            .shadow(color: .black.opacity(0.04), radius: 4, y: 2)
+            topBar
 
-                        Image(systemName: "chevron.left")
-                            .font(.system(size: 16, weight: .semibold))
-                            .foregroundColor(.gymBroNeutral900)
-                    }
-                }
-                .buttonStyle(.plain)
-
-                Text("Workout Plan")
-                    .font(.system(size: 20, weight: .bold))
-                    .foregroundColor(.gymBroNeutral900)
-
-                Spacer()
-
-                Button { onSaveTemplate() } label: {
-                    ZStack {
-                        Circle()
-                            .fill(Color.white)
-                            .frame(width: 44, height: 44)
-                            .overlay(
-                                Circle()
-                                    .stroke(Color.gymBroNeutral100, lineWidth: 1)
-                            )
-                            .shadow(color: .black.opacity(0.04), radius: 4, y: 2)
-
-                        Image(systemName: "bookmark")
-                            .font(.system(size: 16, weight: .semibold))
-                            .foregroundColor(.gymBroNeutral900)
-                    }
-                }
-                .buttonStyle(.plain)
-
-                Button { showDiscardConfirm = true } label: {
-                    ZStack {
-                        Circle()
-                            .fill(Color.white)
-                            .frame(width: 44, height: 44)
-                            .overlay(
-                                Circle()
-                                    .stroke(Color.gymBroNeutral100, lineWidth: 1)
-                            )
-                            .shadow(color: .black.opacity(0.04), radius: 4, y: 2)
-
-                        Image(systemName: "trash")
-                            .font(.system(size: 16, weight: .semibold))
-                            .foregroundColor(.gymBroPrimary)
-                    }
-                }
-                .buttonStyle(.plain)
-
-                if sessionManager.isWorkoutStarted {
-                    TimerBadge(time: sessionManager.formattedTime)
-                }
-            }
-            .padding(.horizontal, 20)
-            .padding(.top, 16)
-            .padding(.bottom, 16)
-
-            // Exercise list — custom drag/drop on a LazyVStack so the lifted
-            // card stays at its real size with no system halo/double-shadow
-            // (SwiftUI List.onMove looked ugly with our card chrome). The
-            // reorder is local-only; the new step_number persists via the
-            // standard completeSessionFull payload on workout completion.
             ScrollView(.vertical, showsIndicators: false) {
-                ReorderableExerciseStack(
-                    exercises: viewModel.standaloneExercises,
-                    onReorder: { from, to in
-                        Task { await viewModel.reorderStandaloneExercises(from: from, to: to) }
-                    },
-                    onTap: { onTapExercise($0) },
-                    onDelete: { id in
-                        Task { await viewModel.removeExercise(id) }
-                    },
-                    cardBuilder: { ex in
-                        AnyView(exerciseCardContent(ex))
-                    }
-                )
+                VStack(spacing: 0) {
+                    ReorderableExerciseStack(
+                        exercises: viewModel.standaloneExercises,
+                        onReorder: { from, to in
+                            Task { await viewModel.reorderStandaloneExercises(from: from, to: to) }
+                        },
+                        onTap: { onTapExercise($0) },
+                        onDelete: { id in
+                            Task { await viewModel.removeExercise(id) }
+                        },
+                        cardBuilder: { ex in
+                            AnyView(exerciseCardContent(ex))
+                        }
+                    )
 
-                LazyVStack(spacing: 12) {
                     ForEach(viewModel.supersetGroups) { group in
                         SwipeToDeleteCard {
                             supersetCard(group)
@@ -117,95 +42,19 @@ struct SessionPlanView: View {
                         } onDelete: {
                             Task { await viewModel.removeSuperset(group.id) }
                         }
+                        .padding(.horizontal, 20)
+                        .padding(.top, 12)
                     }
                 }
-                .padding(.horizontal, 20)
-                .padding(.top, viewModel.standaloneExercises.isEmpty ? 0 : 12)
-                .padding(.bottom, 120)
+                .padding(.bottom, 16)
             }
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
 
-            Spacer()
-
-            // Bottom bar
-            VStack(spacing: 0) {
-                HStack(spacing: 12) {
-                    // Add Exercise button — round when exercises exist
-                    Button(action: onAddExercise) {
-                        ZStack {
-                            Circle()
-                                .fill(Color.white.opacity(0.25))
-                                .frame(width: 28, height: 28)
-                            Image(systemName: "plus")
-                                .font(.system(size: 13, weight: .bold))
-                                .foregroundColor(.white)
-                        }
-                        .frame(width: 64, height: 64)
-                        .background(
-                            LinearGradient(
-                                colors: [.gymBroPrimary, .gymBroPrimaryDark],
-                                startPoint: .topLeading,
-                                endPoint: .bottomTrailing
-                            )
-                        )
-                        .clipShape(Circle())
-                        .shadow(color: Color.gymBroPrimary.opacity(0.3), radius: 8, y: 4)
-                    }
-                    .buttonStyle(.plain)
-
-                    if sessionManager.isWorkoutStarted {
-                        // Active session with ≥1 exercise — Complete is the
-                        // primary path; cancelling now requires swiping all
-                        // exercises off first (which falls back to SessionStartedView).
-                        Button(action: onEndWorkout) {
-                            HStack(spacing: 8) {
-                                Image(systemName: "flag.fill")
-                                    .font(.system(size: 14, weight: .bold))
-                                Text("Complete Workout")
-                                    .font(.system(size: 16, weight: .bold))
-                            }
-                            .foregroundColor(.white)
-                            .frame(maxWidth: .infinity)
-                            .frame(height: 64)
-                            .background(Color(hex: "2D3240"))
-                            .clipShape(RoundedRectangle(cornerRadius: 24))
-                            .shadow(color: Color.black.opacity(0.15), radius: 8, y: 4)
-                        }
-                        .buttonStyle(.plain)
-                    } else {
-                        // Pre-active: exercises queued but timer not started yet.
-                        Button(action: onStartWorkout) {
-                            HStack(spacing: 8) {
-                                Image(systemName: "play.fill")
-                                    .font(.system(size: 14, weight: .bold))
-                                Text("Start Workout")
-                                    .font(.system(size: 16, weight: .bold))
-                            }
-                            .foregroundColor(.white)
-                            .frame(maxWidth: .infinity)
-                            .frame(height: 64)
-                            .background(Color(hex: "2D3240"))
-                            .clipShape(RoundedRectangle(cornerRadius: 24))
-                            .shadow(color: Color.black.opacity(0.15), radius: 8, y: 4)
-                        }
-                        .buttonStyle(.plain)
-                    }
-                }
-                .padding(.horizontal, 20)
-                .padding(.top, 16)
-                .padding(.bottom, 24)
-            }
+            bottomInset
         }
-
-            // Floating rest timer bar
-            if let remaining = sessionManager.restTimeRemaining {
-                restTimerBar(remaining)
-                    .padding(.bottom, 120)
-                    .transition(.move(edge: .bottom).combined(with: .opacity))
-            }
-        }
-        .animation(.spring(response: 0.4), value: sessionManager.restTimeRemaining)
         .background(Color.gymBroBackground.ignoresSafeArea())
         .navigationBarHidden(true)
+        .animation(.spring(response: 0.4), value: sessionManager.restTimeRemaining)
         .confirmationDialog(
             "Discard workout?",
             isPresented: $showDiscardConfirm,
@@ -216,6 +65,150 @@ struct SessionPlanView: View {
         } message: {
             Text("Your logged sets will be lost.")
         }
+    }
+
+    // MARK: - Top Bar
+
+    private var topBar: some View {
+        HStack(spacing: 14) {
+            // Back button — collapse workout
+            Button { onCollapse() } label: {
+                ZStack {
+                    Circle()
+                        .fill(Color.white)
+                        .frame(width: 44, height: 44)
+                        .overlay(
+                            Circle()
+                                .stroke(Color.gymBroNeutral100, lineWidth: 1)
+                        )
+                        .shadow(color: .black.opacity(0.04), radius: 4, y: 2)
+
+                    Image(systemName: "chevron.left")
+                        .font(.system(size: 16, weight: .semibold))
+                        .foregroundColor(.gymBroNeutral900)
+                }
+            }
+            .buttonStyle(.plain)
+
+            Text("Workout Plan")
+                .font(.system(size: 20, weight: .bold))
+                .foregroundColor(.gymBroNeutral900)
+
+            Spacer()
+
+            // Overflow menu — save + discard live here so the top bar stays
+            // narrow enough for the timer on smaller devices (iPhone SE etc).
+            Menu {
+                Button { onSaveTemplate() } label: {
+                    Label("Save as Template", systemImage: "bookmark")
+                }
+                Button(role: .destructive) { showDiscardConfirm = true } label: {
+                    Label("Discard Workout", systemImage: "trash")
+                }
+            } label: {
+                ZStack {
+                    Circle()
+                        .fill(Color.white)
+                        .frame(width: 44, height: 44)
+                        .overlay(
+                            Circle()
+                                .stroke(Color.gymBroNeutral100, lineWidth: 1)
+                        )
+                        .shadow(color: .black.opacity(0.04), radius: 4, y: 2)
+
+                    Image(systemName: "ellipsis")
+                        .font(.system(size: 16, weight: .semibold))
+                        .foregroundColor(.gymBroNeutral900)
+                }
+            }
+            .buttonStyle(.plain)
+
+            if sessionManager.isWorkoutStarted {
+                TimerBadge(time: sessionManager.formattedTime)
+                    .layoutPriority(1)
+            }
+        }
+        .padding(.horizontal, 20)
+        .padding(.top, 16)
+        .padding(.bottom, 16)
+        .background(Color.gymBroBackground)
+    }
+
+    // MARK: - Bottom Inset (rest timer + action bar)
+
+    private var bottomInset: some View {
+        VStack(spacing: 12) {
+            if let remaining = sessionManager.restTimeRemaining {
+                restTimerBar(remaining)
+                    .transition(.move(edge: .bottom).combined(with: .opacity))
+            }
+            bottomBar
+        }
+        .background(Color.gymBroBackground)
+    }
+
+    private var bottomBar: some View {
+        HStack(spacing: 12) {
+            // Add Exercise button — round when exercises exist
+            Button(action: onAddExercise) {
+                ZStack {
+                    Circle()
+                        .fill(Color.white.opacity(0.25))
+                        .frame(width: 28, height: 28)
+                    Image(systemName: "plus")
+                        .font(.system(size: 13, weight: .bold))
+                        .foregroundColor(.white)
+                }
+                .frame(width: 64, height: 64)
+                .background(
+                    LinearGradient(
+                        colors: [.gymBroPrimary, .gymBroPrimaryDark],
+                        startPoint: .topLeading,
+                        endPoint: .bottomTrailing
+                    )
+                )
+                .clipShape(Circle())
+                .shadow(color: Color.gymBroPrimary.opacity(0.3), radius: 8, y: 4)
+            }
+            .buttonStyle(.plain)
+
+            if sessionManager.isWorkoutStarted {
+                Button(action: onEndWorkout) {
+                    HStack(spacing: 8) {
+                        Image(systemName: "flag.fill")
+                            .font(.system(size: 14, weight: .bold))
+                        Text("Complete Workout")
+                            .font(.system(size: 16, weight: .bold))
+                    }
+                    .foregroundColor(.white)
+                    .frame(maxWidth: .infinity)
+                    .frame(height: 64)
+                    .background(Color(hex: "2D3240"))
+                    .clipShape(RoundedRectangle(cornerRadius: 24))
+                    .shadow(color: Color.black.opacity(0.15), radius: 8, y: 4)
+                }
+                .buttonStyle(.plain)
+            } else {
+                Button(action: onStartWorkout) {
+                    HStack(spacing: 8) {
+                        Image(systemName: "play.fill")
+                            .font(.system(size: 14, weight: .bold))
+                        Text("Start Workout")
+                            .font(.system(size: 16, weight: .bold))
+                    }
+                    .foregroundColor(.white)
+                    .frame(maxWidth: .infinity)
+                    .frame(height: 64)
+                    .background(Color(hex: "2D3240"))
+                    .clipShape(RoundedRectangle(cornerRadius: 24))
+                    .shadow(color: Color.black.opacity(0.15), radius: 8, y: 4)
+                }
+                .buttonStyle(.plain)
+            }
+        }
+        .padding(.horizontal, 20)
+        .padding(.top, 8)
+        .padding(.bottom, 8)
     }
 
     // MARK: - Exercise Card Content
@@ -261,11 +254,14 @@ struct SessionPlanView: View {
                 Image(systemName: "checkmark.circle.fill")
                     .font(.system(size: 24))
                     .foregroundColor(Color(hex: "30C08D"))
-            } else {
-                Image(systemName: "chevron.right")
-                    .font(.system(size: 14, weight: .medium))
-                    .foregroundColor(Color(hex: "D4D4D4"))
             }
+            // Chevron removed — the right edge is now reserved for the
+            // drag handle overlaid by ReorderableExerciseStack. The whole
+            // card body remains tappable to open the logging view.
+
+            // Trailing breathing room so card content doesn't sit under the
+            // drag handle overlay.
+            Color.clear.frame(width: 28, height: 1)
         }
         .padding(.horizontal, 21)
         .padding(.vertical, 1)
@@ -477,11 +473,19 @@ struct ReorderableExerciseStack: View {
         LazyVStack(spacing: cardSpacing) {
             ForEach(Array(exercises.enumerated()), id: \.element.id) { idx, exercise in
                 let isDragged = draggedID == exercise.id
-                SwipeToDeleteCard {
-                    cardBuilder(exercise)
-                        .onTapGesture { onTap(exercise.id) }
-                } onDelete: {
-                    onDelete(exercise.id)
+                ZStack(alignment: .trailing) {
+                    SwipeToDeleteCard {
+                        cardBuilder(exercise)
+                            .onTapGesture { onTap(exercise.id) }
+                    } onDelete: {
+                        onDelete(exercise.id)
+                    }
+
+                    // Drag handle sits on top of the right edge of the card.
+                    // The reorder gesture is bound ONLY to this 44pt zone, so
+                    // touches anywhere else on the card body fall through to
+                    // the parent ScrollView and the list scrolls normally.
+                    dragHandle(for: exercise.id, at: idx)
                 }
                 .scaleEffect(isDragged ? 1.03 : 1.0)
                 .shadow(
@@ -494,7 +498,6 @@ struct ReorderableExerciseStack: View {
                 .zIndex(isDragged ? 100 : 0)
                 .animation(.spring(response: 0.35, dampingFraction: 0.82), value: draggedID)
                 .animation(.spring(response: 0.35, dampingFraction: 0.82), value: dragOffset)
-                .gesture(reorderGesture(for: exercise.id, at: idx))
             }
         }
         .padding(.horizontal, 20)
@@ -502,6 +505,16 @@ struct ReorderableExerciseStack: View {
         // up under the screen header. Same amount on the bottom keeps the
         // section visually centered between header and superset block.
         .padding(.vertical, 10)
+    }
+
+    private func dragHandle(for id: String, at idx: Int) -> some View {
+        Image(systemName: "line.3.horizontal")
+            .font(.system(size: 16, weight: .semibold))
+            .foregroundColor(Color(hex: "B0B0B0"))
+            .frame(width: 44, height: 56)
+            .contentShape(Rectangle())
+            .padding(.trailing, 8)
+            .gesture(reorderGesture(for: id, at: idx))
     }
 
     private var targetIndex: Int {
