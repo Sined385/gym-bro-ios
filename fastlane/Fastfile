@@ -4,7 +4,9 @@ default_platform(:ios)
 SCHEME = 'GymBro'
 XCODEPROJ = 'GymBro.xcodeproj'
 RELEASE_BRANCH = 'main'
-DEFAULT_INTERNAL_GROUP = 'Internal Testers'
+# Note: internal testers auto-receive every build at the app level, so there
+# is no internal-group constant here. `groups` on upload_to_testflight is
+# strictly external; the API rejects internal group names in that argument.
 DEFAULT_EXTERNAL_GROUP = 'External Testers'
 
 platform :ios do
@@ -43,10 +45,7 @@ platform :ios do
       changelog: notes,
       distribute_external: true,
       notify_external_testers: true,
-      groups: [
-        ENV.fetch('TESTFLIGHT_INTERNAL_GROUP', DEFAULT_INTERNAL_GROUP),
-        ENV.fetch('TESTFLIGHT_EXTERNAL_GROUP', DEFAULT_EXTERNAL_GROUP),
-      ],
+      groups: [ENV.fetch('TESTFLIGHT_EXTERNAL_GROUP', DEFAULT_EXTERNAL_GROUP)],
       reject_build_waiting_for_review: false,
     )
 
@@ -79,10 +78,7 @@ platform :ios do
       changelog: testflight_changelog,
       distribute_external: true,
       notify_external_testers: true,
-      groups: [
-        ENV.fetch('TESTFLIGHT_INTERNAL_GROUP', DEFAULT_INTERNAL_GROUP),
-        ENV.fetch('TESTFLIGHT_EXTERNAL_GROUP', DEFAULT_EXTERNAL_GROUP),
-      ],
+      groups: [ENV.fetch('TESTFLIGHT_EXTERNAL_GROUP', DEFAULT_EXTERNAL_GROUP)],
       reject_build_waiting_for_review: false,
     )
 
