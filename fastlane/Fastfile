@@ -71,7 +71,8 @@ platform :ios do
     build_ipa
 
     notes = ai_release_notes(mode: :general, version: version, build: build.to_s)
-    write_release_notes_section(notes)
+    UI.important('General release notes draft — copy into release-notes.txt manually:')
+    UI.message(notes)
     testflight_changelog = extract_testflight_changelog(notes)
 
     upload_to_testflight(
@@ -82,9 +83,10 @@ platform :ios do
       reject_build_waiting_for_review: false,
     )
 
-    # Stage the release-notes update on top of the version bump, then one
-    # commit + tag + push covers both.
-    sh('cd .. && git add release-notes.txt') if File.exist?('../release-notes.txt')
+    # release-notes.txt lives in the OUTER gym-bro repo (alongside the
+    # api/ios/dashboard sub-repos), not inside gym-bro-ios. The AI-drafted
+    # general notes are shown in the lane output for the human to copy
+    # into release-notes.txt manually; fastlane does not touch that file.
     finalize_git(tag: tag, message: "fastlane: release #{tag}")
   end
 
@@ -124,7 +126,6 @@ platform :ios do
     commit_version_bump(
       message: "#{message} [skip ci]",
       xcodeproj: XCODEPROJ,
-      include: ['release-notes.txt'],
       force: true,
     )
     add_git_tag(tag: tag)
@@ -142,14 +143,4 @@ platform :ios do
     cleaned.take(15).join.strip
   end
 
-  # Prepend the new ## v<version> block to release-notes.txt, keeping the
-  # leading "# GymJam — Release Notes" title intact.
-  def write_release_notes_section(new_section)
-    path = '../release-notes.txt'
-    body = File.exist?(path) ? File.read(path) : "# GymJam — Release Notes\n\n"
-    title, rest = body.split(/\n\n/, 2)
-    rest ||= ''
-    new_block = new_section.strip + "\n\n"
-    File.write(path, "#{title}\n\n#{new_block}#{rest}")
-  end
 end
