@@ -9,9 +9,12 @@ import Foundation
 import Combine
 import UserNotifications
 
-/// Response model for GET /api/v1/onboarding
+/// Response model for GET /api/v1/onboarding.
+/// Property names are camelCase because NetworkService's decoder uses
+/// `.convertFromSnakeCase` — JSON `ai_coach_context` arrives as `aiCoachContext`.
 private struct OnboardingResponse: Decodable {
-    let preferred_rest_time: Int?
+    let preferredRestTime: Int?
+    let aiCoachContext: String?
 }
 
 @MainActor
@@ -26,6 +29,8 @@ final class SettingsViewModel: ObservableObject {
     @Published var pushNotificationsEnabled: Bool = false
     @Published var shareProgressData: Bool = true
     @Published var preferredRestTime: RestTime = .ninety
+    @Published var aiCoachContext: String = ""
+    @Published var aiCoachContextUpdatedAt: Date?
     @Published var isLoggingOut: Bool = false
     @Published var showDeleteConfirmation: Bool = false
 
@@ -61,13 +66,30 @@ final class SettingsViewModel: ObservableObject {
                 OnboardingRouter.fetch.endpoint,
                 responseType: OnboardingResponse.self
             )
-            if let seconds = response.preferred_rest_time,
+            if let seconds = response.preferredRestTime,
                let restTime = RestTime(rawValue: seconds) {
                 preferredRestTime = restTime
                 UserDefaults.standard.set(seconds, forKey: Self.restTimeKey)
             }
+            aiCoachContext = response.aiCoachContext ?? ""
         } catch {
             // Keep UserDefaults / default value
+        }
+    }
+
+    // MARK: - Update AI Coach Context
+
+    /// Saves the AI coach context note to the backend. Empty string clears
+    /// the field server-side (the API treats "" as "null this column").
+    func updateAiCoachContext(_ context: String) async {
+        aiCoachContext = context
+        do {
+            try await networkService.request(
+                OnboardingRouter.updateAiCoachContext(context: context).endpoint
+            )
+            aiCoachContextUpdatedAt = Date()
+        } catch {
+            print("[Settings] Failed to save AI coach context: \(error)")
         }
     }
 

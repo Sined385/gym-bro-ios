@@ -19,9 +19,18 @@ struct WatchSessionState: Codable {
     let restTimeRemaining: Int?
     let restStartDate: Date?
     let restDurationSeconds: Int
+    /// Phone-driven override: when the user has a specific exercise open on
+    /// the phone screen, the phone sets this to that exercise's id and the
+    /// Watch follows. When nil (no specific view open), Watch falls back to
+    /// the "first incomplete" heuristic so watch-only flow stays natural.
+    var activeExerciseId: String?
 
     var currentExercise: WatchExerciseState? {
-        exercises.first { exercise in
+        if let pinned = activeExerciseId,
+           let match = exercises.first(where: { $0.id == pinned }) {
+            return match
+        }
+        return exercises.first { exercise in
             exercise.sets.contains { !$0.isCompleted }
         } ?? exercises.last
     }

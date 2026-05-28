@@ -18,6 +18,7 @@ struct ExerciseLibraryItem: Decodable, Identifiable, Hashable {
     var isFavorite: Bool = false
     var images: [String]? = nil
     var externalId: String? = nil
+    var lastSet: ExerciseLibraryLastSet? = nil
 
     init(
         id: String,
@@ -27,7 +28,8 @@ struct ExerciseLibraryItem: Decodable, Identifiable, Hashable {
         isSystem: Bool,
         isFavorite: Bool = false,
         images: [String]? = nil,
-        externalId: String? = nil
+        externalId: String? = nil,
+        lastSet: ExerciseLibraryLastSet? = nil
     ) {
         self.id = id
         self.name = name
@@ -37,10 +39,11 @@ struct ExerciseLibraryItem: Decodable, Identifiable, Hashable {
         self.isFavorite = isFavorite
         self.images = images
         self.externalId = externalId
+        self.lastSet = lastSet
     }
 
     private enum CodingKeys: String, CodingKey {
-        case id, name, muscleGroup, equipment, isSystem, isFavorite, images, externalId
+        case id, name, muscleGroup, equipment, isSystem, isFavorite, images, externalId, lastSet
     }
 
     // Why: synthesized Decodable doesn't honor default values for missing keys,
@@ -57,7 +60,18 @@ struct ExerciseLibraryItem: Decodable, Identifiable, Hashable {
         self.isFavorite = try c.decodeIfPresent(Bool.self, forKey: .isFavorite) ?? false
         self.images = try c.decodeIfPresent([String].self, forKey: .images)
         self.externalId = try c.decodeIfPresent(String.self, forKey: .externalId)
+        self.lastSet = try c.decodeIfPresent(ExerciseLibraryLastSet.self, forKey: .lastSet)
     }
+}
+
+/// Last set the user logged for this library exercise, surfaced on the
+/// library card so the user can recall where they left off.
+struct ExerciseLibraryLastSet: Decodable, Hashable {
+    let weight: Double?
+    let weightUnit: String
+    let reps: Int
+    let isBodyweight: Bool
+    let completedAt: String?
 }
 
 struct ExerciseLibraryResponse: Decodable {

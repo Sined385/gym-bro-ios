@@ -75,14 +75,15 @@ struct SessionFlowContainer: View {
                         },
                         onStartWorkout: { sessionManager.startWorkout() },
                         onEndWorkout: { navigationPath.append(SessionRoute.workoutFeedback) },
-                        onSaveTemplate: { showSaveTemplate = true }
+                        onSaveTemplate: { showSaveTemplate = true },
+                        onCancel: cancelAndDismiss
                     )
                 } else {
                     SessionStartedView(
                         viewModel: viewModel,
                         onAddExercise: { navigationPath.append(SessionRoute.exerciseLibrary) },
                         onStartWorkout: { sessionManager.startWorkout() },
-                        onCancelWorkout: onDismiss,
+                        onCancelWorkout: cancelAndDismiss,
                         // Empty session: top X ends the session too. Collapsing
                         // to mini-player isn't useful with nothing logged, and
                         // pre-active state otherwise has no exit path.
@@ -131,12 +132,24 @@ struct SessionFlowContainer: View {
                 case .exerciseLogging(let exerciseId):
                     ExerciseLoggingView(
                         viewModel: viewModel,
-                        exerciseId: exerciseId
+                        exerciseId: exerciseId,
+                        onSwitchToExercise: { newId in
+                            replaceTop(with: .exerciseLogging(exerciseId: newId))
+                        },
+                        onSwitchToSuperset: { groupId in
+                            replaceTop(with: .supersetLogging(groupId: groupId))
+                        }
                     )
                 case .supersetLogging(let groupId):
                     ExerciseLoggingView(
                         viewModel: viewModel,
-                        supersetGroupId: groupId
+                        supersetGroupId: groupId,
+                        onSwitchToExercise: { newId in
+                            replaceTop(with: .exerciseLogging(exerciseId: newId))
+                        },
+                        onSwitchToSuperset: { gid in
+                            replaceTop(with: .supersetLogging(groupId: gid))
+                        }
                     )
                 case .createCustomExercise:
                     CreateCustomExerciseView(
@@ -165,6 +178,23 @@ struct SessionFlowContainer: View {
                     }
                 }
             )
+        }
+    }
+
+    /// Swap the top of the nav stack rather than push, so tapping "Next"
+    /// on a logging screen doesn't grow the back stack with every jump —
+    /// back still goes straight to the plan view.
+    private func replaceTop(with route: SessionRoute) {
+        if !navigationPath.isEmpty { navigationPath.removeLast() }
+        navigationPath.append(route)
+    }
+
+    /// Fires the server-side cancel and then tears down the local session.
+    /// Dismiss runs regardless of network outcome so the user isn't trapped.
+    private func cancelAndDismiss() {
+        Task {
+            _ = await viewModel.cancelSession()
+            onDismiss()
         }
     }
 

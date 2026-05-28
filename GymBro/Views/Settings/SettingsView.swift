@@ -15,6 +15,8 @@ struct SettingsView: View {
     @EnvironmentObject var coordinator: AppCoordinator
     @Environment(\.dismiss) private var dismiss
 
+    @State private var showAboutYouEditor = false
+
     var body: some View {
         VStack(spacing: 0) {
             // MARK: - Header
@@ -35,6 +37,9 @@ struct SettingsView: View {
         .background(Color.gymBroBackground.ignoresSafeArea())
         .task {
             await viewModel.loadSettings()
+        }
+        .sheet(isPresented: $showAboutYouEditor) {
+            AboutYouEditorView(viewModel: viewModel)
         }
         .analyticsScreen("Settings")
     }
@@ -181,6 +186,12 @@ struct SettingsView: View {
             VStack(spacing: 0) {
                 // Rest Time Between Sets
                 restTimeSettingsRow
+
+                Divider()
+                    .padding(.leading, 60)
+
+                // About You — AI coach context
+                aboutYouRow
 
                 Divider()
                     .padding(.leading, 60)
@@ -336,6 +347,81 @@ struct SettingsView: View {
         }
         .frame(maxWidth: .infinity)
         .padding(.top, 16)
+    }
+
+    // MARK: - About You Row
+
+    private var aboutYouRow: some View {
+        VStack(alignment: .leading, spacing: 0) {
+            Button {
+                showAboutYouEditor = true
+            } label: {
+                HStack(spacing: 14) {
+                    ZStack {
+                        Circle()
+                            .fill(Color(red: 122/255, green: 130/255, blue: 246/255, opacity: 0.1))
+                            .frame(width: 44, height: 44)
+                        Image(systemName: "sparkles")
+                            .font(.system(size: 18, weight: .medium))
+                            .foregroundColor(Color(red: 122/255, green: 130/255, blue: 246/255))
+                    }
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text("About You")
+                            .font(.system(size: 16, weight: .semibold))
+                            .foregroundColor(.gymBroNeutral900)
+                        Text("Free-form context the AI uses for every plan")
+                            .font(.system(size: 13, weight: .medium))
+                            .foregroundColor(.gymBroTextSecondary)
+                    }
+                    Spacer()
+                    Image(systemName: "chevron.right")
+                        .font(.system(size: 14, weight: .semibold))
+                        .foregroundColor(Color(hex: "D4D4D4"))
+                }
+                .padding(16)
+                .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+
+            // Inline preview of the saved note — only when non-empty.
+            if !viewModel.aiCoachContext.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                aboutYouPreviewCard
+                    .padding(.horizontal, 16)
+                    .padding(.bottom, 16)
+            }
+        }
+    }
+
+    private var aboutYouPreviewCard: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            Text(viewModel.aiCoachContext)
+                .font(.system(size: 14, weight: .medium))
+                .foregroundColor(.gymBroNeutral900)
+                .lineSpacing(2)
+                .lineLimit(3)
+                .multilineTextAlignment(.leading)
+                .frame(maxWidth: .infinity, alignment: .leading)
+
+            Divider().background(Color(hex: "F5F5F5"))
+
+            HStack {
+                Text("\(viewModel.aiCoachContext.count) / 500")
+                    .font(.system(size: 11, weight: .semibold))
+                    .foregroundColor(Color(hex: "A1A1A1"))
+                    .monospacedDigit()
+                Spacer()
+                Button("Edit") { showAboutYouEditor = true }
+                    .font(.system(size: 14, weight: .semibold))
+                    .foregroundColor(.gymBroPrimary)
+            }
+        }
+        .padding(14)
+        .background(Color.gymBroBackground)
+        .overlay(
+            RoundedRectangle(cornerRadius: 16)
+                .stroke(Color(hex: "F5F5F5"), lineWidth: 1)
+        )
+        .cornerRadius(16)
     }
 
     // MARK: - Rest Time Settings Row

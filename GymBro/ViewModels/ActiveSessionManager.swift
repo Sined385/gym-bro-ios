@@ -46,6 +46,15 @@ final class ActiveSessionManager: ObservableObject {
     private static let restNotificationId = "gym-bro-rest-complete"
     private static let stillThereNotificationId = "gym-bro-still-there"
     private static let stillThereDelaySeconds: TimeInterval = 600 // 10 minutes
+    private static let startReminderIdPrefix = "gym-bro-start-reminder-"
+
+    private static func startReminderId(for sessionId: String) -> String {
+        "\(startReminderIdPrefix)\(sessionId)"
+    }
+
+    /// Tracks which session we've already fired the start-reminder for so
+    /// the second/third/... exercise added doesn't fire it again.
+    private var startReminderFiredForSessionId: String?
 
     // MARK: - Date-Anchored Timer State
 
@@ -66,6 +75,11 @@ final class ActiveSessionManager: ObservableObject {
 
     private let watchConnectivityService: WatchConnectivityServiceProtocol?
     @Published var watchWorkoutSummary: WatchWorkoutSummary?
+    /// Phone-driven hint for the Watch: which exercise the user has actively
+    /// open on the phone. Nil when no specific exercise view is open (plan
+    /// view, library, etc.); the Watch then falls back to its "first
+    /// incomplete" heuristic so watch-only flow keeps working.
+    private(set) var phoneActiveExerciseId: String?
 
     // MARK: - Reload Trigger
 
@@ -177,6 +191,9 @@ final class ActiveSessionManager: ObservableObject {
     }
 
     private func beginWorkout(title: String, exerciseCount: Int) {
+        // Cancel the "ready to start?" nudge before flipping the started
+        // flag — the cancel keys off sessionId which is still set here.
+        cancelStartReminder()
         isWorkoutStarted = true
         sessionStartDate = Date()
         elapsedSeconds = 0
@@ -213,6 +230,7 @@ final class ActiveSessionManager: ObservableObject {
         stopTimer()
         skipRestTimer()
         cancelStillThereNotification()
+        cancelStartReminder()
         if wasActive {
             analyticsService.track("workout_cancelled", properties: ["exercise_count": exerciseCount])
         }
@@ -436,6 +454,41 @@ final class ActiveSessionManager: ObservableObject {
         )
     }
 
+    // MARK: - Start Reminder
+
+    /// Fires a local notification immediately reminding the user to start
+    /// the session they just built. Only fires once per session — once
+    /// you've gotten the nudge, more sets won't re-trigger it. No-ops if
+    /// the workout is already underway.
+    func scheduleStartReminder() {
+        guard let sessionId, let sessionTitle, !isWorkoutStarted else { return }
+        if startReminderFiredForSessionId == sessionId { return }
+        startReminderFiredForSessionId = sessionId
+
+        let content = UNMutableNotificationContent()
+        content.title = "Ready to start?"
+        content.body = "\(sessionTitle) is set up — tap to begin."
+        content.sound = .default
+
+        let request = UNNotificationRequest(
+            identifier: Self.startReminderId(for: sessionId),
+            content: content,
+            trigger: nil // nil trigger → deliver immediately
+        )
+        UNUserNotificationCenter.current().add(request)
+    }
+
+    func cancelStartReminder() {
+        guard let sessionId else { return }
+        let id = Self.startReminderId(for: sessionId)
+        let center = UNUserNotificationCenter.current()
+        center.removePendingNotificationRequests(withIdentifiers: [id])
+        center.removeDeliveredNotifications(withIdentifiers: [id])
+        if startReminderFiredForSessionId == sessionId {
+            startReminderFiredForSessionId = nil
+        }
+    }
+
     // MARK: - Session Persistence
 
     struct CachedSession: Codable {
@@ -623,10 +676,23 @@ final class ActiveSessionManager: ObservableObject {
             isResting: isResting,
             restTimeRemaining: restTimeRemaining,
             restStartDate: restStartDate,
-            restDurationSeconds: restDurationSeconds
+            restDurationSeconds: restDurationSeconds,
+            activeExerciseId: phoneActiveExerciseId
         )
 
         watchService.pushSessionState(state)
+        lastSavedExercises = exercises
+    }
+
+    /// Sets the exercise the user has open on the phone. Pushes the updated
+    /// state to the Watch so it follows along. Passing nil clears the pin
+    /// (e.g. when the user navigates back to the plan view) — the Watch then
+    /// reverts to its "first incomplete" heuristic.
+    func setPhoneActiveExercise(_ exerciseId: String?) {
+        guard phoneActiveExerciseId != exerciseId else { return }
+        phoneActiveExerciseId = exerciseId
+        guard let exercises = lastSavedExercises, isSessionActive else { return }
+        pushStateToWatch(exercises: exercises)
     }
 
     func pushWatchSessionEnded() {

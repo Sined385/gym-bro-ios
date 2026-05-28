@@ -16,13 +16,7 @@ struct SessionHistorySection: View {
     var session: SessionHistory
     var dayLabel: String
 
-    @State private var isSharingCommunity = false
-    @State private var communityShareSuccess = false
-    @State private var isSharingLink = false
-    @State private var shareURL: URL?
-
-    private let networkService: NetworkServiceProtocol = DependencyContainer.shared.resolve(NetworkServiceProtocol.self)
-    private let analytics: AnalyticsTrackingServiceProtocol = DependencyContainer.shared.resolve(AnalyticsTrackingServiceProtocol.self)
+    @State private var pendingShareData: CompletedWorkoutShareData?
 
     var body: some View {
         VStack(alignment: .leading, spacing: 20) {
@@ -41,129 +35,88 @@ struct SessionHistorySection: View {
             // Exercises completed
             ExercisesCompletedCard(exercises: session.exercises)
 
-            // Share buttons
-            shareButtons
+            // Share button — opens the share builder pre-loaded with this session.
+            shareButton
         }
-        .sheet(isPresented: Binding(
-            get: { shareURL != nil },
-            set: { if !$0 { shareURL = nil } }
-        )) {
-            if let url = shareURL {
-                ActivityViewController(activityItems: [url])
-            }
+        .sheet(item: $pendingShareData) { data in
+            ShareEditorView(
+                data: data,
+                onShare: { _ in pendingShareData = nil },
+                onSkip: { pendingShareData = nil }
+            )
         }
     }
 
-    // MARK: - Share Buttons
+    // MARK: - Share Button
 
-    private var shareButtons: some View {
-        HStack(spacing: 12) {
-            // Share to Community
-            Button {
-                Task { await shareToCommunity() }
-            } label: {
-                HStack(spacing: 6) {
-                    if isSharingCommunity {
-                        ProgressView()
-                            .tint(.white)
-                            .scaleEffect(0.8)
-                    } else {
-                        Image(systemName: communityShareSuccess ? "checkmark" : "bubble.left.fill")
-                            .font(.system(size: 13, weight: .bold))
-                    }
-                    Text(communityShareSuccess ? "Shared!" : "Post")
-                        .font(.system(size: 15, weight: .bold))
-                }
-                .foregroundColor(.white)
-                .frame(maxWidth: .infinity)
-                .frame(height: 50)
-                .background(
-                    LinearGradient(
-                        colors: communityShareSuccess
-                            ? [Color(hex: "30C08D"), Color(hex: "28A677")]
-                            : [.gymBroPrimary, .gymBroPrimaryDark],
-                        startPoint: .topLeading,
-                        endPoint: .bottomTrailing
-                    )
+    private var shareButton: some View {
+        Button {
+            pendingShareData = Self.shareData(from: session)
+        } label: {
+            HStack(spacing: 8) {
+                Image(systemName: "square.and.arrow.up")
+                    .font(.system(size: 14, weight: .bold))
+                Text("Share")
+                    .font(.system(size: 15, weight: .bold))
+            }
+            .foregroundColor(.white)
+            .frame(maxWidth: .infinity)
+            .frame(height: 50)
+            .background(
+                LinearGradient(
+                    colors: [.gymBroPrimary, .gymBroPrimaryDark],
+                    startPoint: .topLeading,
+                    endPoint: .bottomTrailing
                 )
-                .clipShape(RoundedRectangle(cornerRadius: 16))
-            }
-            .buttonStyle(.plain)
-            .disabled(isSharingCommunity || communityShareSuccess)
-
-            // Share via deep link
-            Button {
-                Task { await shareViaLink() }
-            } label: {
-                HStack(spacing: 6) {
-                    if isSharingLink {
-                        ProgressView()
-                            .tint(.gymBroPrimary)
-                            .scaleEffect(0.8)
-                    } else {
-                        Image(systemName: "square.and.arrow.up")
-                            .font(.system(size: 13, weight: .bold))
-                    }
-                    Text("Share")
-                        .font(.system(size: 15, weight: .bold))
-                }
-                .foregroundColor(.gymBroPrimary)
-                .frame(maxWidth: .infinity)
-                .frame(height: 50)
-                .background(Color.gymBroPrimary.opacity(0.1))
-                .clipShape(RoundedRectangle(cornerRadius: 16))
-            }
-            .buttonStyle(.plain)
-            .disabled(isSharingLink)
+            )
+            .clipShape(RoundedRectangle(cornerRadius: 16))
         }
+        .buttonStyle(.plain)
     }
 
-    // MARK: - Actions
+    // MARK: - Adapter
 
-    private func shareToCommunity() async {
-        isSharingCommunity = true
-
-        let duration = session.durationMinutes ?? 0
-        let exerciseCount = session.exercises.count
-        let content = "Just completed a \(duration) minute workout with \(exerciseCount) exercise\(exerciseCount == 1 ? "" : "s")! \u{1F4AA}"
-
-        do {
-            _ = try await networkService.request(
-                CommunityRouter.createPost(
-                    content: content,
-                    visibility: "global",
-                    workoutSessionId: session.id,
-                    photoUrl: nil
-                ).endpoint,
-                responseType: CommunityPost.self
+    /// Converts a SessionHistory (Home tab) into the same payload the
+    /// post-completion editor consumes, so the builder works identically
+    /// whether you just finished a workout or are re-sharing a past one.
+    private static func shareData(from session: SessionHistory) -> CompletedWorkoutShareData {
+        let activeExercises = session.exercises.map { he in
+            ActiveSessionExercise(
+                id: he.id,
+                libraryExerciseId: nil,
+                name: he.name,
+                muscleGroup: he.muscleGroup ?? "Other",
+                equipment: "",
+                accentColor: he.accentColor,
+                stepNumber: he.stepNumber,
+                sets: he.sets.map { sd in
+                    ActiveSet(
+                        id: UUID().uuidString,
+                        setNumber: sd.setNumber,
+                        weight: sd.weight,
+                        weightUnit: sd.weightUnit,
+                        reps: sd.reps,
+                        isCompleted: true,
+                        isBodyweight: sd.isBodyweight
+                    )
+                },
+                supersetGroupId: nil,
+                supersetOrder: nil,
+                targetSets: he.sets.count,
+                targetReps: 0,
+                imageUrl: he.imageUrl,
+                externalId: he.externalId
             )
-            isSharingCommunity = false
-            communityShareSuccess = true
-            analytics.track("workout_shared_as_post", properties: ["session_id": session.id])
-        } catch {
-            isSharingCommunity = false
         }
-    }
-
-    private func shareViaLink() async {
-        isSharingLink = true
-        do {
-            // Save session(s) as template, then share it
-            let ids = session.sessionIds ?? [session.id]
-            let template = try await networkService.request(
-                TemplateRouter.create(name: session.title, sessionIds: ids).endpoint,
-                responseType: WorkoutTemplate.self
-            )
-            let response = try await networkService.request(
-                TemplateRouter.share(templateId: template.id).endpoint,
-                responseType: ShareTemplateResponse.self
-            )
-            isSharingLink = false
-            shareURL = URL(string: response.shareUrl)
-            analytics.track("workout_shared_as_link", properties: ["session_id": session.id])
-        } catch {
-            isSharingLink = false
-        }
+        return CompletedWorkoutShareData(
+            sessionId: session.id,
+            sessionTitle: session.title,
+            exercises: activeExercises,
+            effortLevel: 0,
+            energyLevel: 0,
+            durationMinutes: session.durationMinutes,
+            calories: session.calories
+        )
     }
 }
 

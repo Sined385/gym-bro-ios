@@ -173,6 +173,16 @@ struct ExerciseLibraryView: View {
                     .lineLimit(2)
                     .fixedSize(horizontal: false, vertical: true)
 
+                if let last = item.lastSet {
+                    HStack(spacing: 4) {
+                        Image(systemName: "clock.arrow.circlepath")
+                            .font(.system(size: 10, weight: .semibold))
+                        Text("Last: \(Self.formatLastSet(last))")
+                            .font(.system(size: 11, weight: .semibold))
+                    }
+                    .foregroundColor(.gymBroNeutral600)
+                }
+
                 HStack(spacing: 6) {
                     Text(item.muscleGroup)
                         .font(.system(size: 11, weight: .medium))
@@ -233,5 +243,17 @@ struct ExerciseLibraryView: View {
                 .font(.system(size: 18, weight: .medium))
                 .foregroundColor(.gymBroNeutral400)
         }
+    }
+
+    private static func formatLastSet(_ set: ExerciseLibraryLastSet) -> String {
+        let weightPart: String
+        if set.isBodyweight {
+            weightPart = "BW"
+        } else if let w = set.weight {
+            weightPart = "\(w.formattedWeight) \(set.weightUnit)"
+        } else {
+            weightPart = "—"
+        }
+        return "\(weightPart) × \(set.reps)"
     }
 }

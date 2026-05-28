@@ -17,6 +17,11 @@ struct ExerciseLoggingView: View {
     // Superset mode
     var supersetGroupId: String? = nil
 
+    /// Replaces the top of the parent's navigation stack with the next standalone exercise.
+    var onSwitchToExercise: ((String) -> Void)? = nil
+    /// Replaces the top of the parent's navigation stack with the next superset.
+    var onSwitchToSuperset: ((String) -> Void)? = nil
+
     @Environment(\.dismiss) private var dismiss
     @State private var previousSessions: [String: [PreviousSessionEntry]] = [:]
     @State private var showAddSetSheet: Bool = false
@@ -36,6 +41,19 @@ struct ExerciseLoggingView: View {
     @State private var editWeights: [String: String] = [:]
     @State private var editReps: [String: String] = [:]
     @State private var editBodyweight: [String: Bool] = [:]
+
+    // Detail view tab — switches between live session UI and the perf graph
+    enum DetailTab: String, CaseIterable, Identifiable {
+        case today, stats
+        var id: String { rawValue }
+        var label: String {
+            switch self {
+            case .today: return "Today"
+            case .stats: return "Stats"
+            }
+        }
+    }
+    @State private var detailTab: DetailTab = .today
 
     // Superset step-through state
     @State private var supersetStepIndex: Int = 0
@@ -64,6 +82,19 @@ struct ExerciseLoggingView: View {
         return "\(idx) OF \(viewModel.exercises.count)"
     }
 
+    private var hasNextTarget: Bool {
+        viewModel.nextWorkoutTarget(
+            afterExerciseId: exerciseId,
+            afterSupersetGroupId: supersetGroupId
+        ) != nil
+    }
+
+    private var bottomScrollClearance: CGFloat {
+        if sessionManager.isResting { return 120 }
+        if hasNextTarget { return 96 }
+        return 40
+    }
+
     var body: some View {
         ZStack(alignment: .bottom) {
             VStack(spacing: 0) {
@@ -80,14 +111,19 @@ struct ExerciseLoggingView: View {
                     }
                     .padding(.horizontal, 24)
                     .padding(.top, 12)
-                    .padding(.bottom, sessionManager.isResting ? 120 : 40)
+                    .padding(.bottom, bottomScrollClearance)
                 }
             }
             .background(Color.gymBroBackground.ignoresSafeArea())
 
-            // Floating rest timer bar
+            // Floating rest timer bar — when running, the timer takes
+            // priority over the up-next peek card to keep the bottom
+            // edge from getting too busy.
             if let remaining = sessionManager.restTimeRemaining {
                 restTimerBar(remaining)
+                    .transition(.move(edge: .bottom).combined(with: .opacity))
+            } else {
+                nextExercisePeekCard
                     .transition(.move(edge: .bottom).combined(with: .opacity))
             }
         }
@@ -105,7 +141,26 @@ struct ExerciseLoggingView: View {
         .task {
             await loadPreviousData()
         }
+        // Tell the Watch which exercise the phone has open so it stays in
+        // sync. Cleared on disappear so the Watch can fall back to its own
+        // first-incomplete heuristic when the phone is away from a specific
+        // exercise.
+        .onAppear { sessionManager.setPhoneActiveExercise(activeExerciseIdForWatch) }
+        .onDisappear { sessionManager.setPhoneActiveExercise(nil) }
+        .onChange(of: supersetStepIndex) {
+            sessionManager.setPhoneActiveExercise(activeExerciseIdForWatch)
+        }
         .analyticsScreen("ExerciseLogging")
+    }
+
+    /// What to pin on the Watch for this view: the individual exercise id, or
+    /// the currently-shown step of a superset.
+    private var activeExerciseIdForWatch: String? {
+        if let exerciseId { return exerciseId }
+        if let group = supersetGroup, supersetStepIndex < group.exercises.count {
+            return group.exercises[supersetStepIndex].id
+        }
+        return nil
     }
 
     // MARK: - Header
@@ -163,6 +218,89 @@ struct ExerciseLoggingView: View {
         .padding(.horizontal, 24)
         .padding(.top, 12)
         .padding(.bottom, 8)
+    }
+
+    // MARK: - Next Exercise Peek Card
+
+    /// Bottom-anchored mini card that "peeks" up from the screen edge,
+    /// styled like an Apple Music mini-player. Drag handle at top, "UP
+    /// NEXT" label + exercise name in the body, chevron on the trailing
+    /// edge. Tap to jump to that exercise.
+    @ViewBuilder
+    private var nextExercisePeekCard: some View {
+        if let target = viewModel.nextWorkoutTarget(
+            afterExerciseId: exerciseId,
+            afterSupersetGroupId: supersetGroupId
+        ) {
+            Button {
+                UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                switch target {
+                case .exercise(let id, _):
+                    onSwitchToExercise?(id)
+                case .superset(let groupId, _):
+                    onSwitchToSuperset?(groupId)
+                }
+            } label: {
+                VStack(spacing: 0) {
+                    HStack(spacing: 12) {
+                        // Small accent badge
+                        ZStack {
+                            Circle()
+                                .fill(Color.gymBroPrimary.opacity(0.12))
+                                .frame(width: 32, height: 32)
+                            Image(systemName: "arrow.right")
+                                .font(.system(size: 13, weight: .bold))
+                                .foregroundColor(.gymBroPrimary)
+                        }
+
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text("UP NEXT")
+                                .font(.system(size: 9, weight: .bold))
+                                .tracking(0.9)
+                                .foregroundColor(.gymBroNeutral400)
+                            Text(target.label)
+                                .font(.system(size: 15, weight: .bold))
+                                .foregroundColor(.gymBroNeutral900)
+                                .lineLimit(1)
+                        }
+
+                        Spacer(minLength: 0)
+
+                        Image(systemName: "chevron.right")
+                            .font(.system(size: 13, weight: .bold))
+                            .foregroundColor(.gymBroNeutral400)
+                    }
+                    .padding(.horizontal, 20)
+                    .padding(.top, 14)
+                    .padding(.bottom, 14)
+                }
+                .frame(maxWidth: .infinity)
+                .background(
+                    UnevenRoundedRectangle(
+                        topLeadingRadius: 24,
+                        bottomLeadingRadius: 0,
+                        bottomTrailingRadius: 0,
+                        topTrailingRadius: 24,
+                        style: .continuous
+                    )
+                    .fill(Color.white)
+                    .ignoresSafeArea(edges: .bottom)
+                )
+                .overlay(
+                    UnevenRoundedRectangle(
+                        topLeadingRadius: 24,
+                        bottomLeadingRadius: 0,
+                        bottomTrailingRadius: 0,
+                        topTrailingRadius: 24,
+                        style: .continuous
+                    )
+                    .stroke(Color.gymBroNeutral100, lineWidth: 1)
+                    .ignoresSafeArea(edges: .bottom)
+                )
+                .shadow(color: .black.opacity(0.08), radius: 14, x: 0, y: -4)
+            }
+            .buttonStyle(.plain)
+        }
     }
 
     private func favoriteHeartButton(libraryExerciseId: String) -> some View {
@@ -243,17 +381,51 @@ struct ExerciseLoggingView: View {
                 )
             }
 
-            // Live comparison card
-            liveComparisonCard(for: exercise)
+            // Today / Stats segmented control
+            detailTabPicker
 
-            // Today's sets card
-            todayCard(for: exercise)
+            // Tab content
+            if detailTab == .today {
+                liveComparisonCard(for: exercise)
+                todayCard(for: exercise)
 
-            // Previous sessions history
-            if let sessions = previousSessions[exercise.id], !sessions.isEmpty {
-                previousSessionsSection(sessions)
+                if let sessions = previousSessions[exercise.id], !sessions.isEmpty {
+                    previousSessionsSection(sessions, exercise: exercise)
+                }
+            } else {
+                ExercisePerformanceView(
+                    exercise: exercise,
+                    previousSessions: previousSessions[exercise.id] ?? []
+                )
             }
         }
+    }
+
+    // MARK: - Detail Tab Picker
+
+    private var detailTabPicker: some View {
+        HStack(spacing: 0) {
+            ForEach(DetailTab.allCases) { tab in
+                Button {
+                    withAnimation(.easeInOut(duration: 0.18)) { detailTab = tab }
+                } label: {
+                    Text(tab.label)
+                        .font(.system(size: 13, weight: .bold))
+                        .foregroundColor(detailTab == tab ? .gymBroNeutral900 : .gymBroNeutral400)
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 8)
+                        .background(
+                            RoundedRectangle(cornerRadius: 9)
+                                .fill(detailTab == tab ? Color.white : .clear)
+                                .shadow(color: detailTab == tab ? .black.opacity(0.06) : .clear, radius: 2, y: 1)
+                        )
+                }
+                .buttonStyle(.plain)
+            }
+        }
+        .padding(3)
+        .background(Color.gymBroNeutral100)
+        .clipShape(RoundedRectangle(cornerRadius: 12))
     }
 
     // MARK: - Live Comparison Card
@@ -421,7 +593,11 @@ struct ExerciseLoggingView: View {
                 isBodyweight: bodyweightBinding(for: set, exercise: exercise),
                 isCompleted: set.isCompleted,
                 onComplete: {
-                    let isBW = editBodyweight[set.id] ?? set.isBodyweight
+                    // Default BW state mirrors `bodyweightBinding` so the
+                    // inline checkmark on a planned BW-equipment set completes
+                    // as bodyweight (matches what the row already displays).
+                    let defaultBW = set.isBodyweight || exercise.equipment == "Bodyweight"
+                    let isBW = editBodyweight[set.id] ?? defaultBW
                     let wStr: String = editWeights[set.id] ?? set.weight.map { $0.formattedWeight } ?? prefillWeight.map { $0.formattedWeight } ?? ""
                     let rStr: String = editReps[set.id] ?? set.reps.map { "\($0)" } ?? prefillReps.map { "\($0)" } ?? ""
                     let w = isBW ? nil : Double(wStr)
@@ -438,10 +614,19 @@ struct ExerciseLoggingView: View {
                     sessionManager.startRestTimer()
                 },
                 onTapCompleted: {
+                    // Fires for both planned and completed sets now. Pre-fill
+                    // the popup with the existing values, falling back to the
+                    // prefill (last completed today → previous session) so the
+                    // user isn't starting from blank fields on a planned set.
                     editingSetInfo = (exerciseId: exercise.id, setId: set.id)
-                    addSetWeight = set.weight.map { $0.formattedWeight } ?? ""
-                    addSetReps = set.reps.map { "\($0)" } ?? ""
-                    addSetIsBodyweight = set.isBodyweight
+                    addSetWeight = (set.weight ?? prefillWeight).map { $0.formattedWeight } ?? ""
+                    addSetReps = (set.reps ?? prefillReps).map { "\($0)" } ?? ""
+                    // Honor the set's own flag if it was already toggled,
+                    // otherwise fall back to the exercise's equipment default
+                    // (bodyweight exercises start with BW pre-selected).
+                    addSetIsBodyweight = set.isCompleted
+                        ? set.isBodyweight
+                        : (set.isBodyweight || exercise.equipment == "Bodyweight")
                     showAddSetSheet = true
                 }
             )
@@ -545,7 +730,7 @@ struct ExerciseLoggingView: View {
 
     // MARK: - Previous Sessions Section
 
-    private func previousSessionsSection(_ sessions: [PreviousSessionEntry]) -> some View {
+    private func previousSessionsSection(_ sessions: [PreviousSessionEntry], exercise: ActiveSessionExercise) -> some View {
         VStack(alignment: .leading, spacing: 12) {
             HStack(spacing: 6) {
                 Image(systemName: "clock.arrow.circlepath")
@@ -564,23 +749,10 @@ struct ExerciseLoggingView: View {
                         .font(.system(size: 14, weight: .bold))
                         .foregroundColor(.gymBroNeutral900)
 
-                    ForEach(session.sets) { set in
-                        HStack(spacing: 0) {
-                            Text("Set \(set.setNumber)")
-                                .font(.system(size: 13, weight: .medium))
-                                .foregroundColor(.gymBroNeutral400)
-                                .frame(width: 48, alignment: .leading)
-
-                            Text(SetDisplay.line(
-                                weight: set.weight,
-                                weightUnit: set.weightUnit,
-                                reps: set.reps,
-                                isBodyweight: set.isBodyweight
-                            ))
-                            .font(.system(size: 14, weight: .semibold))
-                            .foregroundColor(.gymBroNeutral900)
-
-                            Spacer()
+                    ForEach(Array(session.sets.enumerated()), id: \.element.id) { idx, set in
+                        previousSetRow(set, exercise: exercise)
+                        if idx < session.sets.count - 1 {
+                            Divider().background(Color.gymBroNeutral100)
                         }
                     }
                 }
@@ -593,6 +765,80 @@ struct ExerciseLoggingView: View {
                 )
             }
         }
+    }
+
+    /// Single row in the history list. Two affordances on the right:
+    /// pencil = open the Log Set modal pre-filled with this set's values
+    /// so the user can tweak before logging; yellow repeat = log it now
+    /// as-is. Repeat button matches the swipe-right repeat on current sets
+    /// so the action reads as the same gesture, different surface.
+    private func previousSetRow(_ set: PreviousSet, exercise: ActiveSessionExercise) -> some View {
+        HStack(spacing: 12) {
+            Text("Set \(set.setNumber)")
+                .font(.system(size: 13, weight: .medium))
+                .foregroundColor(.gymBroNeutral400)
+                .frame(width: 48, alignment: .leading)
+
+            Text(SetDisplay.line(
+                weight: set.weight,
+                weightUnit: set.weightUnit,
+                reps: set.reps,
+                isBodyweight: set.isBodyweight
+            ))
+            .font(.system(size: 14, weight: .semibold))
+            .foregroundColor(.gymBroNeutral900)
+
+            Spacer()
+
+            Button { prefillModalFromPrevious(set) } label: {
+                Image(systemName: "pencil")
+                    .font(.system(size: 13, weight: .semibold))
+                    .foregroundColor(.gymBroNeutral900)
+                    .frame(width: 32, height: 32)
+                    .background(Color.white)
+                    .clipShape(Circle())
+                    .overlay(Circle().stroke(Color.gymBroNeutral200, lineWidth: 1))
+            }
+            .buttonStyle(.plain)
+
+            Button { Task { await repeatPreviousSet(set, on: exercise) } } label: {
+                ZStack {
+                    Circle()
+                        .fill(Color(hex: "F59E0B"))
+                        .frame(width: 32, height: 32)
+                        .shadow(color: Color(hex: "F59E0B").opacity(0.3), radius: 4, y: 2)
+                    Image(systemName: "repeat")
+                        .font(.system(size: 13, weight: .bold))
+                        .foregroundColor(.white)
+                }
+            }
+            .buttonStyle(.plain)
+        }
+        .padding(.vertical, 4)
+    }
+
+    /// Open the existing Log Set modal pre-filled with a previous set's
+    /// values. User can edit weight/reps and confirm to log in the current
+    /// session. `editingSetInfo`/`editingRoundIndex` cleared so it's an
+    /// add-new-set flow, not an edit-existing-set flow.
+    private func prefillModalFromPrevious(_ set: PreviousSet) {
+        addSetWeight = set.weight.map { $0.formattedWeight } ?? ""
+        addSetReps = "\(set.reps)"
+        addSetIsBodyweight = set.isBodyweight
+        editingSetInfo = nil
+        editingRoundIndex = nil
+        showAddSetSheet = true
+    }
+
+    /// Logs the previous set as-is in the current session.
+    private func repeatPreviousSet(_ set: PreviousSet, on exercise: ActiveSessionExercise) async {
+        await viewModel.logSet(
+            exerciseId: exercise.id,
+            weight: set.isBodyweight ? nil : set.weight,
+            weightUnit: set.weightUnit,
+            reps: set.reps,
+            isBodyweight: set.isBodyweight
+        )
     }
 
     private func formattedSessionDate(_ isoDate: String?) -> String {
@@ -1213,18 +1459,35 @@ struct ExerciseLoggingView: View {
         let weight: Double? = isBW ? nil : Double(addSetWeight.replacingOccurrences(of: ",", with: "."))
         let reps = Int(addSetReps) ?? 0
 
-        // Edit existing set
+        // Edit existing set — if the set was still planned (not yet completed),
+        // saving the popup also marks it done. Editing a completed set just
+        // updates values in place without flipping any state.
         if let editing = editingSetInfo {
+            let wasCompleted = viewModel.exercises
+                .first(where: { $0.id == editing.exerciseId })?
+                .sets.first(where: { $0.id == editing.setId })?
+                .isCompleted ?? false
             Task {
-                await viewModel.updateSet(
-                    exerciseId: editing.exerciseId,
-                    setId: editing.setId,
-                    weight: weight,
-                    weightUnit: nil,
-                    reps: reps,
-                    isCompleted: nil,
-                    isBodyweight: isBW
-                )
+                if wasCompleted {
+                    await viewModel.updateSet(
+                        exerciseId: editing.exerciseId,
+                        setId: editing.setId,
+                        weight: weight,
+                        weightUnit: nil,
+                        reps: reps,
+                        isCompleted: nil,
+                        isBodyweight: isBW
+                    )
+                } else {
+                    await viewModel.completeSet(
+                        exerciseId: editing.exerciseId,
+                        setId: editing.setId,
+                        weight: weight,
+                        reps: reps,
+                        isBodyweight: isBW
+                    )
+                    sessionManager.startRestTimer()
+                }
             }
             showAddSetSheet = false
             editingSetInfo = nil

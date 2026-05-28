@@ -51,6 +51,17 @@ struct DashboardResponse: Decodable {
     let prev3AvgDurationMinutes: Int?
     let prev3AvgCalories: Int?
     let todayCompletedSession: SessionHistory?
+    let dailyChallenge: DailyChallenge?
+    let tomorrowChallenge: DailyChallenge?
+}
+
+struct DailyChallenge: Decodable, Identifiable, Equatable {
+    let id: String
+    let title: String
+    let description: String
+    let icon: String
+    let category: String
+    var completed: Bool
 }
 
 struct DashboardUser: Decodable {
@@ -211,6 +222,8 @@ final class HomeViewModel: ObservableObject {
     @Published var latestHRV: Double?
     @Published var latestVO2Max: Double?
     @Published var todayWalkingDistance: Double?
+    @Published var dailyChallenge: DailyChallenge?
+    @Published var tomorrowChallenge: DailyChallenge?
 
     // MARK: - Computed Properties (Plan)
 
@@ -321,6 +334,9 @@ final class HomeViewModel: ObservableObject {
             prev3AvgDurationMinutes = response.prev3AvgDurationMinutes
             prev3AvgCalories = response.prev3AvgCalories
             todayCompletedSession = response.todayCompletedSession
+            dailyChallenge = response.dailyChallenge
+            tomorrowChallenge = response.tomorrowChallenge
+            DailyChallengeNotificationScheduler.schedule(for: response.tomorrowChallenge)
             sessionManager.pushTodayPlanToWatch(plannedWorkout: response.plannedWorkout)
             await loadCompletedDays()
             await loadHealthKitData()
@@ -350,6 +366,30 @@ final class HomeViewModel: ObservableObject {
                 DashboardExercise(id: UUID().uuidString, name: "90/90 Stretches", stepNumber: 4, setsDisplay: "2 \u{00D7} 10", accentColor: "#F5A623", libraryExerciseId: nil, muscleGroup: "Legs", equipment: "Bodyweight", suggestedWeight: nil, imageUrl: nil, externalId: nil),
             ]
         )
+    }
+
+    // MARK: - Daily Challenge
+
+    /// Optimistically flips the local state, then persists via the API.
+    /// On failure, rolls back so the UI matches the server.
+    func completeChallenge(id: String) async {
+        guard var current = dailyChallenge, current.id == id, !current.completed else { return }
+
+        current.completed = true
+        dailyChallenge = current
+
+        do {
+            let updated: DailyChallenge = try await networkService.request(
+                HomeRouter.completeChallenge(id: id).endpoint,
+                responseType: DailyChallenge.self
+            )
+            dailyChallenge = updated
+            analyticsService.track("daily_challenge_completed", properties: ["challenge_id": id])
+        } catch {
+            print("[Home] completeChallenge failed: \(error)")
+            current.completed = false
+            dailyChallenge = current
+        }
     }
 
     // MARK: - Session Actions

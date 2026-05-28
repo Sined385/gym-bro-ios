@@ -23,6 +23,7 @@ struct PostCardView: View {
     @State private var isTextExpanded: Bool = false
     @State private var isPhotoExpanded: Bool = false
     @State private var showReactionPicker: Bool = false
+    @State private var mediaIndex: Int = 0
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
@@ -142,47 +143,14 @@ struct PostCardView: View {
                     .lineSpacing(3)
             }
 
-            // Workout Attachment
-            if let attachment = post.workoutAttachment {
-                WorkoutAttachmentView(attachment: attachment, defaultExpanded: isWorkoutExpandedByDefault)
-            }
-
-            // Photo
-            if let photoUrl = post.photoUrl, let url = URL(string: photoUrl) {
-                CachedAsyncImage(url: url) { image in
-                    image
-                        .resizable()
-                        .aspectRatio(contentMode: .fill)
-                        .frame(maxWidth: .infinity)
-                        .frame(height: 200)
-                        .clipShape(RoundedRectangle(cornerRadius: 12))
-                        .contentShape(Rectangle())
-                        .onTapGesture { isPhotoExpanded = true }
-                } placeholder: {
-                    ShimmerView()
-                        .frame(maxWidth: .infinity)
-                        .frame(height: 200)
-                        .clipShape(RoundedRectangle(cornerRadius: 12))
-                } failure: {
-                    RoundedRectangle(cornerRadius: 12)
-                        .fill(Color.gymBroNeutral100)
-                        .frame(maxWidth: .infinity)
-                        .frame(height: 200)
-                        .overlay(
-                            Image(systemName: "photo")
-                                .font(.system(size: 32))
-                                .foregroundColor(.gymBroNeutral400)
-                        )
-                }
-                .background(
-                    ExpandedGalleryView(
-                        urls: [url],
-                        initialIndex: 0,
-                        isPresented: $isPhotoExpanded
-                    )
-                    .frame(width: 0, height: 0)
-                )
-            }
+            // Workout attachment + photo together → carousel. Either alone →
+            // render directly. Legacy posts that have both (created before the
+            // v2 share rework) used to stack them vertically; the carousel
+            // gives them a single swipeable surface with page dots.
+            mediaSlides(
+                attachment: post.workoutAttachment,
+                photoURL: post.photoUrl.flatMap { URL(string: $0) }
+            )
 
             // Emoji reactions + add emoji row (always visible)
             HStack(spacing: 6) {
@@ -336,6 +304,150 @@ struct PostCardView: View {
             .clipShape(Capsule())
         }
         .buttonStyle(.plain)
+    }
+
+    // MARK: - Media slides (workout card + optional photo)
+
+    @ViewBuilder
+    private func mediaSlides(attachment: WorkoutAttachment?, photoURL: URL?) -> some View {
+        switch (attachment, photoURL) {
+        case let (attachment?, photoURL?):
+            // Both present → paged horizontal scroll. TabView with .page style
+            // mis-sizes when sibling pages have different intrinsic aspects
+            // (the photo would "float" over the card during swipe), so we use
+            // ScrollView with .scrollTargetBehavior(.paging) instead — each
+            // page is locked to the container width and the share card's 9:16
+            // ratio drives the height.
+            GeometryReader { geo in
+                ScrollView(.horizontal, showsIndicators: false) {
+                    HStack(spacing: 0) {
+                        workoutCard(attachment: attachment)
+                            .frame(width: geo.size.width, height: geo.size.height)
+                            .clipped()
+                            .id(0)
+                        carouselPhoto(url: photoURL)
+                            .frame(width: geo.size.width, height: geo.size.height)
+                            .clipped()
+                            .id(1)
+                    }
+                    .scrollTargetLayout()
+                }
+                .scrollTargetBehavior(.paging)
+                .scrollPosition(id: Binding(
+                    get: { mediaIndex },
+                    set: { mediaIndex = $0 ?? 0 }
+                ))
+                .overlay(alignment: .bottom) {
+                    HStack(spacing: 6) {
+                        ForEach(0..<2, id: \.self) { i in
+                            Capsule()
+                                .fill(i == mediaIndex ? Color.white : Color.white.opacity(0.5))
+                                .frame(width: i == mediaIndex ? 18 : 6, height: 6)
+                                .animation(.easeInOut(duration: 0.2), value: mediaIndex)
+                        }
+                    }
+                    .padding(.horizontal, 10)
+                    .padding(.vertical, 5)
+                    .background(Color.black.opacity(0.35))
+                    .clipShape(Capsule())
+                    .padding(.bottom, 10)
+                }
+            }
+            .aspectRatio(9.0 / 16.0, contentMode: .fit)
+        case let (attachment?, nil):
+            workoutCard(attachment: attachment)
+        case let (nil, photoURL?):
+            standalonePhoto(url: photoURL)
+        case (nil, nil):
+            EmptyView()
+        }
+    }
+
+    @ViewBuilder
+    private func workoutCard(attachment: WorkoutAttachment) -> some View {
+        let snapshot = WorkoutSnapshot.from(attachment, authorHandle: post.user.username)
+        // Server-stored config wins when present (the OP's exact composition).
+        // Falls back to a synthesized default for legacy posts.
+        let cardConfig = post.shareConfig ?? ShareConfig.defaultConfig(for: snapshot)
+        ShareCardView(config: cardConfig, workout: snapshot)
+            .clipShape(RoundedRectangle(cornerRadius: 16))
+            .overlay(
+                RoundedRectangle(cornerRadius: 16)
+                    .stroke(Color(hex: "ECECF0"), lineWidth: 1)
+            )
+    }
+
+    @ViewBuilder
+    private func carouselPhoto(url: URL) -> some View {
+        // Inside the 9:16 carousel frame the photo fills + crops, matching the
+        // share card's dimensions. Tap still opens the full-resolution gallery.
+        CachedAsyncImage(url: url) { image in
+            image
+                .resizable()
+                .scaledToFill()
+        } placeholder: {
+            ShimmerView()
+        } failure: {
+            Color.gymBroNeutral100.overlay(
+                Image(systemName: "photo")
+                    .font(.system(size: 32))
+                    .foregroundColor(.gymBroNeutral400)
+            )
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .clipped()
+        .clipShape(RoundedRectangle(cornerRadius: 16))
+        .overlay(
+            RoundedRectangle(cornerRadius: 16)
+                .stroke(Color(hex: "ECECF0"), lineWidth: 1)
+        )
+        .contentShape(Rectangle())
+        .onTapGesture { isPhotoExpanded = true }
+        .background(
+            ExpandedGalleryView(
+                urls: [url],
+                initialIndex: 0,
+                isPresented: $isPhotoExpanded
+            )
+            .frame(width: 0, height: 0)
+        )
+    }
+
+    @ViewBuilder
+    private func standalonePhoto(url: URL) -> some View {
+        CachedAsyncImage(url: url) { image in
+            image
+                .resizable()
+                .aspectRatio(contentMode: .fill)
+                .frame(maxWidth: .infinity)
+                .frame(height: 200)
+                .clipShape(RoundedRectangle(cornerRadius: 12))
+                .contentShape(Rectangle())
+                .onTapGesture { isPhotoExpanded = true }
+        } placeholder: {
+            ShimmerView()
+                .frame(maxWidth: .infinity)
+                .frame(height: 200)
+                .clipShape(RoundedRectangle(cornerRadius: 12))
+        } failure: {
+            RoundedRectangle(cornerRadius: 12)
+                .fill(Color.gymBroNeutral100)
+                .frame(maxWidth: .infinity)
+                .frame(height: 200)
+                .overlay(
+                    Image(systemName: "photo")
+                        .font(.system(size: 32))
+                        .foregroundColor(.gymBroNeutral400)
+                )
+        }
+        .background(
+            ExpandedGalleryView(
+                urls: [url],
+                initialIndex: 0,
+                isPresented: $isPhotoExpanded
+            )
+            .frame(width: 0, height: 0)
+        )
     }
 
     private func timeAgo(from isoString: String) -> String {

@@ -50,6 +50,7 @@ enum OnboardingRouter: APIRouter {
     case submit(body: [String: Any])
     case fetch
     case updateRestTime(seconds: Int)
+    case updateAiCoachContext(context: String)
 
     var path: String { "/api/v1/onboarding" }
 
@@ -57,7 +58,7 @@ enum OnboardingRouter: APIRouter {
         switch self {
         case .submit: return .put
         case .fetch: return .get
-        case .updateRestTime: return .patch
+        case .updateRestTime, .updateAiCoachContext: return .patch
         }
     }
 
@@ -66,6 +67,7 @@ enum OnboardingRouter: APIRouter {
         case .submit(let body): return body
         case .fetch: return nil
         case .updateRestTime(let seconds): return ["preferred_rest_time": seconds]
+        case .updateAiCoachContext(let context): return ["ai_coach_context": context]
         }
     }
 
@@ -84,8 +86,10 @@ enum HomeRouter: APIRouter {
     case createSession(title: String, type: String)
     case startSession(sessionId: String)
     case completeSession(sessionId: String)
+    case cancelSession(sessionId: String)
     case history(date: String)
     case completedDays(month: String)
+    case completeChallenge(id: String)
 
     var path: String {
         switch self {
@@ -97,18 +101,22 @@ enum HomeRouter: APIRouter {
             return "/api/v1/home/sessions/\(sessionId)/start"
         case .completeSession(let sessionId):
             return "/api/v1/home/sessions/\(sessionId)/complete"
+        case .cancelSession(let sessionId):
+            return "/api/v1/home/sessions/\(sessionId)/cancel"
         case .history:
             return "/api/v1/home/history"
         case .completedDays:
             return "/api/v1/home/completed-days"
+        case .completeChallenge(let id):
+            return "/api/v1/home/challenges/\(id)/complete"
         }
     }
 
     var method: HTTPMethod {
         switch self {
         case .dashboard, .history, .completedDays: return .get
-        case .createSession, .startSession: return .post
-        case .completeSession: return .patch
+        case .createSession, .startSession, .completeChallenge: return .post
+        case .completeSession, .cancelSession: return .patch
         }
     }
 
@@ -122,10 +130,14 @@ enum HomeRouter: APIRouter {
             return nil
         case .completeSession:
             return nil
+        case .cancelSession:
+            return nil
         case .history(let date):
             return ["date": date]
         case .completedDays(let month):
             return ["month": month]
+        case .completeChallenge:
+            return nil
         }
     }
 
@@ -195,6 +207,7 @@ enum ExerciseRouter: APIRouter {
 enum SessionRouter: APIRouter {
     case addExercises(sessionId: String, exercises: [[String: Any]])
     case createSuperset(sessionId: String, exerciseIds: [String])
+    case reorderExercises(sessionId: String, exerciseIds: [String])
     case removeExercise(sessionId: String, exerciseId: String)
     case logSet(sessionId: String, exerciseId: String, setNumber: Int, weight: Any, weightUnit: String, reps: Int)
     case updateSet(sessionId: String, exerciseId: String, setId: String, params: [String: Any])
@@ -208,6 +221,8 @@ enum SessionRouter: APIRouter {
             return "/api/v1/home/sessions/\(sessionId)/exercises"
         case .createSuperset(let sessionId, _):
             return "/api/v1/home/sessions/\(sessionId)/supersets"
+        case .reorderExercises(let sessionId, _):
+            return "/api/v1/home/sessions/\(sessionId)/exercises/reorder"
         case .removeExercise(let sessionId, let exerciseId):
             return "/api/v1/home/sessions/\(sessionId)/exercises/\(exerciseId)"
         case .logSet(let sessionId, let exerciseId, _, _, _, _):
@@ -226,7 +241,7 @@ enum SessionRouter: APIRouter {
     var method: HTTPMethod {
         switch self {
         case .addExercises, .createSuperset, .logSet, .completeSessionFull: return .post
-        case .updateSet, .completeWithFeedback: return .patch
+        case .updateSet, .completeWithFeedback, .reorderExercises: return .patch
         case .removeExercise, .deleteSet: return .delete
         }
     }
@@ -236,6 +251,8 @@ enum SessionRouter: APIRouter {
         case .addExercises(_, let exercises):
             return ["exercises": exercises]
         case .createSuperset(_, let exerciseIds):
+            return ["exercise_ids": exerciseIds]
+        case .reorderExercises(_, let exerciseIds):
             return ["exercise_ids": exerciseIds]
         case .removeExercise, .deleteSet:
             return nil
@@ -354,7 +371,7 @@ enum WorkoutRouter: APIRouter {
 enum CommunityRouter: APIRouter {
     case feed(tab: String, cursor: String?, limit: Int)
     case getPost(postId: String)
-    case createPost(content: String, visibility: String, workoutSessionId: String?, photoUrl: String?)
+    case createPost(content: String, visibility: String, workoutSessionId: String?, photoUrl: String?, shareConfig: [String: Any]?, cardImageUrl: String?)
     case deletePost(postId: String)
     case toggleLike(postId: String)
     case toggleReaction(postId: String, emoji: String)
@@ -448,10 +465,12 @@ enum CommunityRouter: APIRouter {
             var params: [String: Any] = ["tab": tab, "limit": limit]
             if let cursor { params["cursor"] = cursor }
             return params
-        case .createPost(let content, let visibility, let workoutSessionId, let photoUrl):
+        case .createPost(let content, let visibility, let workoutSessionId, let photoUrl, let shareConfig, let cardImageUrl):
             var params: [String: Any] = ["content": content, "visibility": visibility]
             if let workoutSessionId { params["workout_session_id"] = workoutSessionId }
             if let photoUrl { params["photo_url"] = photoUrl }
+            if let shareConfig { params["share_config"] = shareConfig }
+            if let cardImageUrl { params["card_image_url"] = cardImageUrl }
             return params
         case .createComment(_, let content):
             return ["content": content]
@@ -505,6 +524,45 @@ enum CommunityRouter: APIRouter {
             return .json
         }
     }
+}
+
+// MARK: - Share Router
+
+enum ShareRouter: APIRouter {
+    case createSharedCard(cardImageUrl: String, shareConfig: [String: Any]?, workoutSessionId: String?)
+
+    var path: String {
+        switch self {
+        case .createSharedCard:
+            return "/api/v1/share-cards"
+        }
+    }
+
+    var method: HTTPMethod {
+        switch self {
+        case .createSharedCard:
+            return .post
+        }
+    }
+
+    var parameters: [String: Any]? {
+        switch self {
+        case .createSharedCard(let cardImageUrl, let shareConfig, let workoutSessionId):
+            var params: [String: Any] = ["card_image_url": cardImageUrl]
+            if let shareConfig { params["share_config"] = shareConfig }
+            if let workoutSessionId { params["workout_session_id"] = workoutSessionId }
+            return params
+        }
+    }
+
+    var encoding: ParameterEncoding {
+        return .json
+    }
+}
+
+struct SharedCardResponse: Decodable {
+    let id: String
+    let shareUrl: String
 }
 
 // MARK: - Notification Router

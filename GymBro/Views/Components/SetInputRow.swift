@@ -62,95 +62,31 @@ struct SetInputRow: View {
             .buttonStyle(.plain)
             .disabled(isCompleted)
 
-            if isCompleted {
-                // Display-only weight (BW chip for bodyweight sets)
-                Text(isBodyweight ? "BW" : (weight.isEmpty ? "--" : weight))
-                    .font(.system(size: 15, weight: .semibold))
-                    .foregroundColor(isBodyweight ? coralAccent : .gymBroNeutral900)
-                    .frame(minWidth: 44, maxWidth: 56, minHeight: 36)
-                    .background(Color.white)
-                    .clipShape(RoundedRectangle(cornerRadius: 14))
-                    .overlay(
-                        RoundedRectangle(cornerRadius: 14)
-                            .stroke(Color.gymBroNeutral200, lineWidth: 1)
-                    )
+            // Both planned and completed sets render display-only chips. Edits
+            // happen via the same popup as "Add Set" (triggered by tapping the
+            // row) — the inline TextField pattern was too easy to mis-type and
+            // didn't match the popup-based add flow.
+            Text(isBodyweight ? "BW" : (weight.isEmpty ? "--" : weight))
+                .font(.system(size: 15, weight: .semibold))
+                .foregroundColor(isBodyweight ? coralAccent : .gymBroNeutral900)
+                .frame(minWidth: 44, maxWidth: 56, minHeight: 36)
+                .background(isBodyweight && !isCompleted ? coralAccent.opacity(0.08) : Color.white)
+                .clipShape(RoundedRectangle(cornerRadius: 14))
+                .overlay(
+                    RoundedRectangle(cornerRadius: 14)
+                        .stroke(isBodyweight && !isCompleted ? coralAccent.opacity(0.3) : Color.gymBroNeutral200, lineWidth: 1)
+                )
 
-                // Display-only reps
-                Text(reps.isEmpty ? "--" : reps)
-                    .font(.system(size: 15, weight: .semibold))
-                    .foregroundColor(.gymBroNeutral900)
-                    .frame(minWidth: 44, maxWidth: 56, minHeight: 36)
-                    .background(Color.white)
-                    .clipShape(RoundedRectangle(cornerRadius: 14))
-                    .overlay(
-                        RoundedRectangle(cornerRadius: 14)
-                            .stroke(Color.gymBroNeutral200, lineWidth: 1)
-                    )
-            } else if isBodyweight {
-                // Disabled weight slot — shows "BW" instead of an editable field.
-                Text("BW")
-                    .font(.system(size: 15, weight: .semibold))
-                    .foregroundColor(coralAccent)
-                    .frame(minWidth: 44, maxWidth: 56, minHeight: 36)
-                    .background(coralAccent.opacity(0.08))
-                    .clipShape(RoundedRectangle(cornerRadius: 14))
-                    .overlay(
-                        RoundedRectangle(cornerRadius: 14)
-                            .stroke(coralAccent.opacity(0.3), lineWidth: 1)
-                    )
-
-                // Editable reps field
-                TextField("", text: $reps)
-                    .font(.system(size: 15, weight: .semibold))
-                    .foregroundColor(.gymBroNeutral900)
-                    .multilineTextAlignment(.center)
-                    .keyboardType(.numberPad)
-                    .frame(minWidth: 44, maxWidth: 56, minHeight: 36)
-                    .background(Color.white)
-                    .clipShape(RoundedRectangle(cornerRadius: 14))
-                    .overlay(
-                        RoundedRectangle(cornerRadius: 14)
-                            .stroke(Color.gymBroNeutral200, lineWidth: 1)
-                    )
-            } else {
-                // Editable weight field
-                ZStack(alignment: .trailing) {
-                    TextField("", text: $weight)
-                        .font(.system(size: 15, weight: .semibold))
-                        .foregroundColor(.gymBroNeutral900)
-                        .multilineTextAlignment(.center)
-                        .keyboardType(.decimalPad)
-                        .frame(minWidth: 44, maxWidth: 56, minHeight: 36)
-                        .background(Color.white)
-                        .clipShape(RoundedRectangle(cornerRadius: 14))
-                        .overlay(
-                            RoundedRectangle(cornerRadius: 14)
-                                .stroke(Color.gymBroNeutral200, lineWidth: 1)
-                        )
-
-                    if weight.isEmpty {
-                        Text("kg")
-                            .font(.system(size: 13, weight: .medium))
-                            .foregroundColor(.gymBroNeutral400)
-                            .padding(.trailing, 8)
-                            .allowsHitTesting(false)
-                    }
-                }
-
-                // Editable reps field
-                TextField("", text: $reps)
-                    .font(.system(size: 15, weight: .semibold))
-                    .foregroundColor(.gymBroNeutral900)
-                    .multilineTextAlignment(.center)
-                    .keyboardType(.numberPad)
-                    .frame(minWidth: 44, maxWidth: 56, minHeight: 36)
-                    .background(Color.white)
-                    .clipShape(RoundedRectangle(cornerRadius: 14))
-                    .overlay(
-                        RoundedRectangle(cornerRadius: 14)
-                            .stroke(Color.gymBroNeutral200, lineWidth: 1)
-                    )
-            }
+            Text(reps.isEmpty ? "--" : reps)
+                .font(.system(size: 15, weight: .semibold))
+                .foregroundColor(.gymBroNeutral900)
+                .frame(minWidth: 44, maxWidth: 56, minHeight: 36)
+                .background(Color.white)
+                .clipShape(RoundedRectangle(cornerRadius: 14))
+                .overlay(
+                    RoundedRectangle(cornerRadius: 14)
+                        .stroke(Color.gymBroNeutral200, lineWidth: 1)
+                )
 
             // Checkmark button
             Button(action: onComplete) {
@@ -190,9 +126,11 @@ struct SetInputRow: View {
         )
         .contentShape(Rectangle())
         .onTapGesture {
-            if isCompleted {
-                onTapCompleted?()
-            }
+            // Same popup edit flow whether the set is planned (incomplete) or
+            // already completed. For completed sets it edits in place; for
+            // planned sets the popup's save action runs `onComplete` and marks
+            // the set done with the new values.
+            onTapCompleted?()
         }
     }
 }

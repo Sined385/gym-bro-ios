@@ -409,7 +409,9 @@ struct ShareSessionView: View {
                     content: content,
                     visibility: visibility,
                     workoutSessionId: sessionId,
-                    photoUrl: uploadedPhotoUrl
+                    photoUrl: uploadedPhotoUrl,
+                    shareConfig: nil,
+                    cardImageUrl: nil
                 ).endpoint,
                 responseType: CommunityPost.self
             )

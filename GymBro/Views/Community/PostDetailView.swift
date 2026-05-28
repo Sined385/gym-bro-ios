@@ -57,7 +57,7 @@ struct PostDetailView: View {
                             },
                             isCommentsExpanded: false,
                             onShare: {
-                                shareURL = URL(string: "https://gyymjaam.com/p/\(postId)")
+                                shareURL = URL(string: "\(AppEnvironment.current.shareDomain)/p/\(postId)")
                             },
                             isWorkoutExpandedByDefault: true
                         )

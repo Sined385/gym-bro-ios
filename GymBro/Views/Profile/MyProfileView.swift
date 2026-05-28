@@ -13,12 +13,13 @@ struct MyProfileView: View {
     }()
     @State private var showSettings = false
     @State private var showEditProfile = false
-    @State private var isSharingWorkout = false
-    @State private var shareURL: URL?
     @State private var showFollowList = false
     @State private var followListInitialTab: FollowListTab = .followers
+    // Post deep-link share still uses the native activity sheet (workout share
+    // now goes through the builder via appDataState.pendingShareData).
+    @State private var shareURL: URL?
+    @EnvironmentObject private var appDataState: AppDataState
 
-    private let networkService: NetworkServiceProtocol = DependencyContainer.shared.resolve(NetworkServiceProtocol.self)
     private let analytics: AnalyticsTrackingServiceProtocol = DependencyContainer.shared.resolve(AnalyticsTrackingServiceProtocol.self)
     @State private var profileAppearTime: Date?
 
@@ -37,15 +38,7 @@ struct MyProfileView: View {
                         consistencySection(profile.consistencyStats)
                         statsGrid(profile.extendedStats)
 
-                        ProfileWorkoutsSection(
-                            workouts: viewModel.workouts,
-                            isLoading: viewModel.isLoadingWorkouts,
-                            hasMore: viewModel.hasMoreWorkouts,
-                            onLoadMore: { await viewModel.loadMoreWorkouts() },
-                            onShare: { workout in
-                                Task { await shareWorkout(workout) }
-                            }
-                        )
+                        workoutsNavigationRow
 
                         if !profile.extendedStats.personalRecords.isEmpty {
                             personalRecordsSection(profile.extendedStats.personalRecords)
@@ -153,25 +146,99 @@ struct MyProfileView: View {
         }
     }
 
+    // MARK: - Workouts Navigation Row
+
+    private var workoutsNavigationRow: some View {
+        NavigationLink {
+            AllWorkoutsView(viewModel: viewModel, onShare: shareWorkout)
+        } label: {
+            HStack(spacing: 14) {
+                ZStack {
+                    Circle()
+                        .fill(Color.gymBroPrimary.opacity(0.1))
+                        .frame(width: 44, height: 44)
+                    Image(systemName: "dumbbell.fill")
+                        .font(.system(size: 18, weight: .medium))
+                        .foregroundColor(.gymBroPrimary)
+                }
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("Workouts")
+                        .font(.system(size: 16, weight: .semibold))
+                        .foregroundColor(.gymBroNeutral900)
+                    Text(workoutsSubtitle)
+                        .font(.system(size: 13, weight: .medium))
+                        .foregroundColor(.gymBroTextSecondary)
+                }
+                Spacer()
+                Image(systemName: "chevron.right")
+                    .font(.system(size: 14, weight: .semibold))
+                    .foregroundColor(Color(hex: "D4D4D4"))
+            }
+            .padding(16)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .background(Color.gymBroCardBackground)
+            .clipShape(RoundedRectangle(cornerRadius: 24))
+            .overlay(
+                RoundedRectangle(cornerRadius: 24)
+                    .stroke(Color(hex: "F5F5F5"), lineWidth: 1)
+            )
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+    }
+
+    private var workoutsSubtitle: String {
+        let count = viewModel.workouts.count
+        if count == 0 { return "No sessions logged yet" }
+        let suffix = viewModel.hasMoreWorkouts ? "+" : ""
+        return "\(count)\(suffix) past session\(count == 1 ? "" : "s")"
+    }
+
     // MARK: - Share Workout
 
-    private func shareWorkout(_ workout: ProfileWorkout) async {
-        guard !isSharingWorkout else { return }
-        isSharingWorkout = true
-        do {
-            let template = try await networkService.request(
-                TemplateRouter.create(name: workout.title, sessionIds: [workout.id]).endpoint,
-                responseType: WorkoutTemplate.self
+    /// Routes the profile share button into the same builder that the
+    /// post-completion screen and the home history section use. Builds a
+    /// CompletedWorkoutShareData from the ProfileWorkout — MainTabView
+    /// presents ShareEditorView automatically when pendingShareData is set.
+    private func shareWorkout(_ workout: ProfileWorkout) {
+        let activeExercises = workout.exercises.map { he in
+            ActiveSessionExercise(
+                id: he.id,
+                libraryExerciseId: nil,
+                name: he.name,
+                muscleGroup: he.muscleGroup ?? "Other",
+                equipment: "",
+                accentColor: he.accentColor,
+                stepNumber: he.stepNumber,
+                sets: he.sets.map { sd in
+                    ActiveSet(
+                        id: UUID().uuidString,
+                        setNumber: sd.setNumber,
+                        weight: sd.weight,
+                        weightUnit: sd.weightUnit,
+                        reps: sd.reps,
+                        isCompleted: true,
+                        isBodyweight: sd.isBodyweight
+                    )
+                },
+                supersetGroupId: nil,
+                supersetOrder: nil,
+                targetSets: he.sets.count,
+                targetReps: 0,
+                imageUrl: he.imageUrl,
+                externalId: he.externalId
             )
-            let response = try await networkService.request(
-                TemplateRouter.share(templateId: template.id).endpoint,
-                responseType: ShareTemplateResponse.self
-            )
-            isSharingWorkout = false
-            shareURL = URL(string: response.shareUrl)
-        } catch {
-            isSharingWorkout = false
         }
+        appDataState.pendingShareData = CompletedWorkoutShareData(
+            sessionId: workout.id,
+            sessionTitle: workout.title,
+            exercises: activeExercises,
+            effortLevel: 0,
+            energyLevel: 0,
+            durationMinutes: workout.durationMinutes,
+            calories: workout.calories
+        )
+        analytics.track("profile_workout_share_opened", properties: ["session_id": workout.id])
     }
 
     // MARK: - Header Card
@@ -492,7 +559,7 @@ struct MyProfileView: View {
                             },
                             isCommentsExpanded: viewModel.expandedComments.contains(post.id),
                             onShare: {
-                                shareURL = URL(string: "https://gyymjaam.com/p/\(post.id)")
+                                shareURL = URL(string: "\(AppEnvironment.current.shareDomain)/p/\(post.id)")
                             }
                         )
 

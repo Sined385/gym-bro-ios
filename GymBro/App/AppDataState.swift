@@ -19,6 +19,12 @@ final class AppDataState: ObservableObject {
     /// restore on next launch.
     @Published var pendingShareData: CompletedWorkoutShareData?
 
+    /// Set when ShareEditorView successfully posts to the community. MainTabView
+    /// switches to the Community tab; CommunityFeedView injects the post at
+    /// the top of its list and clears the slot. This avoids the user landing
+    /// back on their previous tab unsure whether the share actually went out.
+    @Published var pendingFeedPost: CommunityPost?
+
     func triggerReload() {
         reloadVersion += 1
     }
@@ -34,4 +40,9 @@ struct CompletedWorkoutShareData: Identifiable {
     let effortLevel: Int
     let energyLevel: Int
     let durationMinutes: Int?
+    /// Calories burned (from session response or Apple Watch summary).
+    var calories: Int? = nil
+    /// Average heart rate during the workout (only set when Apple Watch was
+    /// the HR source — past workouts loaded from history don't carry this).
+    var avgHeartRate: Int? = nil
 }

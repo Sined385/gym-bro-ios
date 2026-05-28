@@ -138,6 +138,15 @@ struct MainTabView: View {
         .onChange(of: deepLinkRouter.pendingDeepLink) { _, newValue in
             handleDeepLink(newValue)
         }
+        // When ShareEditorView posts to community it stamps appDataState with
+        // the freshly-created post. We jump to the Community tab so the user
+        // lands on the feed they just contributed to; CommunityFeedView reads
+        // the same slot and prepends the post into its list.
+        .onChange(of: appDataState.pendingFeedPost) { _, post in
+            if post != nil {
+                selectedTab = 3
+            }
+        }
         .onReceive(NotificationCenter.default.publisher(for: UIResponder.keyboardWillShowNotification)) { _ in
             isKeyboardVisible = true
         }
@@ -154,7 +163,7 @@ struct MainTabView: View {
         // down on the server, so dismissing it (or force-quitting from it) has
         // zero effect on session state. Purely an optional add-on.
         .sheet(item: $appDataState.pendingShareData) { data in
-            ShareSessionView(
+            ShareEditorView(
                 data: data,
                 onShare: { _ in appDataState.pendingShareData = nil },
                 onSkip: { appDataState.pendingShareData = nil }
