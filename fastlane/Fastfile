@@ -117,6 +117,9 @@ platform :ios do
       output_name: 'GymJam.ipa',
       include_bitcode: false,
       include_symbols: true,
+      # Pin to iOS — Xcode 16 otherwise tries to build for visionOS
+      # (and bails because the visionOS SDK isn't installed).
+      destination: 'generic/platform=iOS',
     )
   end
 
