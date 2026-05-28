@@ -39,13 +39,16 @@ module Fastlane
 
       def self.gather_commits(mode, version)
         range = commit_range(mode, version)
-        format = '%h %s'
-        if range
-          `git log #{range} --no-merges --pretty=format:'#{format}'`.strip
-        else
-          # Fallback: most recent 50 commits if no prior tag exists.
-          `git log -50 --no-merges --pretty=format:'#{format}'`.strip
-        end
+        # Build the git command as an argv array and shell out via Open3 so
+        # tag names with shell-metacharacters (e.g. "1.3(3)" — parens trip
+        # bash) aren't interpreted by the shell. Backtick interpolation here
+        # silently returns empty on syntax errors.
+        argv = ['git', 'log']
+        argv << range if range
+        argv << '-50' unless range
+        argv += ['--no-merges', '--pretty=format:%h %s']
+        stdout, _stderr, status = Open3.capture3(*argv)
+        status.success? ? stdout.strip : ''
       end
 
       # Returns a "since..HEAD" rev range or nil if no prior tag exists.

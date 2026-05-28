@@ -1,2 +1,2 @@
-app_identifier(['com.den.gymbro.app', 'com.den.gymbro.app.watch', 'com.den.gymbro.app.widgets'])
+app_identifier('com.den.gymbro.app')
 team_id('YNXC5CY44T')
