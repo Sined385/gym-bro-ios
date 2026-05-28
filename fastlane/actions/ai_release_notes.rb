@@ -133,7 +133,12 @@ module Fastlane
 
       def self.run_claude(prompt)
         stdout, stderr, status = Open3.capture3('claude', '-p', '--max-turns', '1', stdin_data: prompt)
-        UI.user_error!("claude CLI failed: #{stderr}") unless status.success?
+        unless status.success?
+          UI.error("claude CLI exit: #{status.exitstatus}")
+          UI.error("claude CLI stderr: #{stderr.inspect}")
+          UI.error("claude CLI stdout: #{stdout.inspect}")
+          UI.user_error!('claude CLI failed; see stdout/stderr above')
+        end
         stdout.strip
       end
 
