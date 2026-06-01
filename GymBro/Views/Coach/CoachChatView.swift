@@ -13,6 +13,8 @@ struct CoachChatView: View {
     @EnvironmentObject var sessionManager: ActiveSessionManager
     @Environment(\.scenePhase) private var scenePhase
 
+    private let bottomAnchorId = "__chat_bottom__"
+
     var body: some View {
         VStack(spacing: 0) {
             // Messages area
@@ -77,24 +79,30 @@ struct CoachChatView: View {
                             )
                             .id("upgrade-card")
                         }
+
+                        // Stable anchor at the absolute bottom. Scrolling to
+                        // a sentinel (instead of the last message bubble) keeps
+                        // the scroll target fixed while the bubble grows from
+                        // streaming text — otherwise scrollTo(lastId, .bottom)
+                        // re-targets every text_delta and the view bounces.
+                        Color.clear
+                            .frame(height: 1)
+                            .id(bottomAnchorId)
                     }
                     .padding(.horizontal, 16)
                     .padding(.top, 16)
                     .padding(.bottom, 8)
                 }
+                // New message arrived → smooth animated scroll once.
                 .onChange(of: viewModel.messages.count) { _, _ in
                     withAnimation(.easeOut(duration: 0.2)) {
-                        if let lastId = viewModel.messages.last?.id {
-                            proxy.scrollTo(lastId, anchor: .bottom)
-                        }
+                        proxy.scrollTo(bottomAnchorId, anchor: .bottom)
                     }
                 }
+                // Streaming text deltas → follow without animation so each
+                // chunk doesn't compete with the previous one's transition.
                 .onChange(of: viewModel.messages.last?.content) { _, _ in
-                    withAnimation(.easeOut(duration: 0.1)) {
-                        if let lastId = viewModel.messages.last?.id {
-                            proxy.scrollTo(lastId, anchor: .bottom)
-                        }
-                    }
+                    proxy.scrollTo(bottomAnchorId, anchor: .bottom)
                 }
                 .scrollDismissesKeyboard(.interactively)
             }

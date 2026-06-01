@@ -15,38 +15,83 @@ struct SessionPlanView: View {
 
     @State private var showDiscardConfirm = false
 
+    // Live reorder state. The badge inside each card owns a sequenced
+    // long-press + drag gesture; while a card is lifted the parent
+    // applies a finger-tracking offset to it and shifts its siblings
+    // by one slot's height so the list visually reflows as the finger
+    // moves. The whole interaction lives on SessionPlanView (not on a
+    // child wrapper) so the offset/animation modifiers can be applied
+    // to the row directly without an AnyView round-trip.
+    @State private var draggedID: String? = nil
+    @State private var dragOffset: CGFloat = 0
+    @State private var draggedFromIndex: Int = 0
+    private let cardSpacing: CGFloat = 12
+    // Approximate row height including spacing — used purely for the
+    // "where would the drop land" math. A small over-estimate is fine
+    // because each card's real visible size still drives layout.
+    private let cardSlotHeight: CGFloat = 88
+
     var body: some View {
         VStack(spacing: 0) {
             topBar
 
+            // Custom long-press + drag, gesture-bound to the badge inside
+            // each card. While dragging, the lifted card follows the finger
+            // and its siblings spring one slot up or down so the user can
+            // see exactly where the drop will land. On release the card
+            // snaps to the target slot and the view model commits the
+            // reorder.
             ScrollView(.vertical, showsIndicators: false) {
-                VStack(spacing: 0) {
-                    ReorderableExerciseStack(
-                        exercises: viewModel.standaloneExercises,
-                        onReorder: { from, to in
-                            Task { await viewModel.reorderStandaloneExercises(from: from, to: to) }
-                        },
-                        onTap: { onTapExercise($0) },
-                        onDelete: { id in
-                            Task { await viewModel.removeExercise(id) }
-                        },
-                        cardBuilder: { ex in
-                            AnyView(exerciseCardContent(ex))
-                        }
-                    )
-
-                    ForEach(viewModel.supersetGroups) { group in
+                LazyVStack(spacing: cardSpacing) {
+                    ForEach(Array(viewModel.standaloneExercises.enumerated()), id: \.element.id) { idx, exercise in
+                        let isDragged = draggedID == exercise.id
                         SwipeToDeleteCard {
-                            supersetCard(group)
-                                .onTapGesture { onTapSuperset(group.id) }
+                            exerciseCardContent(
+                                exercise,
+                                dragHandle: AnyView(dragBadge(for: exercise.id, at: idx)),
+                            )
+                            .onTapGesture { onTapExercise(exercise.id) }
                         } onDelete: {
-                            Task { await viewModel.removeSuperset(group.id) }
+                            Task { await viewModel.removeExercise(exercise.id) }
                         }
-                        .padding(.horizontal, 20)
-                        .padding(.top, 12)
+                        .scaleEffect(isDragged ? 1.03 : 1.0)
+                        .shadow(
+                            color: .black.opacity(isDragged ? 0.18 : 0),
+                            radius: isDragged ? 22 : 0,
+                            x: 0,
+                            y: isDragged ? 12 : 0,
+                        )
+                        .offset(y: yOffset(for: idx, exerciseId: exercise.id))
+                        .zIndex(isDragged ? 100 : 0)
+                        // Spring on lift/drop only.
+                        .animation(.spring(response: 0.35, dampingFraction: 0.82), value: draggedID)
+                        // Siblings spring smoothly into place as the drop
+                        // target changes. The dragged card itself must NOT
+                        // animate on slot crossings — its offset is driven
+                        // by dragOffset and needs to track the finger 1:1;
+                        // passing nil disables the animation it would
+                        // otherwise inherit on each crossing.
+                        .animation(
+                            isDragged
+                                ? nil
+                                : .spring(response: 0.3, dampingFraction: 0.85),
+                            value: targetIndex,
+                        )
                     }
                 }
-                .padding(.bottom, 16)
+                .padding(.horizontal, 20)
+                .padding(.vertical, 10)
+
+                ForEach(viewModel.supersetGroups) { group in
+                    SwipeToDeleteCard {
+                        supersetCard(group)
+                            .onTapGesture { onTapSuperset(group.id) }
+                    } onDelete: {
+                        Task { await viewModel.removeSuperset(group.id) }
+                    }
+                    .padding(.horizontal, 20)
+                    .padding(.top, 12)
+                }
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)
 
@@ -213,7 +258,10 @@ struct SessionPlanView: View {
 
     // MARK: - Exercise Card Content
 
-    private func exerciseCardContent(_ exercise: ActiveSessionExercise) -> some View {
+    private func exerciseCardContent(
+        _ exercise: ActiveSessionExercise,
+        dragHandle: AnyView = AnyView(EmptyView()),
+    ) -> some View {
         HStack(spacing: 16) {
             // Accent bar
             RoundedRectangle(cornerRadius: 100)
@@ -250,18 +298,13 @@ struct SessionPlanView: View {
                 favoriteHeart(libraryExerciseId: libraryId)
             }
 
+            dragHandle
+
             if exercise.targetSets > 0 && exercise.sets.filter({ $0.isCompleted }).count >= exercise.targetSets {
                 Image(systemName: "checkmark.circle.fill")
                     .font(.system(size: 24))
                     .foregroundColor(Color(hex: "30C08D"))
             }
-            // Chevron removed — the right edge is now reserved for the
-            // drag handle overlaid by ReorderableExerciseStack. The whole
-            // card body remains tappable to open the logging view.
-
-            // Trailing breathing room so card content doesn't sit under the
-            // drag handle overlay.
-            Color.clear.frame(width: 28, height: 1)
         }
         .padding(.horizontal, 21)
         .padding(.vertical, 1)
@@ -283,6 +326,105 @@ struct SessionPlanView: View {
                     Task { await favoritesService.toggle(exerciseId: libraryExerciseId) }
                 }
             )
+    }
+
+    // Badge that lives just right of the heart inside each card. A
+    // sequenced long-press → drag gesture is attached only to this
+    // 36×44 hit area, so the card body remains tappable to open the
+    // logging view and horizontal swipes still reach SwipeToDeleteCard.
+    private func dragBadge(for id: String, at idx: Int) -> some View {
+        Image(systemName: "line.3.horizontal")
+            .font(.system(size: 16, weight: .semibold))
+            .foregroundColor(Color(hex: "B0B0B0"))
+            .frame(width: 36, height: 44)
+            .contentShape(Rectangle())
+            .gesture(reorderGesture(for: id, at: idx))
+    }
+
+    private var targetIndex: Int {
+        let rowH = cardSlotHeight + cardSpacing
+        let shift = Int((dragOffset / rowH).rounded())
+        return max(
+            0,
+            min(viewModel.standaloneExercises.count - 1, draggedFromIndex + shift),
+        )
+    }
+
+    private func yOffset(for idx: Int, exerciseId: String) -> CGFloat {
+        guard draggedID != nil else { return 0 }
+        if exerciseId == draggedID { return dragOffset }
+        let rowH = cardSlotHeight + cardSpacing
+        let target = targetIndex
+        if draggedFromIndex < target {
+            // Dragging downward — cards between source and target shift up.
+            if idx > draggedFromIndex && idx <= target { return -rowH }
+        } else if draggedFromIndex > target {
+            // Dragging upward — cards between target and source shift down.
+            if idx < draggedFromIndex && idx >= target { return rowH }
+        }
+        return 0
+    }
+
+    private func reorderGesture(for id: String, at idx: Int) -> some Gesture {
+        // `.global` is critical: the dragged card is offset by dragOffset,
+        // so a `.local` DragGesture would measure translation against the
+        // moving card and feed a jittering value back into dragOffset.
+        // Screen-relative translation avoids that feedback loop.
+        LongPressGesture(minimumDuration: 0.3)
+            .sequenced(before: DragGesture(minimumDistance: 0, coordinateSpace: .global))
+            .onChanged { value in
+                switch value {
+                case .first:
+                    break
+                case .second(let pressed, let drag):
+                    if pressed && draggedID == nil {
+                        UIImpactFeedbackGenerator(style: .medium).impactOccurred()
+                        draggedID = id
+                        draggedFromIndex = idx
+                    }
+                    if let drag {
+                        dragOffset = drag.translation.height
+                    }
+                }
+            }
+            .onEnded { _ in
+                guard let liftedID = draggedID else { return }
+                let target = targetIndex
+                let from = draggedFromIndex
+                let rowH = cardSlotHeight + cardSpacing
+                // Snap the dragged card visually to the target slot *before*
+                // mutating the array so the array reorder happens while the
+                // card is already where its new index will place it — no
+                // teleport, no jump.
+                let snappedOffset = CGFloat(target - from) * rowH
+                withAnimation(.spring(response: 0.32, dampingFraction: 0.85)) {
+                    dragOffset = snappedOffset
+                }
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.32) {
+                    if target != from {
+                        // IndexSet move semantics: target offset is interpreted
+                        // after removal, so account for that when sliding down.
+                        let dest = target > from ? target + 1 : target
+                        Task {
+                            await viewModel.reorderStandaloneExercises(
+                                from: IndexSet(integer: from),
+                                to: dest,
+                            )
+                        }
+                    }
+                    // Reset without animation — the card's new index already
+                    // places it at the snapped position so zeroing dragOffset
+                    // doesn't move it on screen.
+                    var transaction = Transaction()
+                    transaction.disablesAnimations = true
+                    withTransaction(transaction) {
+                        if draggedID == liftedID {
+                            draggedID = nil
+                            dragOffset = 0
+                        }
+                    }
+                }
+            }
     }
 
     @ViewBuilder
@@ -442,154 +584,3 @@ struct SessionPlanView: View {
     }
 }
 
-// MARK: - ReorderableExerciseStack
-
-/// Custom long-press-and-drag reorder for the active workout's standalone
-/// exercises. Built on a LazyVStack with hand-rolled gestures so we control
-/// the lifted-card visuals end-to-end — SwiftUI's List drag preview painted
-/// a haloed double-shadow on top of our card chrome, which looked sloppy.
-///
-/// Long-press a card → haptic + the card lifts (scale + shadow). Drag up
-/// or down → neighbouring cards spring out of the way in real time. Release
-/// → card snaps into its new slot and the reorder closure fires.
-struct ReorderableExerciseStack: View {
-    let exercises: [ActiveSessionExercise]
-    let onReorder: (IndexSet, Int) -> Void
-    let onTap: (String) -> Void
-    let onDelete: (String) -> Void
-    let cardBuilder: (ActiveSessionExercise) -> AnyView
-
-    private let cardSpacing: CGFloat = 12
-    /// Approximate card height including spacing. Used purely to compute the
-    /// "where would the drop land" math, so a small over-estimate is fine —
-    /// each card's true visible size still drives the layout.
-    private let cardSlotHeight: CGFloat = 88
-
-    @State private var draggedID: String? = nil
-    @State private var dragOffset: CGFloat = 0
-    @State private var draggedFromIndex: Int = 0
-
-    var body: some View {
-        LazyVStack(spacing: cardSpacing) {
-            ForEach(Array(exercises.enumerated()), id: \.element.id) { idx, exercise in
-                let isDragged = draggedID == exercise.id
-                ZStack(alignment: .trailing) {
-                    SwipeToDeleteCard {
-                        cardBuilder(exercise)
-                            .onTapGesture { onTap(exercise.id) }
-                    } onDelete: {
-                        onDelete(exercise.id)
-                    }
-
-                    // Drag handle sits on top of the right edge of the card.
-                    // The reorder gesture is bound ONLY to this 44pt zone, so
-                    // touches anywhere else on the card body fall through to
-                    // the parent ScrollView and the list scrolls normally.
-                    dragHandle(for: exercise.id, at: idx)
-                }
-                .scaleEffect(isDragged ? 1.03 : 1.0)
-                .shadow(
-                    color: .black.opacity(isDragged ? 0.18 : 0),
-                    radius: isDragged ? 22 : 0,
-                    x: 0,
-                    y: isDragged ? 12 : 0
-                )
-                .offset(y: yOffset(for: idx, exerciseId: exercise.id))
-                .zIndex(isDragged ? 100 : 0)
-                .animation(.spring(response: 0.35, dampingFraction: 0.82), value: draggedID)
-                .animation(.spring(response: 0.35, dampingFraction: 0.82), value: dragOffset)
-            }
-        }
-        .padding(.horizontal, 20)
-        // Headroom so a lifted first card (scale 1.03 + shadow) doesn't poke
-        // up under the screen header. Same amount on the bottom keeps the
-        // section visually centered between header and superset block.
-        .padding(.vertical, 10)
-    }
-
-    private func dragHandle(for id: String, at idx: Int) -> some View {
-        Image(systemName: "line.3.horizontal")
-            .font(.system(size: 16, weight: .semibold))
-            .foregroundColor(Color(hex: "B0B0B0"))
-            .frame(width: 44, height: 56)
-            .contentShape(Rectangle())
-            .padding(.trailing, 8)
-            .gesture(reorderGesture(for: id, at: idx))
-    }
-
-    private var targetIndex: Int {
-        let rowH = cardSlotHeight + cardSpacing
-        let shift = Int((dragOffset / rowH).rounded())
-        return max(0, min(exercises.count - 1, draggedFromIndex + shift))
-    }
-
-    private func yOffset(for idx: Int, exerciseId: String) -> CGFloat {
-        guard draggedID != nil else { return 0 }
-        if exerciseId == draggedID { return dragOffset }
-        let rowH = cardSlotHeight + cardSpacing
-        let target = targetIndex
-        if draggedFromIndex < target {
-            // Dragging downward — cards between original and target shift up.
-            if idx > draggedFromIndex && idx <= target { return -rowH }
-        } else if draggedFromIndex > target {
-            // Dragging upward — cards between target and original shift down.
-            if idx < draggedFromIndex && idx >= target { return rowH }
-        }
-        return 0
-    }
-
-    private func reorderGesture(for id: String, at idx: Int) -> some Gesture {
-        LongPressGesture(minimumDuration: 0.35)
-            .sequenced(before: DragGesture(minimumDistance: 0))
-            .onChanged { value in
-                switch value {
-                case .first:
-                    break
-                case .second(let pressed, let drag):
-                    if pressed && draggedID == nil {
-                        UIImpactFeedbackGenerator(style: .medium).impactOccurred()
-                        draggedID = id
-                        draggedFromIndex = idx
-                    }
-                    if let drag {
-                        dragOffset = drag.translation.height
-                    }
-                }
-            }
-            .onEnded { _ in
-                guard let liftedID = draggedID else { return }
-                let target = targetIndex
-                let from = draggedFromIndex
-                let rowH = cardSlotHeight + cardSpacing
-                // Snap the dragged card visually to the target slot *before*
-                // mutating the array. That way the array reorder happens
-                // while the card is already where its new index will place
-                // it — no teleport, no jump.
-                let snappedOffset = CGFloat(target - from) * rowH
-                let animation = Animation.spring(response: 0.32, dampingFraction: 0.85)
-                withAnimation(animation) {
-                    dragOffset = snappedOffset
-                }
-                let settleDuration: TimeInterval = 0.32
-                DispatchQueue.main.asyncAfter(deadline: .now() + settleDuration) {
-                    if target != from {
-                        // IndexSet move semantics: target offset is interpreted
-                        // after removal, so account for that when sliding down.
-                        let dest = target > from ? target + 1 : target
-                        onReorder(IndexSet(integer: from), dest)
-                    }
-                    // Reset transaction without animation — the card's new
-                    // index already places it at the snapped position, so
-                    // zeroing dragOffset doesn't move it on screen.
-                    var transaction = Transaction()
-                    transaction.disablesAnimations = true
-                    withTransaction(transaction) {
-                        if draggedID == liftedID {
-                            draggedID = nil
-                            dragOffset = 0
-                        }
-                    }
-                }
-            }
-    }
-}
