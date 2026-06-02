@@ -349,11 +349,16 @@ extension WorkoutSnapshot {
 extension WorkoutSnapshotExercise {
     static func from(_ ex: ActiveSessionExercise) -> WorkoutSnapshotExercise {
         let completed = ex.sets.filter(\.isCompleted)
-        // Best set = heaviest weight * reps; for bodyweight, the one with most reps.
+        // Best set = heaviest weight (reps as tiebreaker). For bodyweight,
+        // most reps wins. The previous "weight × reps" picked highest
+        // volume, which surfaced warmups like 50kg × 10 (500 vol) over a
+        // 85kg × 5 working set (425 vol) — not what lifters mean by
+        // "best set."
         let best = completed.max(by: { lhs, rhs in
-            let l = (lhs.weight ?? 0) * Double(lhs.reps ?? 0)
-            let r = (rhs.weight ?? 0) * Double(rhs.reps ?? 0)
-            return l < r
+            let lw = lhs.isBodyweight ? 0 : (lhs.weight ?? 0)
+            let rw = rhs.isBodyweight ? 0 : (rhs.weight ?? 0)
+            if lw != rw { return lw < rw }
+            return (lhs.reps ?? 0) < (rhs.reps ?? 0)
         })
         let bestLine = best.map {
             SetDisplay.line(weight: $0.weight, weightUnit: $0.weightUnit, reps: $0.reps, isBodyweight: $0.isBodyweight)
@@ -381,10 +386,14 @@ extension WorkoutSnapshotExercise {
 
     static func from(_ ex: AttachmentExercise) -> WorkoutSnapshotExercise {
         let sets = ex.sets ?? []
+        // Best = heaviest weight (reps as tiebreaker). See the comment on
+        // the ActiveSessionExercise overload for why volume-based picks
+        // mis-rank warmups as "best."
         let best = sets.max(by: { lhs, rhs in
-            let l = (lhs.weight ?? 0) * Double(lhs.reps)
-            let r = (rhs.weight ?? 0) * Double(rhs.reps)
-            return l < r
+            let lw = lhs.isBodyweight ? 0 : (lhs.weight ?? 0)
+            let rw = rhs.isBodyweight ? 0 : (rhs.weight ?? 0)
+            if lw != rw { return lw < rw }
+            return lhs.reps < rhs.reps
         })
         let bestLine = best.map {
             SetDisplay.line(weight: $0.weight, weightUnit: $0.weightUnit, reps: $0.reps, isBodyweight: $0.isBodyweight)
