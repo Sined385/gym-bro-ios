@@ -283,7 +283,19 @@ final class CoachChatViewModel: ObservableObject {
     }
 
     func regenerateWorkout(messageId: String) async {
-        await sendMessage("Regenerate the workout — give me a different option")
+        // The system prompt's PROGRESSIVE OVERLOAD directive tells the AI to
+        // reuse recent lifts with target_sets — which is right for fresh
+        // requests but loops on "regenerate" because a plain "give me a
+        // different option" loses to the stronger reuse rule. Pass the
+        // prior session's exercise names as an explicit skip list so the
+        // AI picks different lifts this time.
+        let prior = messages.first(where: { $0.id == messageId })?.session
+        let names = prior?.exercises.map(\.name) ?? []
+        let avoid = names.joined(separator: ", ")
+        let prompt = avoid.isEmpty
+            ? "Regenerate the workout — give me a different option"
+            : "Regenerate the workout. Skip these — pick different exercises: \(avoid)."
+        await sendMessage(prompt)
     }
 
     // MARK: - Background Recovery
