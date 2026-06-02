@@ -38,11 +38,43 @@ final class TrainingPlanViewModel: ObservableObject {
         self.appDataState = appDataState
         self.subscriptionManager = subscriptionManager
 
+        // Phase 3: read plan + days from the shared AppContext snapshot
+        // when it has them. The backend now ships `plan_days` inside
+        // /home/dashboard, so when AppContext refreshes, we get the
+        // plan for free without a separate /api/v1/plans round trip.
+        appDataState.$planDays
+            .receive(on: DispatchQueue.main)
+            .sink { [weak self] days in
+                guard let self else { return }
+                if !days.isEmpty {
+                    self.days = days
+                    self.todayIndex = Self.computeTodayIndex(in: days)
+                }
+            }
+            .store(in: &cancellables)
+
+        appDataState.$plan
+            .receive(on: DispatchQueue.main)
+            .sink { [weak self] plan in
+                guard let self else { return }
+                if let plan {
+                    self.plan = plan
+                }
+            }
+            .store(in: &cancellables)
+
+        // Legacy reloadVersion path — keep as a safety net while the
+        // AppContext hydration settles. If AppContext.refresh hasn't
+        // populated `planDays` yet (older backend, first launch),
+        // fall back to the direct /plans fetch.
         appDataState.$reloadVersion
             .dropFirst()
             .sink { [weak self] _ in
                 Task { [weak self] in
-                    await self?.loadPlan()
+                    guard let self else { return }
+                    if self.appDataState.planDays.isEmpty {
+                        await self.loadPlan()
+                    }
                 }
             }
             .store(in: &cancellables)
@@ -67,7 +99,30 @@ final class TrainingPlanViewModel: ObservableObject {
     func loadIfNeeded() async {
         guard !hasLoaded else { return }
         hasLoaded = true
-        await loadPlan()
+        // Prefer the shared AppContext snapshot; only hit /plans
+        // directly when the snapshot doesn't have plan_days yet
+        // (e.g., first launch before AppContext.refresh completes).
+        if appDataState.planDays.isEmpty {
+            await loadPlan()
+        } else {
+            self.days = appDataState.planDays
+            self.todayIndex = Self.computeTodayIndex(in: appDataState.planDays)
+            if let plan = appDataState.plan {
+                self.plan = plan
+            }
+        }
+    }
+
+    /// Day-of-week index for today within the plan's days array.
+    /// Mirrors what /api/v1/plans returns as `todayIndex` server-side,
+    /// computed here client-side since the dashboard payload doesn't
+    /// ship the field separately.
+    private static func computeTodayIndex(in days: [PlanDayData]) -> Int {
+        // toMondayDow: 0=Mon..6=Sun matches PlanDay.day_of_week.
+        let cal = Calendar.current
+        let weekday = cal.component(.weekday, from: Date()) // 1=Sun..7=Sat
+        let todayDow = weekday == 1 ? 6 : weekday - 2
+        return days.firstIndex(where: { $0.dayOfWeek == todayDow }) ?? 0
     }
 
     // MARK: - Computed Properties

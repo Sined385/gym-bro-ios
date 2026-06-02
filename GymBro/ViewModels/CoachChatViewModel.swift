@@ -372,12 +372,19 @@ final class CoachChatViewModel: ObservableObject {
                     case "session_created":
                         if let sessionEvent = try? decoder.decode(SSESessionCreated.self, from: data) {
                             setSessionOnLastAssistantMessage(sessionEvent.session)
-                            appDataState.triggerReload()
+                            // Phase 3: ask AppContext to re-hydrate so
+                            // Home + Plan tabs see the new session
+                            // without each issuing their own fetch.
+                            Task { [appDataState] in
+                                await appDataState.refresh(reason: .coachAction)
+                            }
                             analyticsService.track("coach_tool_used", properties: ["tool_type": "session_created"])
                         }
 
                     case "plan_modified", "plan_generated":
-                        appDataState.triggerReload()
+                        Task { [appDataState] in
+                            await appDataState.refresh(reason: .coachAction)
+                        }
                         analyticsService.track("coach_tool_used", properties: ["tool_type": currentEvent])
 
                     case "done":

@@ -53,6 +53,39 @@ struct DashboardResponse: Decodable {
     let todayCompletedSession: SessionHistory?
     let dailyChallenge: DailyChallenge?
     let tomorrowChallenge: DailyChallenge?
+    /// Phase 3 — full plan week, mirrors GET /api/v1/plans `days[]`.
+    /// AppContext exposes this to TrainingPlanView so the Plan tab
+    /// renders from the shared snapshot instead of round-tripping
+    /// to /plans separately. Optional for backward compat with
+    /// pre-Phase-3 backend.
+    let planDays: [PlanDayData]?
+    /// Phase 3 — calendar dots for the current + previous month,
+    /// yyyy-MM-dd strings. Eliminates the per-month
+    /// /home/completed-days round trip Home was doing on each
+    /// month navigation.
+    let completedDatesCurrentMonth: [String]?
+    let completedDatesPreviousMonth: [String]?
+    /// Phase 3 — per-exercise best set the user has logged in the
+    /// last 14 days, plus a server-suggested next-step progression.
+    /// Same shape Coach + plan AI use server-side.
+    let recentLiftsSummary: [RecentLiftSummary]?
+}
+
+struct RecentLiftSummary: Decodable, Identifiable {
+    let name: String
+    let libraryExerciseId: String?
+    let muscleGroup: String
+    let lastDate: String
+    let topSet: RecentLiftSummarySet
+    let suggestedTopSet: RecentLiftSummarySet
+
+    var id: String { libraryExerciseId ?? "name:\(name)" }
+}
+
+struct RecentLiftSummarySet: Decodable {
+    let weight: Double?
+    let reps: Int
+    let isBodyweight: Bool
 }
 
 struct DailyChallenge: Decodable, Identifiable, Equatable {
@@ -112,6 +145,20 @@ struct DashboardExercise: Codable, Identifiable {
     let suggestedWeight: Double?
     let imageUrl: String?
     let externalId: String?
+    /// Pre-filled per-set targets from a Coach-created session.
+    /// When non-nil and non-empty, the session view uses these as
+    /// the "Today" defaults instead of expanding sets_display into
+    /// generic placeholders. Optional everywhere else (existing
+    /// endpoints don't populate it).
+    var sets: [DashboardExerciseSet]? = nil
+}
+
+struct DashboardExerciseSet: Codable {
+    let setNumber: Int
+    let weight: Double?
+    let weightUnit: String?
+    let reps: Int
+    let isBodyweight: Bool?
 }
 
 // MARK: - History Response Models
@@ -335,35 +382,59 @@ final class HomeViewModel: ObservableObject {
 
     // MARK: - Data Loading
 
+    /// Apply a freshly fetched DashboardResponse to local @Published
+    /// state. Shared between the AppContext-driven path (preferred)
+    /// and the direct-fetch fallback (used when AppContext refresh
+    /// fails silently).
+    private func applyDashboard(_ response: DashboardResponse) {
+        userName = response.user.name
+        avatarUrl = response.user.avatarUrl
+        motivation = response.motivation
+        // Convert API day-of-week (0=Sunday) to Monday-first index: (apiDay + 6) % 7
+        weekCompletedDays = Set(response.weekCompletedDays.map { ($0 + 6) % 7 })
+        quickWorkout = response.quickWorkout
+        plannedWorkout = response.plannedWorkout
+        weekWorkoutsTotal = response.weekWorkoutsTotal ?? 0
+        weekWorkoutsCompleted = response.weekWorkoutsCompleted ?? 0
+        weekVolumeKg = response.weekVolumeKg
+        weekStreak = response.weekStreak
+        weekAvgDurationMinutes = response.weekAvgDurationMinutes
+        weekTotalCalories = response.weekTotalCalories
+        weeklyOverview = response.weeklyOverview
+        prev3AvgWorkouts = response.prev3AvgWorkouts
+        prev3AvgVolumeKg = response.prev3AvgVolumeKg
+        prev3AvgDurationMinutes = response.prev3AvgDurationMinutes
+        prev3AvgCalories = response.prev3AvgCalories
+        todayCompletedSession = response.todayCompletedSession
+        dailyChallenge = response.dailyChallenge
+        tomorrowChallenge = response.tomorrowChallenge
+        DailyChallengeNotificationScheduler.schedule(for: response.tomorrowChallenge)
+        sessionManager.pushTodayPlanToWatch(plannedWorkout: response.plannedWorkout)
+    }
+
     func loadDashboard() async {
         isLoading = true
         errorMessage = nil
 
+        // Phase 3: route the dashboard fetch through AppContext so the
+        // snapshot is shared with TrainingPlanView + CoachChatView.
+        // AppContext owns the network call; HomeViewModel just reads
+        // the result back out.
+        await appDataState.refresh(reason: .manual)
+        if let response = appDataState.dashboard {
+            applyDashboard(response)
+            await loadCompletedDays()
+            await loadHealthKitData()
+            isLoading = false
+            return
+        }
+
+        // AppContext refresh failed silently — fall back to a direct
+        // fetch to keep the Home tab functional even when the shared
+        // snapshot couldn't hydrate.
         do {
             let response = try await networkService.request(HomeRouter.dashboard.endpoint, responseType: DashboardResponse.self)
-            userName = response.user.name
-            avatarUrl = response.user.avatarUrl
-            motivation = response.motivation
-            // Convert API day-of-week (0=Sunday) to Monday-first index: (apiDay + 6) % 7
-            weekCompletedDays = Set(response.weekCompletedDays.map { ($0 + 6) % 7 })
-            quickWorkout = response.quickWorkout
-            plannedWorkout = response.plannedWorkout
-            weekWorkoutsTotal = response.weekWorkoutsTotal ?? 0
-            weekWorkoutsCompleted = response.weekWorkoutsCompleted ?? 0
-            weekVolumeKg = response.weekVolumeKg
-            weekStreak = response.weekStreak
-            weekAvgDurationMinutes = response.weekAvgDurationMinutes
-            weekTotalCalories = response.weekTotalCalories
-            weeklyOverview = response.weeklyOverview
-            prev3AvgWorkouts = response.prev3AvgWorkouts
-            prev3AvgVolumeKg = response.prev3AvgVolumeKg
-            prev3AvgDurationMinutes = response.prev3AvgDurationMinutes
-            prev3AvgCalories = response.prev3AvgCalories
-            todayCompletedSession = response.todayCompletedSession
-            dailyChallenge = response.dailyChallenge
-            tomorrowChallenge = response.tomorrowChallenge
-            DailyChallengeNotificationScheduler.schedule(for: response.tomorrowChallenge)
-            sessionManager.pushTodayPlanToWatch(plannedWorkout: response.plannedWorkout)
+            applyDashboard(response)
             await loadCompletedDays()
             await loadHealthKitData()
         } catch {

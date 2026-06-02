@@ -45,9 +45,14 @@ final class DependencyContainer {
             HealthKitService()
         }.inObjectScope(.container)
 
-        // App Data State (singleton)
-        container.register(AppDataState.self) { _ in
-            AppDataState()
+        // App Data State (singleton) — Phase 3 promoted to a real
+        // shared snapshot. Takes NetworkServiceProtocol so it can own
+        // the canonical /home/dashboard fetch on behalf of Home,
+        // Plan, and Coach tabs.
+        container.register(AppDataState.self) { resolver in
+            AppDataState(
+                networkService: resolver.resolve(NetworkServiceProtocol.self)!,
+            )
         }.inObjectScope(.container)
 
         // Live Activity Service (singleton)
