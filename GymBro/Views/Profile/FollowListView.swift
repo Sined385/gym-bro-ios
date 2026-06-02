@@ -42,7 +42,15 @@ struct FollowListView: View {
                     ScrollView {
                         LazyVStack(spacing: 0) {
                             ForEach(users) { user in
-                                NavigationLink(value: user.id) {
+                                // Direct destination NavigationLink instead of
+                                // a value-based push + `.navigationDestination(for:)`
+                                // registration. The parent (MyProfileView) pushes
+                                // this view via `.navigationDestination(isPresented:)`,
+                                // and mixing boolean- and value-based destinations on
+                                // the same stack misroutes the second push.
+                                NavigationLink {
+                                    UserProfileView(userId: user.id)
+                                } label: {
                                     userRow(user)
                                 }
                                 .buttonStyle(.plain)
@@ -71,9 +79,6 @@ struct FollowListView: View {
         .background(Color.gymBroBackground.ignoresSafeArea())
         .navigationTitle(viewModel.selectedTab.rawValue)
         .navigationBarTitleDisplayMode(.inline)
-        .navigationDestination(for: String.self) { userId in
-            UserProfileView(userId: userId)
-        }
         .task {
             await viewModel.loadInitial()
         }

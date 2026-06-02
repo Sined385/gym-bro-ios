@@ -338,8 +338,8 @@ extension WorkoutSnapshot {
             totalVolumeKg: volume,
             totalSets: totalSets,
             prCount: 0,
-            calories: nil,
-            avgHeartRate: nil,
+            calories: attachment.calories,
+            avgHeartRate: attachment.avgHeartRate,
             exercises: exList.map { WorkoutSnapshotExercise.from($0) },
             authorHandle: authorHandle
         )

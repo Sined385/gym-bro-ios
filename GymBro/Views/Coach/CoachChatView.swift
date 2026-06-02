@@ -93,15 +93,19 @@ struct CoachChatView: View {
                     .padding(.top, 16)
                     .padding(.bottom, 8)
                 }
-                // New message arrived → smooth animated scroll once.
-                .onChange(of: viewModel.messages.count) { _, _ in
-                    withAnimation(.easeOut(duration: 0.2)) {
-                        proxy.scrollTo(bottomAnchorId, anchor: .bottom)
-                    }
-                }
-                // Streaming text deltas → follow without animation so each
-                // chunk doesn't compete with the previous one's transition.
+                // Any change to the last message — new append OR streaming
+                // delta — instantly pins the view to the bottom anchor.
+                // We used to also have a separate `onChange(messages.count)`
+                // running an animated scroll; sending a message fired both
+                // handlers in the same frame (count++ AND last.content
+                // changed) and the competing animated vs. instant scroll
+                // commands produced a visible "jump then snap back". One
+                // instant scroll is enough — the new bubble simply lands
+                // at the bottom without any overshoot animation.
                 .onChange(of: viewModel.messages.last?.content) { _, _ in
+                    proxy.scrollTo(bottomAnchorId, anchor: .bottom)
+                }
+                .onChange(of: viewModel.messages.count) { _, _ in
                     proxy.scrollTo(bottomAnchorId, anchor: .bottom)
                 }
                 .scrollDismissesKeyboard(.interactively)

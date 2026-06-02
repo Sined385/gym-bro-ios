@@ -150,9 +150,12 @@ struct WorkoutLibraryView: View {
             .padding(.horizontal, 20)
             .padding(.top, 12)
 
-            // Muscle group filter
+            // Filters — two rows to match the in-workout picker.
             MuscleGroupFilterChips(selectedGroup: $exerciseVM.selectedMuscleGroup)
                 .padding(.top, 12)
+
+            EquipmentFilterChips(selectedEquipment: $exerciseVM.selectedEquipment)
+                .padding(.top, 8)
 
             // Exercise list
             if exerciseVM.isLoading {
@@ -164,7 +167,12 @@ struct WorkoutLibraryView: View {
                 ScrollView(.vertical, showsIndicators: false) {
                     LazyVStack(spacing: 12) {
                         ForEach(exerciseVM.filteredExercises(favoriteIds: favoritesService.favoriteIds)) { item in
-                            exerciseCard(item)
+                            NavigationLink {
+                                ExerciseBrowseDetailView(item: item)
+                            } label: {
+                                exerciseCard(item)
+                            }
+                            .buttonStyle(.plain)
                         }
                     }
                     .padding(.horizontal, 16)

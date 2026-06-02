@@ -128,8 +128,34 @@ struct SessionHistory: Decodable, Identifiable {
     let type: String
     let durationMinutes: Int?
     let calories: Int?
+    let avgHeartRate: Int?
     let performanceScore: Int?
     let exercises: [HistoryExercise]
+}
+
+// Custom decoder lives in an extension so the synthesized memberwise
+// init stays available for the in-file mock constructors. Tolerant —
+// older API payloads (pre avg_heart_rate) decode without throwing.
+extension SessionHistory {
+    private enum CodingKeys: String, CodingKey {
+        case id, sessionIds, title, type, durationMinutes, calories
+        case avgHeartRate, performanceScore, exercises
+    }
+
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        self.init(
+            id: try c.decode(String.self, forKey: .id),
+            sessionIds: try c.decodeIfPresent([String].self, forKey: .sessionIds),
+            title: try c.decode(String.self, forKey: .title),
+            type: try c.decode(String.self, forKey: .type),
+            durationMinutes: try c.decodeIfPresent(Int.self, forKey: .durationMinutes),
+            calories: try c.decodeIfPresent(Int.self, forKey: .calories),
+            avgHeartRate: try c.decodeIfPresent(Int.self, forKey: .avgHeartRate),
+            performanceScore: try c.decodeIfPresent(Int.self, forKey: .performanceScore),
+            exercises: try c.decode([HistoryExercise].self, forKey: .exercises),
+        )
+    }
 }
 
 struct HistoryExercise: Decodable, Identifiable {
@@ -580,10 +606,34 @@ final class HomeViewModel: ObservableObject {
         isLoadingHistory = false
     }
 
-    func loadCompletedDays() async {
+    /// Months for which we've already fetched completed-day data, keyed
+    /// by "yyyy-MM". Lets us skip duplicate fetches when the user
+    /// navigates back to a month they've already viewed in this session.
+    private var loadedCompletedMonths: Set<String> = []
+
+    /// Fetches completed-day data for the given month AND the previous
+    /// month, in parallel. The look-ahead matters because chevron-left
+    /// on the calendar should reveal an already-populated previous
+    /// month rather than a blank one — by always keeping N and N-1
+    /// loaded, the user only sees a blank state if they navigate two
+    /// months back in one tap (rare).
+    func loadCompletedDays(forMonth date: Date = Date()) async {
+        let cal = Calendar.current
+        let previous = cal.date(byAdding: .month, value: -1, to: date) ?? date
+        async let a: () = fetchCompletedDays(forMonth: date)
+        async let b: () = fetchCompletedDays(forMonth: previous)
+        _ = await (a, b)
+    }
+
+    private func fetchCompletedDays(forMonth date: Date) async {
         let formatter = DateFormatter()
         formatter.dateFormat = "yyyy-MM"
-        let monthString = formatter.string(from: Date())
+        let monthString = formatter.string(from: date)
+
+        // Skip if this month is already loaded — its dates are already
+        // in `completedDates` and the API result wouldn't change inside
+        // a single session.
+        if loadedCompletedMonths.contains(monthString) { return }
 
         do {
             let response = try await networkService.request(
@@ -593,7 +643,11 @@ final class HomeViewModel: ObservableObject {
             let dateFormatter = DateFormatter()
             dateFormatter.dateFormat = "yyyy-MM-dd"
             dateFormatter.timeZone = TimeZone.current
-            completedDates = Set(response.completedDates.compactMap { dateFormatter.date(from: $0) })
+            let newDates = response.completedDates.compactMap { dateFormatter.date(from: $0) }
+            // Merge instead of replace so navigating between months
+            // accumulates the calendar dots across the session.
+            completedDates.formUnion(newDates)
+            loadedCompletedMonths.insert(monthString)
         } catch {
             // Silently fail — calendar will just not show dots
         }
@@ -641,6 +695,7 @@ final class HomeViewModel: ObservableObject {
             type: "strength",
             durationMinutes: 52,
             calories: 385,
+            avgHeartRate: nil,
             performanceScore: 87,
             exercises: [
                 HistoryExercise(

@@ -51,6 +51,9 @@ struct HomeView: View {
                     },
                     onSelectionCleared: {
                         viewModel.clearSelection()
+                    },
+                    onMonthChanged: { date in
+                        Task { await viewModel.loadCompletedDays(forMonth: date) }
                     }
                 )
 

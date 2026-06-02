@@ -37,6 +37,13 @@ final class SessionFlowViewModel: ObservableObject {
     private let completionCacheService: SessionCompletionCacheServiceProtocol
     private var repeatLastSetCancellable: AnyCancellable?
 
+    /// When true, the instance is a read-only display container (used by the
+    /// exercise library to show a single exercise inside ExerciseLoggingView
+    /// without driving a real workout session). The init skips every
+    /// side-effecting setup so the live session's watch callbacks and
+    /// Live-Activity subscription aren't hijacked.
+    let isPreviewMode: Bool
+
     // MARK: - Computed Properties
 
     var supersetGroups: [SupersetGroup] {
@@ -124,7 +131,7 @@ final class SessionFlowViewModel: ObservableObject {
 
     // MARK: - Initialization
 
-    init(sessionId: String, sessionTitle: String, networkService: NetworkServiceProtocol, sessionManager: ActiveSessionManager, healthKitService: HealthKitServiceProtocol, analyticsService: AnalyticsTrackingServiceProtocol, subscriptionManager: SubscriptionManager = DependencyContainer.shared.resolve(SubscriptionManager.self), completionCacheService: SessionCompletionCacheServiceProtocol = DependencyContainer.shared.resolve(SessionCompletionCacheServiceProtocol.self), initialExercises: [DashboardExercise] = [], restoredExercises: [ActiveSessionExercise]? = nil, restoredFeedback: (effort: Int, energy: Int, pain: String)? = nil) {
+    init(sessionId: String, sessionTitle: String, networkService: NetworkServiceProtocol, sessionManager: ActiveSessionManager, healthKitService: HealthKitServiceProtocol, analyticsService: AnalyticsTrackingServiceProtocol, subscriptionManager: SubscriptionManager = DependencyContainer.shared.resolve(SubscriptionManager.self), completionCacheService: SessionCompletionCacheServiceProtocol = DependencyContainer.shared.resolve(SessionCompletionCacheServiceProtocol.self), initialExercises: [DashboardExercise] = [], restoredExercises: [ActiveSessionExercise]? = nil, restoredFeedback: (effort: Int, energy: Int, pain: String)? = nil, isPreviewMode: Bool = false) {
         self.sessionId = sessionId
         self.sessionTitle = sessionTitle
         self.networkService = networkService
@@ -133,6 +140,7 @@ final class SessionFlowViewModel: ObservableObject {
         self.analyticsService = analyticsService
         self.subscriptionManager = subscriptionManager
         self.completionCacheService = completionCacheService
+        self.isPreviewMode = isPreviewMode
 
         if let restored = restoredExercises {
             _exercises = Published(wrappedValue: restored)
@@ -141,12 +149,14 @@ final class SessionFlowViewModel: ObservableObject {
                 _energyLevel = Published(wrappedValue: feedback.energy)
                 _painDiscomfort = Published(wrappedValue: feedback.pain)
             }
-            // Clear restored data from session manager
-            sessionManager.restoredExercises = nil
-            sessionManager.restoredFeedback = nil
-            // Sync exercises back to session manager for persistence
-            Task { [weak self] in
-                self?.notifySessionChanged()
+            if !isPreviewMode {
+                // Clear restored data from session manager
+                sessionManager.restoredExercises = nil
+                sessionManager.restoredFeedback = nil
+                // Sync exercises back to session manager for persistence
+                Task { [weak self] in
+                    self?.notifySessionChanged()
+                }
             }
         } else {
             // Convert DashboardExercises to ActiveSessionExercises with pre-created placeholder sets
@@ -185,27 +195,33 @@ final class SessionFlowViewModel: ObservableObject {
             }
 
             // Save initial state if we have exercises
-            if !initialExercises.isEmpty {
+            if !initialExercises.isEmpty && !isPreviewMode {
                 Task { [weak self] in
                     self?.notifySessionChanged()
                 }
             }
         }
 
-        // Observe repeat-last-set requests from Live Activity
-        repeatLastSetCancellable = sessionManager.$repeatLastSetRequested
-            .dropFirst()
-            .filter { $0 }
-            .sink { [weak self] _ in
-                Task { @MainActor [weak self] in
-                    self?.handleRepeatLastSet()
+        // Live-Activity + Watch wiring belong to the real active session
+        // only. A preview-mode instance is constructed transiently for the
+        // library's exercise detail and must not hijack the live session's
+        // callbacks or subscriptions.
+        if !isPreviewMode {
+            // Observe repeat-last-set requests from Live Activity
+            repeatLastSetCancellable = sessionManager.$repeatLastSetRequested
+                .dropFirst()
+                .filter { $0 }
+                .sink { [weak self] _ in
+                    Task { @MainActor [weak self] in
+                        self?.handleRepeatLastSet()
+                    }
                 }
-            }
 
-        // Handle set completions from Watch
-        sessionManager.onWatchSetCompletion = { [weak self] exerciseId, setId, weight, reps in
-            Task { @MainActor [weak self] in
-                await self?.completeSetFromWatch(exerciseId: exerciseId, setId: setId, weight: weight, reps: reps)
+            // Handle set completions from Watch
+            sessionManager.onWatchSetCompletion = { [weak self] exerciseId, setId, weight, reps in
+                Task { @MainActor [weak self] in
+                    await self?.completeSetFromWatch(exerciseId: exerciseId, setId: setId, weight: weight, reps: reps)
+                }
             }
         }
     }
@@ -528,6 +544,7 @@ final class SessionFlowViewModel: ObservableObject {
         // Build typed payload for cache persistence
         let completionPayload = SessionCompletionPayload(
             durationMinutes: trackedDuration,
+            avgHeartRate: sessionManager.sessionAverageHeartRate,
             feedback: SessionFeedback(
                 effortLevel: effortLevel,
                 energyLevel: energyLevel,

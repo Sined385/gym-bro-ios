@@ -115,7 +115,8 @@ struct SessionHistorySection: View {
             effortLevel: 0,
             energyLevel: 0,
             durationMinutes: session.durationMinutes,
-            calories: session.calories
+            calories: session.calories,
+            avgHeartRate: session.avgHeartRate
         )
     }
 }
@@ -130,6 +131,7 @@ struct SessionHistorySection: View {
         type: "strength",
         durationMinutes: 52,
         calories: 385,
+        avgHeartRate: nil,
         performanceScore: 87,
         exercises: [
             HistoryExercise(

@@ -86,17 +86,42 @@ struct SessionFeedback: Codable {
 
 struct SessionCompletionPayload: Codable {
     let durationMinutes: Int
+    /// Apple Watch / HealthKit-derived average heart rate over the session.
+    /// Nil when the user wasn't wearing a watch — keeps the field optional
+    /// end-to-end so old cached payloads decode and the API accepts both.
+    let avgHeartRate: Int?
     let feedback: SessionFeedback
     let exercises: [CompletionExercise]
 
     enum CodingKeys: String, CodingKey {
         case durationMinutes = "duration_minutes"
+        case avgHeartRate = "avg_heart_rate"
         case feedback
         case exercises
     }
 
+    init(
+        durationMinutes: Int,
+        avgHeartRate: Int? = nil,
+        feedback: SessionFeedback,
+        exercises: [CompletionExercise]
+    ) {
+        self.durationMinutes = durationMinutes
+        self.avgHeartRate = avgHeartRate
+        self.feedback = feedback
+        self.exercises = exercises
+    }
+
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        self.durationMinutes = try c.decode(Int.self, forKey: .durationMinutes)
+        self.avgHeartRate = try c.decodeIfPresent(Int.self, forKey: .avgHeartRate)
+        self.feedback = try c.decode(SessionFeedback.self, forKey: .feedback)
+        self.exercises = try c.decode([CompletionExercise].self, forKey: .exercises)
+    }
+
     func toDictionary() -> [String: Any] {
-        [
+        var root: [String: Any] = [
             "duration_minutes": durationMinutes,
             "feedback": [
                 "effort_level": feedback.effortLevel,
@@ -128,6 +153,8 @@ struct SessionCompletionPayload: Codable {
                 return dict
             }
         ]
+        if let avgHeartRate { root["avg_heart_rate"] = avgHeartRate }
+        return root
     }
 }
 

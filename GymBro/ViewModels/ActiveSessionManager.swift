@@ -783,4 +783,19 @@ final class ActiveSessionManager: ObservableObject {
     private func handleWatchHeartRateBatch(_ batch: WatchHeartRateBatch) {
         watchHeartRateSamples.append(contentsOf: batch.samples)
     }
+
+    /// Average heart rate for the current session, used at completion to
+    /// persist `avg_heart_rate` server-side. Prefers the Watch's own
+    /// workout-summary average (HealthKit-derived) when available; falls
+    /// back to averaging the streamed sample batches. Returns nil when no
+    /// Watch was paired or no samples arrived — keeps the column null
+    /// rather than logging a meaningless 0.
+    var sessionAverageHeartRate: Int? {
+        if let summary = watchWorkoutSummary?.averageHeartRate, summary > 0 {
+            return Int(summary.rounded())
+        }
+        guard !watchHeartRateSamples.isEmpty else { return nil }
+        let total = watchHeartRateSamples.reduce(0.0) { $0 + $1.bpm }
+        return Int((total / Double(watchHeartRateSamples.count)).rounded())
+    }
 }

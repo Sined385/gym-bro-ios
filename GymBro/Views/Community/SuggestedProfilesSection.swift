@@ -24,6 +24,13 @@ struct SuggestedProfilesSection: View {
                             .onTapGesture { onUserTap(user.id) }
                     }
                 }
+                // Each card has a soft shadow that extends ~6pt past its
+                // frame; without breathing room the ScrollView clips it
+                // top and bottom. Vertical padding inside the scrollable
+                // content keeps the shadow whole, horizontal padding
+                // aligns the first/last card with the section title.
+                .padding(.vertical, 6)
+                .padding(.horizontal, 4)
             }
         }
     }

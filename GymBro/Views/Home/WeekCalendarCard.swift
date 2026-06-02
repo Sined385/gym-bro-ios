@@ -37,6 +37,11 @@ struct WeekCalendarCard: View {
     /// Callback when selection is cleared (tap today or tap selected again)
     var onSelectionCleared: (() -> Void)?
 
+    /// Fires when the user navigates to a different month via the
+    /// chevron arrows. Parent should fetch completed dates for that
+    /// month so the grid lights up the right days.
+    var onMonthChanged: ((Date) -> Void)?
+
     // MARK: - Internal State
 
     @State private var isExpanded: Bool = false
@@ -189,7 +194,8 @@ struct WeekCalendarCard: View {
             Image(systemName: isExpanded ? "chevron.up" : "chevron.down")
                 .font(.system(size: 14, weight: .semibold))
                 .foregroundColor(dayNumberColor)
-                .frame(width: 32, height: 32)
+                .frame(width: 44, height: 44)
+                .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
     }
@@ -214,14 +220,17 @@ struct WeekCalendarCard: View {
     private var monthNavigationHeader: some View {
         HStack {
             Button {
+                let next = calendar.date(byAdding: .month, value: -1, to: displayedMonth) ?? displayedMonth
                 withAnimation(.easeInOut(duration: 0.3)) {
-                    displayedMonth = calendar.date(byAdding: .month, value: -1, to: displayedMonth) ?? displayedMonth
+                    displayedMonth = next
                 }
+                onMonthChanged?(next)
             } label: {
                 Image(systemName: "chevron.left")
                     .font(.system(size: 14, weight: .semibold))
                     .foregroundColor(dayNumberColor)
-                    .frame(width: 32, height: 32)
+                    .frame(width: 44, height: 44)
+                    .contentShape(Rectangle())
             }
             .buttonStyle(.plain)
 
@@ -234,14 +243,17 @@ struct WeekCalendarCard: View {
             Spacer()
 
             Button {
+                let next = calendar.date(byAdding: .month, value: 1, to: displayedMonth) ?? displayedMonth
                 withAnimation(.easeInOut(duration: 0.3)) {
-                    displayedMonth = calendar.date(byAdding: .month, value: 1, to: displayedMonth) ?? displayedMonth
+                    displayedMonth = next
                 }
+                onMonthChanged?(next)
             } label: {
                 Image(systemName: "chevron.right")
                     .font(.system(size: 14, weight: .semibold))
                     .foregroundColor(dayNumberColor)
-                    .frame(width: 32, height: 32)
+                    .frame(width: 44, height: 44)
+                    .contentShape(Rectangle())
             }
             .buttonStyle(.plain)
         }

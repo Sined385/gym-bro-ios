@@ -7,7 +7,11 @@ struct CreateCustomExerciseView: View {
 
     @State private var exerciseName: String = ""
     @State private var selectedMuscleGroup: String? = nil
-    @State private var equipment: String = ""
+    // Use the same EquipmentType enum the library filter uses so a custom
+    // exercise's equipment string is guaranteed to match an Equipment chip.
+    // A free-form TextField produced near-misses ("Dumbbell" vs "Dumbbells")
+    // that the filter silently dropped.
+    @State private var selectedEquipment: EquipmentType? = .bodyweight
     @State private var isSaving: Bool = false
 
     private var isValid: Bool {
@@ -56,15 +60,11 @@ struct CreateCustomExerciseView: View {
                     .tracking(0.8)
                     .foregroundColor(.gymBroNeutral600)
 
-                TextField("Bodyweight", text: $equipment)
-                    .font(.system(size: 16))
-                    .padding(14)
-                    .background(Color.white)
-                    .clipShape(RoundedRectangle(cornerRadius: 12))
-                    .overlay(
-                        RoundedRectangle(cornerRadius: 12)
-                            .stroke(Color.gymBroNeutral200, lineWidth: 1)
-                    )
+                EquipmentFilterChips(
+                    selectedEquipment: $selectedEquipment,
+                    allowDeselect: false,
+                )
+                .padding(.horizontal, -20) // Counter parent padding
             }
 
             Spacer()
@@ -76,7 +76,7 @@ struct CreateCustomExerciseView: View {
                     let item = await libraryViewModel.createCustomExercise(
                         name: exerciseName.trimmingCharacters(in: .whitespaces),
                         muscleGroup: selectedMuscleGroup ?? "Other",
-                        equipment: equipment.isEmpty ? "Bodyweight" : equipment
+                        equipment: (selectedEquipment ?? .bodyweight).rawValue
                     )
                     if let item = item {
                         await sessionViewModel.addExercise(item)

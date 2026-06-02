@@ -168,6 +168,11 @@ final class DependencyContainer {
             )
         }
 
+        // Singleton scope — Coach lives in a tab. Without container scope,
+        // each resolve() returns a fresh instance, so @StateObject's
+        // initial expression on tab re-mount produced a brand-new VM with
+        // conversationId == nil, defeating loadConversation's guard and
+        // re-fetching all messages on every open.
         container.register(CoachChatViewModel.self) { resolver in
             CoachChatViewModel(
                 networkService: resolver.resolve(NetworkServiceProtocol.self)!,
@@ -177,6 +182,7 @@ final class DependencyContainer {
                 subscriptionManager: resolver.resolve(SubscriptionManager.self)!
             )
         }
+        .inObjectScope(.container)
 
         container.register(ExerciseLibraryViewModel.self) { resolver in
             ExerciseLibraryViewModel(

@@ -22,6 +22,13 @@ struct ExerciseLoggingView: View {
     /// Replaces the top of the parent's navigation stack with the next superset.
     var onSwitchToSuperset: ((String) -> Void)? = nil
 
+    /// View-only mode (library detail). Hides every logging affordance:
+    /// the Today card (live editable set rows + Add Set), the Live
+    /// Comparison card, and the per-history-row pencil/repeat buttons.
+    /// Image carousel, History list, and Stats tab stay so the library
+    /// detail uses the same look as the in-workout view.
+    var readOnly: Bool = false
+
     @Environment(\.dismiss) private var dismiss
     @State private var previousSessions: [String: [PreviousSessionEntry]] = [:]
     @State private var showAddSetSheet: Bool = false
@@ -386,8 +393,10 @@ struct ExerciseLoggingView: View {
 
             // Tab content
             if detailTab == .today {
-                liveComparisonCard(for: exercise)
-                todayCard(for: exercise)
+                if !readOnly {
+                    liveComparisonCard(for: exercise)
+                    todayCard(for: exercise)
+                }
 
                 if let sessions = previousSessions[exercise.id], !sessions.isEmpty {
                     previousSessionsSection(sessions, exercise: exercise)
@@ -790,29 +799,31 @@ struct ExerciseLoggingView: View {
 
             Spacer()
 
-            Button { prefillModalFromPrevious(set) } label: {
-                Image(systemName: "pencil")
-                    .font(.system(size: 13, weight: .semibold))
-                    .foregroundColor(.gymBroNeutral900)
-                    .frame(width: 32, height: 32)
-                    .background(Color.white)
-                    .clipShape(Circle())
-                    .overlay(Circle().stroke(Color.gymBroNeutral200, lineWidth: 1))
-            }
-            .buttonStyle(.plain)
-
-            Button { Task { await repeatPreviousSet(set, on: exercise) } } label: {
-                ZStack {
-                    Circle()
-                        .fill(Color(hex: "F59E0B"))
+            if !readOnly {
+                Button { prefillModalFromPrevious(set) } label: {
+                    Image(systemName: "pencil")
+                        .font(.system(size: 13, weight: .semibold))
+                        .foregroundColor(.gymBroNeutral900)
                         .frame(width: 32, height: 32)
-                        .shadow(color: Color(hex: "F59E0B").opacity(0.3), radius: 4, y: 2)
-                    Image(systemName: "repeat")
-                        .font(.system(size: 13, weight: .bold))
-                        .foregroundColor(.white)
+                        .background(Color.white)
+                        .clipShape(Circle())
+                        .overlay(Circle().stroke(Color.gymBroNeutral200, lineWidth: 1))
                 }
+                .buttonStyle(.plain)
+
+                Button { Task { await repeatPreviousSet(set, on: exercise) } } label: {
+                    ZStack {
+                        Circle()
+                            .fill(Color(hex: "F59E0B"))
+                            .frame(width: 32, height: 32)
+                            .shadow(color: Color(hex: "F59E0B").opacity(0.3), radius: 4, y: 2)
+                        Image(systemName: "repeat")
+                            .font(.system(size: 13, weight: .bold))
+                            .foregroundColor(.white)
+                    }
+                }
+                .buttonStyle(.plain)
             }
-            .buttonStyle(.plain)
         }
         .padding(.vertical, 4)
     }

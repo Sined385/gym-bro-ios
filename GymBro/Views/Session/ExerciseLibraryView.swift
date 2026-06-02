@@ -3,10 +3,20 @@ import SwiftUI
 struct ExerciseLibraryView: View {
     @ObservedObject var viewModel: ExerciseLibraryViewModel
     @EnvironmentObject var favoritesService: FavoritesService
-    var addedExerciseIds: Set<String>
-    var onExerciseSelected: (ExerciseLibraryItem) -> Void
-    var onStartSuperset: () -> Void
-    var onCreateCustom: () -> Void
+    @EnvironmentObject var sessionManager: ActiveSessionManager
+    var addedExerciseIds: Set<String> = []
+    var onExerciseSelected: ((ExerciseLibraryItem) -> Void)? = nil
+    var onStartSuperset: (() -> Void)? = nil
+    var onCreateCustom: (() -> Void)? = nil
+
+    /// When true, the screen is a read-only browse experience launched
+    /// from Profile. Picker affordances (Start Superset, Create Custom,
+    /// per-row add/remove icon, "already added" green border) hide; a
+    /// tap on a row pushes the rich exercise detail view powered by
+    /// ExerciseLoggingView in readOnly mode.
+    var browseMode: Bool = false
+
+    @State private var browseDetailItem: ExerciseLibraryItem?
 
     var body: some View {
         VStack(spacing: 0) {
@@ -44,40 +54,42 @@ struct ExerciseLibraryView: View {
             EquipmentFilterChips(selectedEquipment: $viewModel.selectedEquipment)
                 .padding(.top, 8)
 
-            // Action buttons
-            HStack(spacing: 12) {
-                Button(action: onStartSuperset) {
-                    HStack(spacing: 6) {
-                        Image(systemName: "square.stack.fill")
-                            .font(.system(size: 13, weight: .semibold))
-                        Text("Start Superset")
-                            .font(.system(size: 13, weight: .semibold))
+            // Action buttons — picker mode only.
+            if !browseMode {
+                HStack(spacing: 12) {
+                    Button { onStartSuperset?() } label: {
+                        HStack(spacing: 6) {
+                            Image(systemName: "square.stack.fill")
+                                .font(.system(size: 13, weight: .semibold))
+                            Text("Start Superset")
+                                .font(.system(size: 13, weight: .semibold))
+                        }
+                        .foregroundColor(Color(hex: "7A82F6"))
+                        .padding(.horizontal, 14)
+                        .padding(.vertical, 8)
+                        .overlay(
+                            Capsule()
+                                .stroke(Color(hex: "7A82F6"), lineWidth: 1.5)
+                        )
                     }
-                    .foregroundColor(Color(hex: "7A82F6"))
-                    .padding(.horizontal, 14)
-                    .padding(.vertical, 8)
-                    .overlay(
-                        Capsule()
-                            .stroke(Color(hex: "7A82F6"), lineWidth: 1.5)
-                    )
-                }
-                .buttonStyle(.plain)
+                    .buttonStyle(.plain)
 
-                Button(action: onCreateCustom) {
-                    HStack(spacing: 4) {
-                        Image(systemName: "plus")
-                            .font(.system(size: 12, weight: .bold))
-                        Text("Create Custom Exercise")
-                            .font(.system(size: 13, weight: .semibold))
+                    Button { onCreateCustom?() } label: {
+                        HStack(spacing: 4) {
+                            Image(systemName: "plus")
+                                .font(.system(size: 12, weight: .bold))
+                            Text("Create Custom Exercise")
+                                .font(.system(size: 13, weight: .semibold))
+                        }
+                        .foregroundColor(.gymBroPrimary)
                     }
-                    .foregroundColor(.gymBroPrimary)
-                }
-                .buttonStyle(.plain)
+                    .buttonStyle(.plain)
 
-                Spacer()
+                    Spacer()
+                }
+                .padding(.horizontal, 20)
+                .padding(.top, 12)
             }
-            .padding(.horizontal, 20)
-            .padding(.top, 12)
 
             // Exercise grid
             if viewModel.isLoading {
@@ -92,10 +104,15 @@ struct ExerciseLibraryView: View {
                             let isAdded = addedExerciseIds.contains(item.id)
                             exerciseCard(item, isAdded: isAdded)
                                 .onTapGesture {
-                                    // Tap toggles: add → remove → add. Selection
-                                    // visuals (green border + checkmark) reflect
-                                    // current state.
-                                    onExerciseSelected(item)
+                                    if browseMode {
+                                        browseDetailItem = item
+                                    } else {
+                                        // Picker mode — tap toggles:
+                                        // add → remove → add. Selection
+                                        // visuals (green border + checkmark)
+                                        // reflect current state.
+                                        onExerciseSelected?(item)
+                                    }
                                 }
                         }
                     }
@@ -109,6 +126,9 @@ struct ExerciseLibraryView: View {
         .background(Color.gymBroBackground.ignoresSafeArea())
         .navigationTitle("Exercise Library")
         .navigationBarTitleDisplayMode(.inline)
+        .navigationDestination(item: $browseDetailItem) { item in
+            ExerciseBrowseDetailView(item: item)
+        }
         .task {
             if viewModel.exercises.isEmpty {
                 await viewModel.loadExercises()
@@ -201,9 +221,15 @@ struct ExerciseLibraryView: View {
 
                     favoriteHeart(for: item)
 
-                    Image(systemName: isAdded ? "checkmark.circle.fill" : "plus.circle")
-                        .font(.system(size: 18, weight: .medium))
-                        .foregroundColor(isAdded ? Color(hex: "30C08D") : .gymBroNeutral400)
+                    if !browseMode {
+                        Image(systemName: isAdded ? "checkmark.circle.fill" : "plus.circle")
+                            .font(.system(size: 18, weight: .medium))
+                            .foregroundColor(isAdded ? Color(hex: "30C08D") : .gymBroNeutral400)
+                    } else {
+                        Image(systemName: "chevron.right")
+                            .font(.system(size: 14, weight: .semibold))
+                            .foregroundColor(Color(hex: "D4D4D4"))
+                    }
                 }
             }
             .padding(10)
@@ -214,7 +240,7 @@ struct ExerciseLibraryView: View {
         // opacity dim, which made added cards look broken rather than confirmed.
         .overlay(
             RoundedRectangle(cornerRadius: 12)
-                .stroke(isAdded ? Color(hex: "30C08D") : .clear, lineWidth: 2)
+                .stroke(isAdded && !browseMode ? Color(hex: "30C08D") : .clear, lineWidth: 2)
         )
         .shadow(color: .black.opacity(0.06), radius: 4, x: 0, y: 2)
         .contentShape(Rectangle())
@@ -255,5 +281,61 @@ struct ExerciseLibraryView: View {
             weightPart = "—"
         }
         return "\(weightPart) × \(set.reps)"
+    }
+}
+
+/// Browse-mode detail destination. Wraps ExerciseLoggingView(readOnly: true)
+/// with a transient SessionFlowViewModel constructed in isPreviewMode so
+/// the live session's watch callbacks, Live-Activity subscription, and
+/// server sync are NOT touched. The viewModel holds a single derived
+/// ActiveSessionExercise with empty sets; ExerciseLoggingView fetches
+/// history via the library exercise id and renders image, History, and
+/// Stats just like inside an active workout — minus every logging
+/// affordance.
+struct ExerciseBrowseDetailView: View {
+    let item: ExerciseLibraryItem
+    @StateObject private var previewVM: SessionFlowViewModel
+    private let previewExerciseId: String
+
+    init(item: ExerciseLibraryItem) {
+        self.item = item
+        let activeExercise = ActiveSessionExercise(
+            id: item.id,
+            libraryExerciseId: item.id,
+            name: item.name,
+            muscleGroup: item.muscleGroup,
+            equipment: item.equipment,
+            accentColor: "#E86A75",
+            stepNumber: 0,
+            sets: [],
+            supersetGroupId: nil,
+            supersetOrder: nil,
+            targetSets: 0,
+            targetReps: 0,
+            imageUrl: item.images?.first,
+            externalId: item.externalId,
+            isFavorite: item.isFavorite,
+        )
+        self.previewExerciseId = activeExercise.id
+        let container = DependencyContainer.shared
+        let vm = SessionFlowViewModel(
+            sessionId: "library-preview",
+            sessionTitle: "Library Preview",
+            networkService: container.resolve(NetworkServiceProtocol.self),
+            sessionManager: container.resolve(ActiveSessionManager.self),
+            healthKitService: container.resolve(HealthKitServiceProtocol.self),
+            analyticsService: container.resolve(AnalyticsTrackingServiceProtocol.self),
+            restoredExercises: [activeExercise],
+            isPreviewMode: true,
+        )
+        _previewVM = StateObject(wrappedValue: vm)
+    }
+
+    var body: some View {
+        ExerciseLoggingView(
+            viewModel: previewVM,
+            exerciseId: previewExerciseId,
+            readOnly: true,
+        )
     }
 }

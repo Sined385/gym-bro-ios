@@ -128,10 +128,32 @@ struct WorkoutAttachment: Decodable, Equatable {
     let sessionId: String
     let title: String
     let durationMinutes: Int?
+    let calories: Int?
+    let avgHeartRate: Int?
     let exerciseCount: Int
     let aiGenerated: Bool?
     let rpe: Int?
     let exercises: [AttachmentExercise]?
+
+    private enum CodingKeys: String, CodingKey {
+        case sessionId, title, durationMinutes, calories, avgHeartRate
+        case exerciseCount, aiGenerated, rpe, exercises
+    }
+
+    // Tolerant decoder — older payloads (and any path that doesn't surface
+    // calories yet) decode without throwing.
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        self.sessionId = try c.decode(String.self, forKey: .sessionId)
+        self.title = try c.decode(String.self, forKey: .title)
+        self.durationMinutes = try c.decodeIfPresent(Int.self, forKey: .durationMinutes)
+        self.calories = try c.decodeIfPresent(Int.self, forKey: .calories)
+        self.avgHeartRate = try c.decodeIfPresent(Int.self, forKey: .avgHeartRate)
+        self.exerciseCount = (try? c.decode(Int.self, forKey: .exerciseCount)) ?? 0
+        self.aiGenerated = try c.decodeIfPresent(Bool.self, forKey: .aiGenerated)
+        self.rpe = try c.decodeIfPresent(Int.self, forKey: .rpe)
+        self.exercises = try c.decodeIfPresent([AttachmentExercise].self, forKey: .exercises)
+    }
 }
 
 struct AttachmentSetData: Decodable, Equatable, Identifiable {
@@ -339,8 +361,27 @@ struct ProfileWorkout: Decodable, Identifiable {
     let type: String
     let durationMinutes: Int?
     let calories: Int?
+    let avgHeartRate: Int?
     let completedAt: String
     let exercises: [HistoryExercise]
+
+    private enum CodingKeys: String, CodingKey {
+        case id, title, type, durationMinutes, calories, avgHeartRate, completedAt, exercises
+    }
+
+    // Tolerant decoder so older API payloads (pre avg_heart_rate column)
+    // still decode without dropping the whole workout.
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        self.id = try c.decode(String.self, forKey: .id)
+        self.title = try c.decode(String.self, forKey: .title)
+        self.type = try c.decode(String.self, forKey: .type)
+        self.durationMinutes = try c.decodeIfPresent(Int.self, forKey: .durationMinutes)
+        self.calories = try c.decodeIfPresent(Int.self, forKey: .calories)
+        self.avgHeartRate = try c.decodeIfPresent(Int.self, forKey: .avgHeartRate)
+        self.completedAt = try c.decode(String.self, forKey: .completedAt)
+        self.exercises = (try? c.decode([HistoryExercise].self, forKey: .exercises)) ?? []
+    }
 }
 
 // MARK: - AI Comparison
