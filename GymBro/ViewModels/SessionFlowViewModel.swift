@@ -159,19 +159,38 @@ final class SessionFlowViewModel: ObservableObject {
                 }
             }
         } else {
-            // Convert DashboardExercises to ActiveSessionExercises with pre-created placeholder sets
+            // Convert DashboardExercises to ActiveSessionExercises.
+            // When the API supplied per-set targets (Coach progressive
+            // overload path), use those verbatim so the user sees the
+            // actual weight × rep ladder Coach proposed. Otherwise
+            // fall back to expanding sets_display into placeholders
+            // anchored at the suggested weight.
             let converted = initialExercises.map { dashEx in
                 let (targetSets, targetReps) = Self.parseSetsDisplay(dashEx.setsDisplay)
-                // Pre-create placeholder sets based on target
-                let placeholderSets = (1...max(targetSets, 1)).map { setNum in
-                    ActiveSet(
-                        id: UUID().uuidString,
-                        setNumber: setNum,
-                        weight: dashEx.suggestedWeight,
-                        weightUnit: "kg",
-                        reps: targetReps > 0 ? targetReps : nil,
-                        isCompleted: false
-                    )
+                let sets: [ActiveSet]
+                if let provided = dashEx.sets, !provided.isEmpty {
+                    sets = provided.map { ps in
+                        ActiveSet(
+                            id: UUID().uuidString,
+                            setNumber: ps.setNumber,
+                            weight: ps.weight,
+                            weightUnit: ps.weightUnit ?? "kg",
+                            reps: ps.reps,
+                            isCompleted: false,
+                            isBodyweight: ps.isBodyweight ?? false,
+                        )
+                    }
+                } else {
+                    sets = (1...max(targetSets, 1)).map { setNum in
+                        ActiveSet(
+                            id: UUID().uuidString,
+                            setNumber: setNum,
+                            weight: dashEx.suggestedWeight,
+                            weightUnit: "kg",
+                            reps: targetReps > 0 ? targetReps : nil,
+                            isCompleted: false
+                        )
+                    }
                 }
                 return ActiveSessionExercise(
                     id: dashEx.id,
@@ -181,7 +200,7 @@ final class SessionFlowViewModel: ObservableObject {
                     equipment: dashEx.equipment ?? "",
                     accentColor: dashEx.accentColor,
                     stepNumber: dashEx.stepNumber,
-                    sets: placeholderSets,
+                    sets: sets,
                     supersetGroupId: nil,
                     supersetOrder: nil,
                     targetSets: targetSets,

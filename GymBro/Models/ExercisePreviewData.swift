@@ -17,6 +17,12 @@ struct ExercisePreviewData: Identifiable {
     let accentColor: String
     let suggestedWeight: Double?
     let externalId: String?
+    /// Per-set targets the Coach proposed (weight × reps per set), only
+    /// populated when the AI returned target_sets and the server
+    /// persisted them on the session exercise. When non-empty, the
+    /// preview sheet renders a "Planned for today" section instead of
+    /// the generic sets_display pill.
+    let sets: [DashboardExerciseSet]?
 
     init(from ex: DashboardExercise) {
         self.id = ex.libraryExerciseId ?? UUID().uuidString
@@ -28,6 +34,7 @@ struct ExercisePreviewData: Identifiable {
         self.accentColor = ex.accentColor
         self.suggestedWeight = ex.suggestedWeight
         self.externalId = ex.externalId
+        self.sets = ex.sets
     }
 
     init(from ex: PlanExercise) {
@@ -40,6 +47,7 @@ struct ExercisePreviewData: Identifiable {
         self.accentColor = ex.accentColor ?? "E86A75"
         self.suggestedWeight = ex.suggestedWeight
         self.externalId = ex.externalId
+        self.sets = nil
     }
 
     init(name: String, muscleGroup: String, setsDisplay: String, accentColor: String, suggestedWeight: Double?, externalId: String? = nil) {
@@ -52,5 +60,6 @@ struct ExercisePreviewData: Identifiable {
         self.accentColor = accentColor
         self.suggestedWeight = suggestedWeight
         self.externalId = externalId
+        self.sets = nil
     }
 }

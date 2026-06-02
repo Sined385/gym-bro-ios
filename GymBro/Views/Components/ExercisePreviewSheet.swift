@@ -25,7 +25,7 @@ struct ExercisePreviewSheet: View {
             VStack(alignment: .leading, spacing: 20) {
                 imageCarousel
                 exerciseInfo
-                setsTargetCard
+                plannedTodaySection
                 previousResultsSection
             }
             .padding(.bottom, 32)
@@ -150,6 +150,63 @@ struct ExercisePreviewSheet: View {
             }
         }
         .padding(.horizontal, 20)
+    }
+
+    // MARK: - Planned for Today
+
+    /// New "Planned for today" section: when the Coach attached per-set
+    /// targets to the proposed exercise (target_sets), render the full
+    /// ladder so the user sees the actual proposed progression. Falls
+    /// back to the simple "Sets × Target" pill when no per-set data
+    /// is available (e.g., legacy plan exercises, manual workouts).
+    @ViewBuilder
+    private var plannedTodaySection: some View {
+        if let sets = exercise.sets, !sets.isEmpty {
+            VStack(alignment: .leading, spacing: 12) {
+                HStack(spacing: 6) {
+                    Image(systemName: "target")
+                        .font(.system(size: 14, weight: .semibold))
+                        .foregroundColor(.gymBroNeutral400)
+                    Text("PLANNED FOR TODAY")
+                        .font(.system(size: 11, weight: .bold))
+                        .tracking(1.1)
+                        .foregroundColor(.gymBroNeutral400)
+                    Spacer()
+                }
+
+                VStack(alignment: .leading, spacing: 8) {
+                    ForEach(sets, id: \.setNumber) { set in
+                        HStack(spacing: 0) {
+                            Text("Set \(set.setNumber)")
+                                .font(.system(size: 13, weight: .medium))
+                                .foregroundColor(.gymBroNeutral400)
+                                .frame(width: 48, alignment: .leading)
+
+                            Text(SetDisplay.line(
+                                weight: set.weight,
+                                weightUnit: set.weightUnit ?? "kg",
+                                reps: set.reps,
+                                isBodyweight: set.isBodyweight ?? false,
+                            ))
+                            .font(.system(size: 14, weight: .semibold))
+                            .foregroundColor(.gymBroNeutral900)
+
+                            Spacer()
+                        }
+                    }
+                }
+                .padding(16)
+                .background(Color.white)
+                .clipShape(RoundedRectangle(cornerRadius: 16))
+                .overlay(
+                    RoundedRectangle(cornerRadius: 16)
+                        .stroke(Color.gymBroNeutral100, lineWidth: 1),
+                )
+            }
+            .padding(.horizontal, 20)
+        } else {
+            setsTargetCard
+        }
     }
 
     // MARK: - Sets x Target Card
