@@ -599,7 +599,7 @@ final class HomeViewModel: ObservableObject {
                     PlanRouter.startPlanSession(dayId: dayId).endpoint,
                     responseType: SessionResponse.self
                 )
-                self.sessionManager.openSession(response)
+                self.sessionManager.openSession(response, planDayId: dayId)
                 self.analyticsService.track("planned_workout_started", properties: ["day_id": dayId])
             } catch {
                 let mockResponse = SessionResponse(
@@ -615,7 +615,7 @@ final class HomeViewModel: ObservableObject {
                     aiMessage: nil,
                     exercises: []
                 )
-                self.sessionManager.openSession(mockResponse)
+                self.sessionManager.openSession(mockResponse, planDayId: dayId)
                 self.errorMessage = nil
             }
 

@@ -92,24 +92,48 @@ struct SessionCompletionPayload: Codable {
     let avgHeartRate: Int?
     let feedback: SessionFeedback
     let exercises: [CompletionExercise]
+    // Metadata for the "store on complete" flow — when the session row
+    // doesn't exist server-side, the server creates it from these
+    // fields. Optional so old cached payloads decode and the server
+    // falls back to defaults.
+    let title: String?
+    let type: String?
+    let aiMessage: String?
+    let startedAt: Date?
+    let planDayId: String?
 
     enum CodingKeys: String, CodingKey {
         case durationMinutes = "duration_minutes"
         case avgHeartRate = "avg_heart_rate"
         case feedback
         case exercises
+        case title
+        case type
+        case aiMessage = "ai_message"
+        case startedAt = "started_at"
+        case planDayId = "plan_day_id"
     }
 
     init(
         durationMinutes: Int,
         avgHeartRate: Int? = nil,
         feedback: SessionFeedback,
-        exercises: [CompletionExercise]
+        exercises: [CompletionExercise],
+        title: String? = nil,
+        type: String? = nil,
+        aiMessage: String? = nil,
+        startedAt: Date? = nil,
+        planDayId: String? = nil,
     ) {
         self.durationMinutes = durationMinutes
         self.avgHeartRate = avgHeartRate
         self.feedback = feedback
         self.exercises = exercises
+        self.title = title
+        self.type = type
+        self.aiMessage = aiMessage
+        self.startedAt = startedAt
+        self.planDayId = planDayId
     }
 
     init(from decoder: Decoder) throws {
@@ -118,6 +142,11 @@ struct SessionCompletionPayload: Codable {
         self.avgHeartRate = try c.decodeIfPresent(Int.self, forKey: .avgHeartRate)
         self.feedback = try c.decode(SessionFeedback.self, forKey: .feedback)
         self.exercises = try c.decode([CompletionExercise].self, forKey: .exercises)
+        self.title = try c.decodeIfPresent(String.self, forKey: .title)
+        self.type = try c.decodeIfPresent(String.self, forKey: .type)
+        self.aiMessage = try c.decodeIfPresent(String.self, forKey: .aiMessage)
+        self.startedAt = try c.decodeIfPresent(Date.self, forKey: .startedAt)
+        self.planDayId = try c.decodeIfPresent(String.self, forKey: .planDayId)
     }
 
     func toDictionary() -> [String: Any] {
@@ -154,6 +183,13 @@ struct SessionCompletionPayload: Codable {
             }
         ]
         if let avgHeartRate { root["avg_heart_rate"] = avgHeartRate }
+        if let title { root["title"] = title }
+        if let type { root["type"] = type }
+        if let aiMessage { root["ai_message"] = aiMessage }
+        if let startedAt {
+            root["started_at"] = ISO8601DateFormatter().string(from: startedAt)
+        }
+        if let planDayId { root["plan_day_id"] = planDayId }
         return root
     }
 }
@@ -186,7 +222,17 @@ final class SessionCompletionCacheService: SessionCompletionCacheServiceProtocol
     private let networkService: NetworkServiceProtocol
     private let appDataState: AppDataState
     private let directory: URL
-    private let maxRetries = 20
+    // We used to cap retries at 20, which under the legacy
+    // proposed→active→completed flow could exhaust in a day or two
+    // if /complete-full kept 409-ing (e.g. a session manually flipped
+    // to 'completed' before the retry could land). The pending payload
+    // would then be deleted from disk and the user's logged sets lost.
+    // Under the new "store on complete" flow /complete-full creates the
+    // session if missing, so retries succeed reliably — but bump the
+    // cap anyway so a flaky network or a server-side regression can't
+    // permanently lose data. 1000 retries with exponential backoff
+    // capped at 1 hour ≈ months of attempts.
+    private let maxRetries = 1000
     private var isRetrying = false
 
     init(networkService: NetworkServiceProtocol, appDataState: AppDataState) {
@@ -280,9 +326,17 @@ final class SessionCompletionCacheService: SessionCompletionCacheServiceProtocol
         guard let networkError = error as? NetworkError else { return false }
         switch networkError {
         case .statusCode(let code):
-            // 400 = invalid_session_status (already completed) — idempotent success
-            // 404 = session deleted
-            return code == 400 || code == 404
+            // The previous comment said "400 = invalid_session_status"
+            // but the server actually returns 409 for that case
+            // (HttpStatus.CONFLICT in home.service.ts). Under the new
+            // "store on complete" flow /complete-full creates the row
+            // when missing, so a 409 should be exceptionally rare — and
+            // when it does fire (genuinely cancelled/proposed row), the
+            // user's payload is effectively obsolete. Treat 409 + 404
+            // as terminal. Don't include 400 (validation errors); those
+            // mean the payload is malformed and would loop forever, but
+            // we want to retry on the chance the server fixes it.
+            return code == 409 || code == 404
         default:
             return false
         }

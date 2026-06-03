@@ -560,7 +560,12 @@ final class SessionFlowViewModel: ObservableObject {
 
         let trackedDuration = max(1, sessionManager.elapsedSeconds / 60)
 
-        // Build typed payload for cache persistence
+        // Build typed payload for cache persistence. Metadata fields
+        // (title/type/aiMessage/startedAt/planDayId) let the server
+        // construct the WorkoutSession row from scratch when the new
+        // "store on complete" flow is in effect — /start no longer
+        // pre-creates one, so the server has only what this payload
+        // tells it.
         let completionPayload = SessionCompletionPayload(
             durationMinutes: trackedDuration,
             avgHeartRate: sessionManager.sessionAverageHeartRate,
@@ -590,7 +595,12 @@ final class SessionFlowViewModel: ObservableObject {
                     supersetGroupId: ex.supersetGroupId,
                     supersetOrder: ex.supersetOrder
                 )
-            }
+            },
+            title: sessionTitle,
+            type: sessionManager.sessionType,
+            aiMessage: sessionManager.aiMessage,
+            startedAt: sessionManager.sessionStartDate,
+            planDayId: sessionManager.planDayId,
         )
 
         // Persist to disk BEFORE the network call so data survives app kill

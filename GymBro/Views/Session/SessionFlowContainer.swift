@@ -36,6 +36,7 @@ struct SessionFlowContainer: View {
     @StateObject private var libraryViewModel: ExerciseLibraryViewModel = DependencyContainer.shared.resolve(ExerciseLibraryViewModel.self)
     @State private var navigationPath = NavigationPath()
     @State private var showSaveTemplate = false
+    @State private var showCancelConfirmation = false
 
     init(sessionId: String, sessionTitle: String, initialExercises: [DashboardExercise] = [], restoredExercises: [ActiveSessionExercise]? = nil, restoredFeedback: (effort: Int, energy: Int, pain: String)? = nil, onCollapse: @escaping () -> Void, onDismiss: @escaping () -> Void) {
         self.sessionId = sessionId
@@ -76,14 +77,14 @@ struct SessionFlowContainer: View {
                         onStartWorkout: { sessionManager.startWorkout() },
                         onEndWorkout: { navigationPath.append(SessionRoute.workoutFeedback) },
                         onSaveTemplate: { showSaveTemplate = true },
-                        onCancel: cancelAndDismiss
+                        onCancel: requestCancel
                     )
                 } else {
                     SessionStartedView(
                         viewModel: viewModel,
                         onAddExercise: { navigationPath.append(SessionRoute.exerciseLibrary) },
                         onStartWorkout: { sessionManager.startWorkout() },
-                        onCancelWorkout: cancelAndDismiss,
+                        onCancelWorkout: requestCancel,
                         // Empty session: top X ends the session too. Collapsing
                         // to mini-player isn't useful with nothing logged, and
                         // pre-active state otherwise has no exit path.
@@ -179,6 +180,12 @@ struct SessionFlowContainer: View {
                 }
             )
         }
+        .alert("End workout?", isPresented: $showCancelConfirmation) {
+            Button("Keep training", role: .cancel) { }
+            Button("End workout", role: .destructive) { cancelAndDismiss() }
+        } message: {
+            Text("Your logged sets will be lost.")
+        }
     }
 
     /// Swap the top of the nav stack rather than push, so tapping "Next"
@@ -189,8 +196,26 @@ struct SessionFlowContainer: View {
         navigationPath.append(route)
     }
 
+    /// Confirmation step before nuking an in-progress workout. The X
+    /// used to fire `/cancel` instantly — users tapping it by accident
+    /// (mistaking it for "close modal") lost their logged sets in a
+    /// single tap, and analytics show this happened repeatedly in
+    /// real-world traces. A two-tap confirmation makes it intentional.
+    /// Skipped while the workout hasn't been started yet (no sets to
+    /// lose), so the SessionStartedView X still dismisses cleanly.
+    private func requestCancel() {
+        if sessionManager.isWorkoutStarted {
+            showCancelConfirmation = true
+        } else {
+            cancelAndDismiss()
+        }
+    }
+
     /// Fires the server-side cancel and then tears down the local session.
     /// Dismiss runs regardless of network outcome so the user isn't trapped.
+    /// The backend's /cancel is idempotent (returns 200 even when the row
+    /// doesn't exist) so plan-day sessions — which after the "store on
+    /// complete" refactor never have a server row — are also safe.
     private func cancelAndDismiss() {
         Task {
             _ = await viewModel.cancelSession()

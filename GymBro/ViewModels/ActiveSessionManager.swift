@@ -27,6 +27,12 @@ final class ActiveSessionManager: ObservableObject {
     @Published var presentationState: PresentationState = .hidden
     @Published var sessionId: String?
     @Published var sessionTitle: String?
+    // Set when the session is opened for a plan day so the eventual
+    // /complete-full call can link the new WorkoutSession row back to
+    // its PlanDay. Nil for ad-hoc / Coach-created sessions.
+    @Published var planDayId: String?
+    @Published var sessionType: String?
+    @Published var aiMessage: String?
     @Published var sessionExercises: [DashboardExercise] = []
     @Published var elapsedSeconds: Int = 0
     @Published var restTimeRemaining: Int?
@@ -58,7 +64,12 @@ final class ActiveSessionManager: ObservableObject {
 
     // MARK: - Date-Anchored Timer State
 
-    private var sessionStartDate: Date?
+    // sessionStartDate is the wall-clock instant when the workout
+    // timer began. Used both for the elapsed-seconds timer and (on
+    // completion) for the started_at field sent to /complete-full —
+    // the server uses it to populate workout_sessions.started_at when
+    // the session row is being created from scratch.
+    @Published private(set) var sessionStartDate: Date?
     private var restStartDate: Date?
     private var restDurationSeconds: Int = 0
     private var foregroundCancellable: AnyCancellable?
@@ -152,10 +163,13 @@ final class ActiveSessionManager: ObservableObject {
 
     // MARK: - Session Lifecycle
 
-    func openSession(_ session: SessionResponse, autoStart: Bool = true) {
+    func openSession(_ session: SessionResponse, planDayId: String? = nil, autoStart: Bool = true) {
         print("🟡 openSession called: \(session.title), autoStart=\(autoStart), liveActivityService = \(liveActivityService)")
         sessionId = session.id
         sessionTitle = session.title
+        self.planDayId = planDayId
+        sessionType = session.type
+        aiMessage = session.aiMessage
         sessionExercises = session.exercises
         elapsedSeconds = 0
         isWorkoutStarted = false
@@ -237,6 +251,9 @@ final class ActiveSessionManager: ObservableObject {
         presentationState = .hidden
         sessionId = nil
         sessionTitle = nil
+        planDayId = nil
+        sessionType = nil
+        aiMessage = nil
         sessionExercises = []
         sessionStartDate = nil
         isWorkoutStarted = false
@@ -266,9 +283,26 @@ final class ActiveSessionManager: ObservableObject {
 
     func confirmReplaceSession() {
         let pending = pendingSessionStart
+        let abandonedSessionId = sessionId
+        let abandonedPlanDayId = planDayId
         pendingSessionStart = nil
         showSessionConflict = false
         endSession()
+        // For ad-hoc / Coach sessions (no plan day), the prior session
+        // had a server row in 'proposed' or 'active'. Fire /cancel so it
+        // doesn't sit orphan — the user's trace history would have a
+        // cancelled row instead of a hanging active one that re-triggers
+        // the conflict dialog forever. For plan-day sessions (no server
+        // row under the "store on complete" flow), skip the API call.
+        if let id = abandonedSessionId, abandonedPlanDayId == nil {
+            let networkService = DependencyContainer.shared.resolve(NetworkServiceProtocol.self)
+            Task {
+                _ = try? await networkService.request(
+                    HomeRouter.cancelSession(sessionId: id).endpoint,
+                    responseType: SessionResponse.self,
+                )
+            }
+        }
         if let pending { Task { @MainActor in await pending() } }
     }
 
@@ -494,6 +528,9 @@ final class ActiveSessionManager: ObservableObject {
     struct CachedSession: Codable {
         let sessionId: String
         let sessionTitle: String
+        let planDayId: String?
+        let sessionType: String?
+        let aiMessage: String?
         let sessionStartDate: Date?
         let exercises: [ActiveSessionExercise]
         let sessionExercises: [DashboardExercise]
@@ -504,6 +541,69 @@ final class ActiveSessionManager: ObservableObject {
         let restStartDate: Date?
         let restDurationSeconds: Int
         let isWorkoutStarted: Bool
+
+        // Older builds wrote payloads without the new metadata. Decode
+        // them gracefully so a TestFlight upgrade doesn't lose an
+        // in-progress workout.
+        enum CodingKeys: String, CodingKey {
+            case sessionId, sessionTitle, planDayId, sessionType, aiMessage,
+                 sessionStartDate, exercises, sessionExercises,
+                 presentationState, effortLevel, energyLevel, painDiscomfort,
+                 restStartDate, restDurationSeconds, isWorkoutStarted
+        }
+
+        init(
+            sessionId: String,
+            sessionTitle: String,
+            planDayId: String?,
+            sessionType: String?,
+            aiMessage: String?,
+            sessionStartDate: Date?,
+            exercises: [ActiveSessionExercise],
+            sessionExercises: [DashboardExercise],
+            presentationState: String,
+            effortLevel: Int,
+            energyLevel: Int,
+            painDiscomfort: String,
+            restStartDate: Date?,
+            restDurationSeconds: Int,
+            isWorkoutStarted: Bool,
+        ) {
+            self.sessionId = sessionId
+            self.sessionTitle = sessionTitle
+            self.planDayId = planDayId
+            self.sessionType = sessionType
+            self.aiMessage = aiMessage
+            self.sessionStartDate = sessionStartDate
+            self.exercises = exercises
+            self.sessionExercises = sessionExercises
+            self.presentationState = presentationState
+            self.effortLevel = effortLevel
+            self.energyLevel = energyLevel
+            self.painDiscomfort = painDiscomfort
+            self.restStartDate = restStartDate
+            self.restDurationSeconds = restDurationSeconds
+            self.isWorkoutStarted = isWorkoutStarted
+        }
+
+        init(from decoder: Decoder) throws {
+            let c = try decoder.container(keyedBy: CodingKeys.self)
+            self.sessionId = try c.decode(String.self, forKey: .sessionId)
+            self.sessionTitle = try c.decode(String.self, forKey: .sessionTitle)
+            self.planDayId = try c.decodeIfPresent(String.self, forKey: .planDayId)
+            self.sessionType = try c.decodeIfPresent(String.self, forKey: .sessionType)
+            self.aiMessage = try c.decodeIfPresent(String.self, forKey: .aiMessage)
+            self.sessionStartDate = try c.decodeIfPresent(Date.self, forKey: .sessionStartDate)
+            self.exercises = try c.decode([ActiveSessionExercise].self, forKey: .exercises)
+            self.sessionExercises = try c.decode([DashboardExercise].self, forKey: .sessionExercises)
+            self.presentationState = try c.decode(String.self, forKey: .presentationState)
+            self.effortLevel = try c.decode(Int.self, forKey: .effortLevel)
+            self.energyLevel = try c.decode(Int.self, forKey: .energyLevel)
+            self.painDiscomfort = try c.decode(String.self, forKey: .painDiscomfort)
+            self.restStartDate = try c.decodeIfPresent(Date.self, forKey: .restStartDate)
+            self.restDurationSeconds = try c.decode(Int.self, forKey: .restDurationSeconds)
+            self.isWorkoutStarted = try c.decode(Bool.self, forKey: .isWorkoutStarted)
+        }
     }
 
     func saveSession(exercises: [ActiveSessionExercise], effortLevel: Int, energyLevel: Int, painDiscomfort: String) {
@@ -525,6 +625,9 @@ final class ActiveSessionManager: ObservableObject {
         let cached = CachedSession(
             sessionId: sessionId,
             sessionTitle: sessionTitle,
+            planDayId: planDayId,
+            sessionType: sessionType,
+            aiMessage: aiMessage,
             sessionStartDate: sessionStartDate,
             exercises: exercises,
             sessionExercises: sessionExercises,
@@ -534,7 +637,7 @@ final class ActiveSessionManager: ObservableObject {
             painDiscomfort: painDiscomfort,
             restStartDate: restStartDate,
             restDurationSeconds: restDurationSeconds,
-            isWorkoutStarted: isWorkoutStarted
+            isWorkoutStarted: isWorkoutStarted,
         )
 
         if let data = try? JSONEncoder().encode(cached) {
@@ -548,6 +651,9 @@ final class ActiveSessionManager: ObservableObject {
 
         sessionId = cached.sessionId
         sessionTitle = cached.sessionTitle
+        planDayId = cached.planDayId
+        sessionType = cached.sessionType
+        aiMessage = cached.aiMessage
         sessionStartDate = cached.sessionStartDate
         sessionExercises = cached.sessionExercises
         isWorkoutStarted = cached.isWorkoutStarted
