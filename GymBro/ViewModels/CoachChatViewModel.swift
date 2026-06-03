@@ -200,7 +200,11 @@ final class CoachChatViewModel: ObservableObject {
 
     // MARK: - Actions
 
-    func sendMessage(_ text: String? = nil) async {
+    func sendMessage(
+        _ text: String? = nil,
+        action: String? = nil,
+        regenerateFromMessageId: String? = nil,
+    ) async {
         let content = text ?? inputText.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !content.isEmpty else { return }
 
@@ -236,7 +240,11 @@ final class CoachChatViewModel: ObservableObject {
 
         isStreaming = true
 
-        await streamChat(content: content)
+        await streamChat(
+            content: content,
+            action: action,
+            regenerateFromMessageId: regenerateFromMessageId,
+        )
 
         isStreaming = false
 
@@ -283,19 +291,15 @@ final class CoachChatViewModel: ObservableObject {
     }
 
     func regenerateWorkout(messageId: String) async {
-        // The system prompt's PROGRESSIVE OVERLOAD directive tells the AI to
-        // reuse recent lifts with target_sets — which is right for fresh
-        // requests but loops on "regenerate" because a plain "give me a
-        // different option" loses to the stronger reuse rule. Pass the
-        // prior session's exercise names as an explicit skip list so the
-        // AI picks different lifts this time.
-        let prior = messages.first(where: { $0.id == messageId })?.session
-        let names = prior?.exercises.map(\.name) ?? []
-        let avoid = names.joined(separator: ", ")
-        let prompt = avoid.isEmpty
-            ? "Regenerate the workout — give me a different option"
-            : "Regenerate the workout. Skip these — pick different exercises: \(avoid)."
-        await sendMessage(prompt)
+        // Send a clean "Regenerate" bubble; backend looks up the prior
+        // message's workout server-side and injects the skip list into
+        // the OpenAI prompt for this turn only. Keeps the chat readable
+        // and stops regenerate from looping on the same workout.
+        await sendMessage(
+            "Regenerate",
+            action: "regenerate",
+            regenerateFromMessageId: messageId,
+        )
     }
 
     // MARK: - Background Recovery
@@ -332,7 +336,11 @@ final class CoachChatViewModel: ObservableObject {
 
     // MARK: - SSE Streaming
 
-    private func streamChat(content: String) async {
+    private func streamChat(
+        content: String,
+        action: String? = nil,
+        regenerateFromMessageId: String? = nil,
+    ) async {
         guard let url = URL(string: "\(baseURL)/api/v1/coach/chat") else { return }
 
         streamCompleted = false
@@ -351,6 +359,12 @@ final class CoachChatViewModel: ObservableObject {
         var body: [String: Any] = ["content": content]
         if let convId = conversationId {
             body["conversation_id"] = convId
+        }
+        if let action {
+            body["action"] = action
+        }
+        if let regenerateFromMessageId {
+            body["regenerate_from_message_id"] = regenerateFromMessageId
         }
         request.httpBody = try? JSONSerialization.data(withJSONObject: body)
 
