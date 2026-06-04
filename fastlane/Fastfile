@@ -66,7 +66,11 @@ platform :ios do
     # Use the Xcodeproj gem directly to touch only the GymJam target's
     # MARKETING_VERSION across all build configurations.
     require 'xcodeproj'
-    project = Xcodeproj::Project.open(XCODEPROJ)
+    # Fastlane chdir's into fastlane/ before running the lane, so XCODEPROJ
+    # alone resolves to fastlane/GymBro.xcodeproj. Anchor the path at the
+    # Fastfile's directory and go up one level to the project root.
+    project_path = File.expand_path(File.join('..', XCODEPROJ), __dir__)
+    project = Xcodeproj::Project.open(project_path)
     gym_target = project.targets.find { |t| t.name == 'GymJam' } or
       UI.user_error!("GymJam target not found in #{XCODEPROJ}")
     gym_target.build_configurations.each do |config|
