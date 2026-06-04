@@ -100,8 +100,14 @@ struct CommentsSection: View {
     }
 
     private func timeAgo(from isoString: String) -> String {
+        // Backend's toISOString() always includes fractional seconds.
+        // Default ISO8601DateFormatter doesn't parse those, so we'd silently
+        // return "" and the timestamp would never render.
         let formatter = ISO8601DateFormatter()
-        guard let date = formatter.date(from: isoString) else { return "" }
+        formatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+        let date = formatter.date(from: isoString)
+            ?? ISO8601DateFormatter().date(from: isoString)
+        guard let date else { return "" }
 
         let interval = Date().timeIntervalSince(date)
 

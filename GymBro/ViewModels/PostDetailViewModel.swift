@@ -59,7 +59,9 @@ final class PostDetailViewModel: ObservableObject {
                 CommunityRouter.getComments(postId: postId, cursor: nil, limit: 50).endpoint,
                 responseType: CommentsResponse.self
             )
-            comments = response.comments
+            // Backend returns newest-first for cursor pagination. UI shows
+            // them chronologically (oldest at top, newest at bottom).
+            comments = response.comments.reversed()
         } catch {
             comments = []
         }
@@ -71,7 +73,7 @@ final class PostDetailViewModel: ObservableObject {
                 CommunityRouter.createComment(postId: postId, content: content).endpoint,
                 responseType: PostComment.self
             )
-            comments.insert(comment, at: 0)
+            comments.append(comment)
             if let p = post {
                 post = p.withCommentCount(p.commentCount + 1)
             }

@@ -67,6 +67,14 @@ class AppDelegate: NSObject, UIApplicationDelegate, MessagingDelegate, UNUserNot
         _ center: UNUserNotificationCenter,
         willPresent notification: UNNotification
     ) async -> UNNotificationPresentationOptions {
+        // Coach replies fire every time the assistant finishes a message.
+        // While the app is in foreground the SSE stream already delivers
+        // the content live — suppress the banner so the user doesn't see
+        // a notification for something they're actively reading.
+        let userInfo = notification.request.content.userInfo
+        if (userInfo["type"] as? String) == "coach_reply" {
+            return []
+        }
         return [.banner, .sound, .badge]
     }
 

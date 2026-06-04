@@ -139,7 +139,8 @@ struct SessionFlowContainer: View {
                         },
                         onSwitchToSuperset: { groupId in
                             replaceTop(with: .supersetLogging(groupId: groupId))
-                        }
+                        },
+                        onEndWorkout: { navigationPath.append(SessionRoute.workoutFeedback) }
                     )
                 case .supersetLogging(let groupId):
                     ExerciseLoggingView(
@@ -150,7 +151,8 @@ struct SessionFlowContainer: View {
                         },
                         onSwitchToSuperset: { gid in
                             replaceTop(with: .supersetLogging(groupId: gid))
-                        }
+                        },
+                        onEndWorkout: { navigationPath.append(SessionRoute.workoutFeedback) }
                     )
                 case .createCustomExercise:
                     CreateCustomExerciseView(

@@ -664,13 +664,15 @@ final class SessionFlowViewModel: ObservableObject {
     }
 
     private func saveToHealthKit(response: SessionResponse?) {
-        // Skip if Watch managed the HKWorkoutSession (Watch already saved with real HR/calorie data)
-        guard !sessionManager.isWatchManagingWorkout else { return }
+        // If the Watch tracked this session, HKLiveWorkoutBuilder.finishWorkout
+        // already wrote an HKWorkout (with real HR + energy samples) to HealthKit
+        // before the summary arrived here. Saving an iOS HKWorkout on top of that
+        // creates a duplicate entry in Apple's Fitness app.
+        guard sessionManager.watchWorkoutSummary == nil else { return }
 
         let elapsedSeconds = sessionManager.elapsedSeconds
         let title = sessionTitle
-        let watchSummary = sessionManager.watchWorkoutSummary
-        let caloriesValue: Double? = watchSummary?.activeCalories ?? response?.calories.map { Double($0) }
+        let caloriesValue: Double? = response?.calories.map { Double($0) }
         let hkService = healthKitService
         Task.detached {
             do {
