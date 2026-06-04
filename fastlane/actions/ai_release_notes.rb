@@ -31,8 +31,28 @@ module Fastlane
 
         UI.message("Asking Claude to draft #{mode} release notes…")
         notes = run_claude(prompt)
+        if notes.nil? || notes.empty?
+          UI.important('Claude CLI did not return usable notes — using commit-based fallback so the release lane is not blocked.')
+          notes = fallback_notes(mode, version, build, commits)
+        end
         UI.message("Draft notes:\n#{notes}")
         notes
+      end
+
+      # Used when the Claude CLI fails or returns nothing usable. We don't
+      # want a flaky AI step to block an entire TestFlight deploy — better
+      # to ship a plain-but-truthful changelog and let the human edit
+      # afterward. testflight_changelog (in Fastfile) drops ## headings
+      # before sending to TestFlight, so the bullets render cleanly.
+      def self.fallback_notes(mode, version, build, commits)
+        subjects = commits.lines.map { |l| l.sub(/^[0-9a-f]+\s+/, '').strip }
+        bullets = subjects.first(8).map { |s| "- #{s}" }.join("\n")
+        bullets = '- Bug fixes and improvements' if bullets.empty?
+        if mode == :testers
+          "Build #{version}(#{build}):\n#{bullets}"
+        else
+          "## v#{version}\n\n#{bullets}\n"
+        end
       end
 
       # ── Commit gathering ────────────────────────────────────
@@ -132,12 +152,17 @@ module Fastlane
       # ── Claude CLI invocation ───────────────────────────────
 
       def self.run_claude(prompt)
-        stdout, stderr, status = Open3.capture3('claude', '-p', '--max-turns', '1', stdin_data: prompt)
+        # --max-turns 5 (was 1): some commit ranges trigger tool use that
+        # consumed the single turn before any text response landed,
+        # surfacing as "Reached max turns (1)" with the lane bailing.
+        # Returns nil on failure so the caller can fall back to a
+        # commit-based draft instead of blocking the entire deploy.
+        stdout, stderr, status = Open3.capture3('claude', '-p', '--max-turns', '5', stdin_data: prompt)
         unless status.success?
           UI.error("claude CLI exit: #{status.exitstatus}")
           UI.error("claude CLI stderr: #{stderr.inspect}")
           UI.error("claude CLI stdout: #{stdout.inspect}")
-          UI.user_error!('claude CLI failed; see stdout/stderr above')
+          return nil
         end
         stdout.strip
       end
