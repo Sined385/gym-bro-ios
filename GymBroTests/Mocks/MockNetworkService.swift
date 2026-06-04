@@ -6,7 +6,7 @@
 //
 
 import Foundation
-@testable import GymBro
+@testable import GymJam
 
 /// Mock implementation of NetworkServiceProtocol for testing
 final class MockNetworkService: NetworkServiceProtocol {

@@ -7,7 +7,7 @@
 
 import Testing
 import HealthKit
-@testable import GymBro
+@testable import GymJam
 
 @Suite("HealthKitService Tests")
 struct HealthKitServiceTests {

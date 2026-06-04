@@ -7,7 +7,7 @@
 
 import Foundation
 import Testing
-@testable import GymBro
+@testable import GymJam
 
 @Suite("NetworkService Tests")
 struct NetworkServiceTests {

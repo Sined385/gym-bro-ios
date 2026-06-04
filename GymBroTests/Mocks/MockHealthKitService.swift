@@ -7,7 +7,7 @@
 
 import Foundation
 import HealthKit
-@testable import GymBro
+@testable import GymJam
 
 /// Mock implementation of HealthKitServiceProtocol for testing
 final class MockHealthKitService: HealthKitServiceProtocol {

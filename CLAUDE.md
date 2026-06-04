@@ -4,20 +4,22 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Build Commands
 
+The `GymBro` scheme builds both the iOS app (`GymJam.app`) and the watchOS companion (`GymJamWatch.app`). **Do not pass `-sdk iphonesimulator`** — it forces watch sources to compile against the iOS SDK, which fails on `import WatchKit`. Let xcodebuild infer each target's SDK from the destination.
+
 ```bash
-# Build for iOS Simulator
-xcodebuild -scheme GymBro -sdk iphonesimulator -destination 'platform=iOS Simulator,name=iPhone 16,OS=18.5' build
+# Build for iOS Simulator (watch target auto-resolves to watchsimulator)
+xcodebuild -scheme GymBro -destination 'platform=iOS Simulator,name=iPhone 16,OS=18.5' build
 
 # Clean build
-xcodebuild -scheme GymBro -sdk iphonesimulator clean build
+xcodebuild -scheme GymBro -destination 'platform=iOS Simulator,name=iPhone 16,OS=18.5' clean build
 
 # Run all unit tests
-xcodebuild test -scheme GymBro -sdk iphonesimulator -destination 'platform=iOS Simulator,name=iPhone 16,OS=18.5'
+xcodebuild test -scheme GymBro -destination 'platform=iOS Simulator,name=iPhone 16,OS=18.5'
 
 # Run specific test target / class / method
-xcodebuild test -scheme GymBro -sdk iphonesimulator -only-testing:GymBroTests
-xcodebuild test -scheme GymBro -sdk iphonesimulator -only-testing:GymBroTests/AuthViewModelTests
-xcodebuild test -scheme GymBro -sdk iphonesimulator -only-testing:GymBroTests/AuthViewModelTests/testSignInWithApple
+xcodebuild test -scheme GymBro -destination 'platform=iOS Simulator,name=iPhone 16,OS=18.5' -only-testing:GymBroTests
+xcodebuild test -scheme GymBro -destination 'platform=iOS Simulator,name=iPhone 16,OS=18.5' -only-testing:GymBroTests/AuthViewModelTests
+xcodebuild test -scheme GymBro -destination 'platform=iOS Simulator,name=iPhone 16,OS=18.5' -only-testing:GymBroTests/AuthViewModelTests/testSignInWithApple
 
 # Resolve Swift packages
 xcodebuild -resolvePackageDependencies

@@ -7,7 +7,7 @@
 
 import Foundation
 import AuthenticationServices
-@testable import GymBro
+@testable import GymJam
 
 /// Mock implementation of AuthServiceProtocol for testing
 final class MockAuthService: AuthServiceProtocol {
