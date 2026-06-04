@@ -59,15 +59,27 @@ platform :ios do
 
   desc 'Bump minor version, build, upload to TestFlight, tag, update release notes.'
   lane :release do
-    # target: 'GymJam' on the VERSION bump is REQUIRED. Without it,
-    # increment_version_number walks every target, takes the lowest
-    # MARKETING_VERSION as baseline (the Watch target's 1.0), bumps
-    # minor, and writes 1.1 back to every target — silently
-    # downgrading the iOS app from 1.4 to 1.1 and failing the
-    # TestFlight upload with "version below latest closed submission".
-    # The build-number reset stays unscoped so iOS + Watch keep
-    # matching CFBundleVersion (the pattern Apple accepted for 1.4(9)).
-    increment_version_number(bump_type: 'minor', xcodeproj: XCODEPROJ, target: 'GymJam')
+    # fastlane's built-in increment_version_number walks every target,
+    # syncs them to the lowest MARKETING_VERSION baseline (the Watch
+    # target's 1.0), and downgrades the iOS app — there's no `target:`
+    # option to scope it (only the plugin-based variant supports it).
+    # Use the Xcodeproj gem directly to touch only the GymJam target's
+    # MARKETING_VERSION across all build configurations.
+    require 'xcodeproj'
+    project = Xcodeproj::Project.open(XCODEPROJ)
+    gym_target = project.targets.find { |t| t.name == 'GymJam' } or
+      UI.user_error!("GymJam target not found in #{XCODEPROJ}")
+    gym_target.build_configurations.each do |config|
+      current = config.build_settings['MARKETING_VERSION'] || '1.0'
+      parts = current.split('.').map(&:to_i)
+      parts << 0 while parts.length < 2
+      parts[1] += 1
+      config.build_settings['MARKETING_VERSION'] = parts.join('.')
+    end
+    project.save
+
+    # Build-number reset stays unscoped so iOS + Watch keep matching
+    # CFBundleVersion (the pattern Apple accepted on the 1.4(9) build).
     increment_build_number(build_number: '1', xcodeproj: XCODEPROJ)
     version = current_version
     build = current_build_number
