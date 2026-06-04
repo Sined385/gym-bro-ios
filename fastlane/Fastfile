@@ -59,7 +59,15 @@ platform :ios do
 
   desc 'Bump minor version, build, upload to TestFlight, tag, update release notes.'
   lane :release do
-    increment_version_number(bump_type: 'minor', xcodeproj: XCODEPROJ)
+    # target: 'GymJam' on the VERSION bump is REQUIRED. Without it,
+    # increment_version_number walks every target, takes the lowest
+    # MARKETING_VERSION as baseline (the Watch target's 1.0), bumps
+    # minor, and writes 1.1 back to every target — silently
+    # downgrading the iOS app from 1.4 to 1.1 and failing the
+    # TestFlight upload with "version below latest closed submission".
+    # The build-number reset stays unscoped so iOS + Watch keep
+    # matching CFBundleVersion (the pattern Apple accepted for 1.4(9)).
+    increment_version_number(bump_type: 'minor', xcodeproj: XCODEPROJ, target: 'GymJam')
     increment_build_number(build_number: '1', xcodeproj: XCODEPROJ)
     version = current_version
     build = current_build_number
