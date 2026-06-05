@@ -43,9 +43,13 @@ struct PlanExercise: Decodable, Identifiable {
     let suggestedWeight: Double?
     let imageUrl: String?
     let externalId: String?
+    /// Per-set targets persisted on the plan day's exercises_json.
+    /// Lets the Plan tab's preview sheet render the full ladder
+    /// instead of the generic sets_display pill.
+    let sets: [DashboardExerciseSet]?
     var id: String { name + setsDisplay }
 
-    init(name: String, muscleGroup: String, setsDisplay: String, libraryExerciseId: String? = nil, accentColor: String? = nil, suggestedWeight: Double? = nil, imageUrl: String? = nil, externalId: String? = nil) {
+    init(name: String, muscleGroup: String, setsDisplay: String, libraryExerciseId: String? = nil, accentColor: String? = nil, suggestedWeight: Double? = nil, imageUrl: String? = nil, externalId: String? = nil, sets: [DashboardExerciseSet]? = nil) {
         self.name = name
         self.muscleGroup = muscleGroup
         self.setsDisplay = setsDisplay
@@ -54,6 +58,7 @@ struct PlanExercise: Decodable, Identifiable {
         self.suggestedWeight = suggestedWeight
         self.imageUrl = imageUrl
         self.externalId = externalId
+        self.sets = sets
     }
 }
 

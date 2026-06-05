@@ -30,6 +30,12 @@ struct PlannedExercise: Decodable, Identifiable {
     let suggestedWeight: Double?
     let imageUrl: String?
     let externalId: String?
+    /// Per-set targets persisted on the plan day. When present the
+    /// preview sheet renders the full ladder (e.g. 60kg × 8, 80kg × 6,
+    /// 90kg × 5) instead of the generic sets_display pill.
+    /// Defaults to nil so existing positional callers (SwiftUI previews,
+    /// mock data) keep compiling without threading the field through.
+    let sets: [DashboardExerciseSet]? = nil
     var id: String { name + setsDisplay }
 }
 

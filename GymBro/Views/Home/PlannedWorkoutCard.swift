@@ -78,14 +78,7 @@ struct PlannedWorkoutCard: View {
                     VStack(spacing: 12) {
                         ForEach(Array(exercises.enumerated()), id: \.element.id) { index, exercise in
                             Button {
-                                selectedExercise = ExercisePreviewData(
-                                    name: exercise.name,
-                                    muscleGroup: exercise.muscleGroup,
-                                    setsDisplay: exercise.setsDisplay,
-                                    accentColor: exercise.accentColor,
-                                    suggestedWeight: exercise.suggestedWeight,
-                                    externalId: exercise.externalId
-                                )
+                                selectedExercise = ExercisePreviewData(from: exercise)
                             } label: {
                                 ExerciseRowView(
                                     name: exercise.name,
