@@ -267,7 +267,15 @@ final class ActiveSessionManager: ObservableObject {
         watchWorkoutSummary = nil
         watchHeartRateSamples.removeAll()
         clearCache()
-        appDataState.triggerReload()
+        // Fetch fresh dashboard data, not just bump the reload version.
+        // TrainingPlanViewModel only refetches via reloadVersion when
+        // planDays is empty — relying on that meant the Plan tab kept
+        // stale `pending` status and pre-completion exercises after a
+        // workout. refresh() pushes a new snapshot into AppDataState
+        // which TrainingPlanVM picks up via its $planDays sink.
+        Task { [appDataState] in
+            await appDataState.refresh(reason: .sessionCompleted)
+        }
     }
 
     // MARK: - Session Conflict Gating
@@ -866,18 +874,21 @@ final class ActiveSessionManager: ObservableObject {
 
             do {
                 let response: SessionResponse
+                let resolvedPlanDayId: String?
                 if requestType == "planned", let dayId = planDayId {
                     response = try await networkService.request(
                         PlanRouter.startPlanSession(dayId: dayId).endpoint,
                         responseType: SessionResponse.self
                     )
+                    resolvedPlanDayId = dayId
                 } else {
                     response = try await networkService.request(
                         HomeRouter.createSession(title: "Watch Workout", type: "strength").endpoint,
                         responseType: SessionResponse.self
                     )
+                    resolvedPlanDayId = nil
                 }
-                self.openSession(response)
+                self.openSession(response, planDayId: resolvedPlanDayId)
             } catch {
                 print("📱 Watch session start request failed: \(error)")
             }

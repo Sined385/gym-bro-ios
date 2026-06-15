@@ -302,11 +302,10 @@ final class SessionCompletionCacheService: SessionCompletionCacheServiceProtocol
                     SessionRouter.completeSessionFull(sessionId: item.sessionId, payload: payload).endpoint,
                     responseType: SessionResponse.self
                 )
-                // Success — remove cached file and trigger reload
+                // Success — remove cached file and refresh dashboard so
+                // the Plan tab reflects the now-completed plan day.
                 remove(id: item.id)
-                await MainActor.run {
-                    appDataState.triggerReload()
-                }
+                await appDataState.refresh(reason: .sessionCompleted)
             } catch {
                 let shouldRemove = isTerminalError(error)
                 if shouldRemove {

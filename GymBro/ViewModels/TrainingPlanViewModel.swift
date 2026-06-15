@@ -176,7 +176,12 @@ final class TrainingPlanViewModel: ObservableObject {
                     PlanRouter.startPlanSession(dayId: dayId).endpoint,
                     responseType: SessionResponse.self
                 )
-                self.sessionManager.openSession(response)
+                // Carry the plan_day_id forward — completion payload uses it
+                // to link the new WorkoutSession row to the plan day. Without
+                // this, the link only happens via the server-side reconcile
+                // fallback, which mis-fired when the plan day already had
+                // adapted_at set.
+                self.sessionManager.openSession(response, planDayId: dayId)
             } catch {
                 print("[TrainingPlanVM] startPlanSession failed: \(error)")
                 self.errorMessage = "Failed to start session"
