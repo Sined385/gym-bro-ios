@@ -81,6 +81,27 @@ final class WatchSetLoggingViewModel: ObservableObject {
         }
     }
 
+    /// Append a NEW set to the exercise (no existing template row to
+    /// mark complete). Used by Repeat Last when the exercise was
+    /// added mid-session and only has completed sets in its history.
+    /// Phone routes the empty `setId` to its `logSet` path which
+    /// appends instead of looking up by id.
+    func logSet(exerciseId: String, weight: Double?, reps: Int) {
+        isSubmitting = true
+        lastCompletedWeight = weight
+        lastCompletedReps = reps
+        connectivityService.sendSetCompletion(
+            exerciseId: exerciseId,
+            setId: "",
+            weight: weight,
+            reps: reps
+        )
+        WatchHaptics.setCompleted()
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) { [weak self] in
+            self?.isSubmitting = false
+        }
+    }
+
     // MARK: - Display Helpers
 
     var weightDisplay: String {

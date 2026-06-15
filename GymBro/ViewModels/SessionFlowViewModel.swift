@@ -520,7 +520,17 @@ final class SessionFlowViewModel: ObservableObject {
     // MARK: - Watch Set Completion
 
     func completeSetFromWatch(exerciseId: String, setId: String, weight: Double?, reps: Int) async {
-        await completeSet(exerciseId: exerciseId, setId: setId, weight: weight, reps: reps)
+        // Empty setId is the Watch's signal for "log a new set" — used
+        // when Repeat Last fires on an exercise that was added mid-
+        // session and has no pending template set to mark complete.
+        // The phone's logSet path appends a fresh set with auto-
+        // generated id. Non-empty setId follows the normal find-and-
+        // complete path.
+        if setId.isEmpty {
+            await logSet(exerciseId: exerciseId, weight: weight, reps: reps)
+        } else {
+            await completeSet(exerciseId: exerciseId, setId: setId, weight: weight, reps: reps)
+        }
         // Match the iPhone inline-checkmark flow — the rest timer is what
         // tells both screens (and the Watch via WCSession push) that we're
         // resting now. Without this the user just sees "set logged" and no

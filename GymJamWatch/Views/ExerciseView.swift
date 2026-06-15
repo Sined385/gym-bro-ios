@@ -52,13 +52,21 @@ struct ExerciseView: View {
                         showSetInput = true
                     }
 
-                    // Repeat Last button — one-tap completion with previous set's weight/reps
-                    if let currentSet = exercise.currentSet,
-                       let lastReps = setLoggingViewModel.lastCompletedReps ?? sessionViewModel.lastCompletedReps {
+                    // Repeat Last button — one-tap completion with previous
+                    // set's weight/reps. Visible whenever we have a value
+                    // to repeat; works for both planned exercises (where a
+                    // pending template set is waiting in `currentSet`) and
+                    // manually-added mid-session exercises (no template —
+                    // we append as a new set instead).
+                    if let lastReps = setLoggingViewModel.lastCompletedReps ?? sessionViewModel.lastCompletedReps {
                         Button {
                             let lastWeight = setLoggingViewModel.lastCompletedWeight ?? sessionViewModel.lastCompletedWeight
                             setLoggingViewModel.loadForRepeat(weight: lastWeight, reps: lastReps)
-                            setLoggingViewModel.completeSet(exerciseId: exercise.id, setId: currentSet.id)
+                            if let currentSet = exercise.currentSet {
+                                setLoggingViewModel.completeSet(exerciseId: exercise.id, setId: currentSet.id)
+                            } else {
+                                setLoggingViewModel.logSet(exerciseId: exercise.id, weight: lastWeight, reps: lastReps)
+                            }
                         } label: {
                             HStack(spacing: 4) {
                                 Image(systemName: "arrow.counterclockwise")
