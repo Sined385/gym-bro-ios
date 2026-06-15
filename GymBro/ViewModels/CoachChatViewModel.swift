@@ -204,6 +204,7 @@ final class CoachChatViewModel: ObservableObject {
         _ text: String? = nil,
         action: String? = nil,
         regenerateFromMessageId: String? = nil,
+        regenerateFromSessionId: String? = nil,
     ) async {
         let content = text ?? inputText.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !content.isEmpty else { return }
@@ -244,6 +245,7 @@ final class CoachChatViewModel: ObservableObject {
             content: content,
             action: action,
             regenerateFromMessageId: regenerateFromMessageId,
+            regenerateFromSessionId: regenerateFromSessionId,
         )
 
         isStreaming = false
@@ -290,15 +292,26 @@ final class CoachChatViewModel: ObservableObject {
         }
     }
 
-    func regenerateWorkout(messageId: String) async {
+    func regenerateWorkout(messageId: String, sessionId: String?) async {
         // Send a clean "Regenerate" bubble; backend looks up the prior
         // message's workout server-side and injects the skip list into
         // the OpenAI prompt for this turn only. Keeps the chat readable
         // and stops regenerate from looping on the same workout.
+        //
+        // We also pass the session id from the workout card directly.
+        // The card renders on `session_created` SSE — at that moment
+        // the session id is real but the assistant message id is
+        // still the optimistic UUID we generated client-side; the
+        // real id only lands on the `done` event. A fast tap before
+        // `done` would send the optimistic UUID and the server's
+        // message lookup would miss, returning an empty skip list and
+        // the AI would propose the same workout. The session id is
+        // bound earlier and is always real, so the server prefers it.
         await sendMessage(
             "Regenerate",
             action: "regenerate",
             regenerateFromMessageId: messageId,
+            regenerateFromSessionId: sessionId,
         )
     }
 
@@ -340,6 +353,7 @@ final class CoachChatViewModel: ObservableObject {
         content: String,
         action: String? = nil,
         regenerateFromMessageId: String? = nil,
+        regenerateFromSessionId: String? = nil,
     ) async {
         guard let url = URL(string: "\(baseURL)/api/v1/coach/chat") else { return }
 
@@ -365,6 +379,9 @@ final class CoachChatViewModel: ObservableObject {
         }
         if let regenerateFromMessageId {
             body["regenerate_from_message_id"] = regenerateFromMessageId
+        }
+        if let regenerateFromSessionId {
+            body["regenerate_from_session_id"] = regenerateFromSessionId
         }
         request.httpBody = try? JSONSerialization.data(withJSONObject: body)
 

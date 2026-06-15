@@ -54,7 +54,10 @@ struct CoachChatView: View {
                                 },
                                 onRegenerate: {
                                     Task {
-                                        await viewModel.regenerateWorkout(messageId: message.id)
+                                        await viewModel.regenerateWorkout(
+                                            messageId: message.id,
+                                            sessionId: message.session?.id
+                                        )
                                     }
                                 }
                             )
