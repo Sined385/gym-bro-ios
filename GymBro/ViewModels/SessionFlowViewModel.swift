@@ -393,25 +393,33 @@ final class SessionFlowViewModel: ObservableObject {
 
     // MARK: - Set Management
 
-    func completeSet(exerciseId: String, setId: String, weight: Double?, reps: Int, isBodyweight: Bool = false) async {
+    func completeSet(exerciseId: String, setId: String, weight: Double?, reps: Int, isBodyweight: Bool = false, durationSeconds: Int? = nil, distanceMeters: Int? = nil) async {
         sessionManager.cancelStillThereNotification()
 
         guard let exerciseIndex = exercises.firstIndex(where: { $0.id == exerciseId }),
               let setIndex = exercises[exerciseIndex].sets.firstIndex(where: { $0.id == setId }) else { return }
 
-        // When the user flipped the bodyweight toggle, force the stored weight
-        // to nil so display sites never read a stale value.
-        exercises[exerciseIndex].sets[setIndex].weight = isBodyweight ? nil : weight
+        let isCardio = durationSeconds != nil
+        // When the user flipped the bodyweight toggle (or this is a cardio
+        // set), force the stored weight to nil so display sites never read
+        // a stale value.
+        exercises[exerciseIndex].sets[setIndex].weight = (isBodyweight || isCardio) ? nil : weight
         exercises[exerciseIndex].sets[setIndex].reps = reps
         exercises[exerciseIndex].sets[setIndex].isCompleted = true
         exercises[exerciseIndex].sets[setIndex].isBodyweight = isBodyweight
+        if isCardio {
+            exercises[exerciseIndex].sets[setIndex].durationSeconds = durationSeconds
+            if let distanceMeters {
+                exercises[exerciseIndex].sets[setIndex].distanceMeters = distanceMeters
+            }
+        }
 
         notifySessionChanged()
         sessionManager.scheduleStartReminder()
 
         sessionManager.updateLastCompletedSet(
             exerciseName: exercises[exerciseIndex].name,
-            weight: isBodyweight ? nil : weight,
+            weight: (isBodyweight || isCardio) ? nil : weight,
             weightUnit: exercises[exerciseIndex].sets[setIndex].weightUnit,
             reps: reps
         )
@@ -420,7 +428,8 @@ final class SessionFlowViewModel: ObservableObject {
             "exercise_name": exercises[exerciseIndex].name,
             "weight": weight ?? 0,
             "reps": reps,
-            "is_bodyweight": isBodyweight
+            "is_bodyweight": isBodyweight,
+            "duration_seconds": durationSeconds ?? 0
         ] as [String: Any])
     }
 
@@ -590,13 +599,16 @@ final class SessionFlowViewModel: ObservableObject {
                     muscleGroup: ex.muscleGroup,
                     stepNumber: ex.stepNumber,
                     sets: ex.sets.filter(\.isCompleted).map { set in
-                        CompletionSet(
+                        let isCardio = set.durationSeconds != nil
+                        return CompletionSet(
                             setNumber: set.setNumber,
                             reps: set.reps ?? 0,
                             isCompleted: set.isCompleted,
-                            weight: set.isBodyweight ? nil : set.weight,
+                            weight: (set.isBodyweight || isCardio) ? nil : set.weight,
                             weightUnit: set.weightUnit,
-                            isBodyweight: set.isBodyweight
+                            isBodyweight: set.isBodyweight,
+                            durationSeconds: set.durationSeconds,
+                            distanceMeters: set.distanceMeters
                         )
                     },
                     libraryExerciseId: ex.libraryExerciseId,

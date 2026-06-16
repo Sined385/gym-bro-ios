@@ -165,6 +165,41 @@ struct DashboardExerciseSet: Codable {
     let weightUnit: String?
     let reps: Int
     let isBodyweight: Bool?
+    // Cardio fields. Strength sets leave both nil; cardio sets carry
+    // duration_seconds (always) and distance_meters (optional). When
+    // durationSeconds is non-nil, the UI renders a "30 min" pill
+    // instead of the weight × reps row.
+    let durationSeconds: Int?
+    let distanceMeters: Int?
+
+    // Older payloads (and unit tests) omit the two cardio fields
+    // entirely. With `let`s on a strict Codable struct, that's a hard
+    // decode error. Custom init treats them as optional.
+    enum CodingKeys: String, CodingKey {
+        case setNumber, weight, weightUnit, reps, isBodyweight
+        case durationSeconds, distanceMeters
+    }
+
+    init(setNumber: Int, weight: Double?, weightUnit: String?, reps: Int, isBodyweight: Bool?, durationSeconds: Int? = nil, distanceMeters: Int? = nil) {
+        self.setNumber = setNumber
+        self.weight = weight
+        self.weightUnit = weightUnit
+        self.reps = reps
+        self.isBodyweight = isBodyweight
+        self.durationSeconds = durationSeconds
+        self.distanceMeters = distanceMeters
+    }
+
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        setNumber = try c.decode(Int.self, forKey: .setNumber)
+        weight = try c.decodeIfPresent(Double.self, forKey: .weight)
+        weightUnit = try c.decodeIfPresent(String.self, forKey: .weightUnit)
+        reps = try c.decode(Int.self, forKey: .reps)
+        isBodyweight = try c.decodeIfPresent(Bool.self, forKey: .isBodyweight)
+        durationSeconds = try c.decodeIfPresent(Int.self, forKey: .durationSeconds)
+        distanceMeters = try c.decodeIfPresent(Int.self, forKey: .distanceMeters)
+    }
 }
 
 // MARK: - History Response Models

@@ -697,6 +697,66 @@ struct ExerciseLoggingView: View {
         previousSessions[exerciseId]?.first?.sets ?? []
     }
 
+    @ViewBuilder
+    private func cardioSetPanel(exercise: ActiveSessionExercise) -> some View {
+        // Cardio is a single block per exercise — one set with duration.
+        // First-set is what we render; ignore any later sets (shouldn't
+        // exist by design but defensive).
+        let set = exercise.sets.first
+        let targetSeconds = set?.durationSeconds ?? 0
+        let targetMin = max(1, Int(round(Double(targetSeconds) / 60.0)))
+        let isCompleted = set?.isCompleted == true
+
+        VStack(alignment: .leading, spacing: 12) {
+            HStack(spacing: 12) {
+                Image(systemName: "figure.run")
+                    .font(.system(size: 24, weight: .semibold))
+                    .foregroundColor(.gymBroPrimary)
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("Target")
+                        .font(.system(size: 10, weight: .bold))
+                        .foregroundColor(.gymBroTextSecondary)
+                    Text("\(targetMin) min")
+                        .font(.system(size: 22, weight: .bold))
+                        .foregroundColor(.gymBroTextPrimary)
+                }
+                Spacer()
+            }
+            .padding(.horizontal, 14)
+            .padding(.vertical, 14)
+            .background(Color.gymBroNeutral50)
+            .clipShape(RoundedRectangle(cornerRadius: 16))
+
+            if let set = set, !readOnly {
+                Button {
+                    Task {
+                        await viewModel.completeSet(
+                            exerciseId: exercise.id,
+                            setId: set.id,
+                            weight: nil,
+                            reps: 0,
+                            isBodyweight: false,
+                            durationSeconds: targetSeconds
+                        )
+                    }
+                } label: {
+                    HStack(spacing: 8) {
+                        Image(systemName: isCompleted ? "checkmark.circle.fill" : "circle")
+                            .font(.system(size: 18, weight: .semibold))
+                        Text(isCompleted ? "Completed" : "Mark complete")
+                            .font(.system(size: 15, weight: .bold))
+                    }
+                    .foregroundColor(.white)
+                    .frame(maxWidth: .infinity)
+                    .frame(height: 48)
+                    .background(isCompleted ? Color.gymBroNeutral400 : Color.gymBroPrimary)
+                    .clipShape(RoundedRectangle(cornerRadius: 24))
+                }
+                .disabled(isCompleted)
+            }
+        }
+    }
+
     private func todayCard(for exercise: ActiveSessionExercise) -> some View {
         let lastSets = lastSessionSets(for: exercise.id)
 
@@ -718,32 +778,36 @@ struct ExerciseLoggingView: View {
                 }
             }
 
-            // Set rows
-            VStack(spacing: 8) {
-                ForEach(exercise.sets) { set in
-                    let prevSet = lastSets.first { $0.setNumber == set.setNumber }
-                    setInputRow(exercise: exercise, set: set, prevSet: prevSet)
+            // Cardio short-circuit: a duration-based set replaces the
+            // weight × reps ladder with a single "Mark complete" tap.
+            // Triggered when any planned set carries durationSeconds.
+            if exercise.sets.contains(where: { $0.durationSeconds != nil }) {
+                cardioSetPanel(exercise: exercise)
+            } else {
+                // Strength: set rows + Add Set button.
+                VStack(spacing: 8) {
+                    ForEach(exercise.sets) { set in
+                        let prevSet = lastSets.first { $0.setNumber == set.setNumber }
+                        setInputRow(exercise: exercise, set: set, prevSet: prevSet)
+                    }
                 }
-            }
 
-            // Add Set dashed button
-            addSetDashedButton {
-                editingSetInfo = nil
-                // Pre-fill: last completed today's set → previous session set
-                let lastCompleted = exercise.sets.filter { $0.isCompleted }.last
-                if let lc = lastCompleted, (lc.weight != nil || lc.reps != nil || lc.isBodyweight) {
-                    addSetWeight = lc.weight.map { $0.formattedWeight } ?? ""
-                    addSetReps = lc.reps.map { "\($0)" } ?? ""
-                    addSetIsBodyweight = lc.isBodyweight
-                } else {
-                    let nextSetNumber = exercise.sets.count + 1
-                    let prevSet = lastSets.first { $0.setNumber == nextSetNumber }
-                    addSetWeight = prevSet?.weight.map { $0.formattedWeight } ?? ""
-                    addSetReps = prevSet.map { "\($0.reps)" } ?? ""
-                    // No history → equipment default.
-                    addSetIsBodyweight = prevSet?.isBodyweight ?? (exercise.equipment == "Bodyweight")
+                addSetDashedButton {
+                    editingSetInfo = nil
+                    let lastCompleted = exercise.sets.filter { $0.isCompleted }.last
+                    if let lc = lastCompleted, (lc.weight != nil || lc.reps != nil || lc.isBodyweight) {
+                        addSetWeight = lc.weight.map { $0.formattedWeight } ?? ""
+                        addSetReps = lc.reps.map { "\($0)" } ?? ""
+                        addSetIsBodyweight = lc.isBodyweight
+                    } else {
+                        let nextSetNumber = exercise.sets.count + 1
+                        let prevSet = lastSets.first { $0.setNumber == nextSetNumber }
+                        addSetWeight = prevSet?.weight.map { $0.formattedWeight } ?? ""
+                        addSetReps = prevSet.map { "\($0.reps)" } ?? ""
+                        addSetIsBodyweight = prevSet?.isBodyweight ?? (exercise.equipment == "Bodyweight")
+                    }
+                    showAddSetSheet = true
                 }
-                showAddSetSheet = true
             }
         }
         .padding(16)

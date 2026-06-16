@@ -16,6 +16,11 @@ struct CompletionSet: Codable {
     let weight: Double?
     let weightUnit: String
     let isBodyweight: Bool
+    // Cardio fields. Strength sets leave both nil and the server stores
+    // them as null. Cardio sets carry durationSeconds (always) and
+    // optionally distanceMeters; weight/reps stay at null/0.
+    let durationSeconds: Int?
+    let distanceMeters: Int?
 
     enum CodingKeys: String, CodingKey {
         case setNumber = "set_number"
@@ -24,15 +29,19 @@ struct CompletionSet: Codable {
         case weight
         case weightUnit = "weight_unit"
         case isBodyweight = "is_bodyweight"
+        case durationSeconds = "duration_seconds"
+        case distanceMeters = "distance_meters"
     }
 
-    init(setNumber: Int, reps: Int, isCompleted: Bool, weight: Double?, weightUnit: String, isBodyweight: Bool = false) {
+    init(setNumber: Int, reps: Int, isCompleted: Bool, weight: Double?, weightUnit: String, isBodyweight: Bool = false, durationSeconds: Int? = nil, distanceMeters: Int? = nil) {
         self.setNumber = setNumber
         self.reps = reps
         self.isCompleted = isCompleted
         self.weight = weight
         self.weightUnit = weightUnit
         self.isBodyweight = isBodyweight
+        self.durationSeconds = durationSeconds
+        self.distanceMeters = distanceMeters
     }
 
     init(from decoder: Decoder) throws {
@@ -45,6 +54,8 @@ struct CompletionSet: Codable {
         // Default false so previously-cached PendingSessionCompletion blobs
         // (queued before this field existed) decode and replay safely.
         self.isBodyweight = try c.decodeIfPresent(Bool.self, forKey: .isBodyweight) ?? false
+        self.durationSeconds = try c.decodeIfPresent(Int.self, forKey: .durationSeconds)
+        self.distanceMeters = try c.decodeIfPresent(Int.self, forKey: .distanceMeters)
     }
 }
 
