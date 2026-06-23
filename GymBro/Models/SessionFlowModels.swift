@@ -124,9 +124,13 @@ struct PreviousSet: Decodable, Identifiable {
     let weightUnit: String
     let reps: Int
     let isBodyweight: Bool
+    let durationSeconds: Int?
+    let distanceMeters: Int?
+    let targetSpeedKmh: Double?
 
     private enum CodingKeys: String, CodingKey {
         case setNumber, weight, weightUnit, reps, isBodyweight
+        case durationSeconds, distanceMeters, targetSpeedKmh
     }
 
     init(from decoder: Decoder) throws {
@@ -136,6 +140,9 @@ struct PreviousSet: Decodable, Identifiable {
         self.weightUnit = try c.decodeIfPresent(String.self, forKey: .weightUnit) ?? "kg"
         self.reps = try c.decode(Int.self, forKey: .reps)
         self.isBodyweight = try c.decodeIfPresent(Bool.self, forKey: .isBodyweight) ?? false
+        self.durationSeconds = try c.decodeIfPresent(Int.self, forKey: .durationSeconds)
+        self.distanceMeters = try c.decodeIfPresent(Int.self, forKey: .distanceMeters)
+        self.targetSpeedKmh = try c.decodeIfPresent(Double.self, forKey: .targetSpeedKmh)
     }
 
     var id: Int { setNumber }
@@ -236,6 +243,9 @@ struct ActiveSet: Identifiable, Equatable, Codable {
     // path instead of weight × reps inputs.
     var durationSeconds: Int?
     var distanceMeters: Int?
+    // Target pace (km/h) — coach/plan-prescribed or user-set. Guidance,
+    // never overwritten with an actual value.
+    var targetSpeedKmh: Double?
 
     init(
         id: String,
@@ -246,7 +256,8 @@ struct ActiveSet: Identifiable, Equatable, Codable {
         isCompleted: Bool,
         isBodyweight: Bool = false,
         durationSeconds: Int? = nil,
-        distanceMeters: Int? = nil
+        distanceMeters: Int? = nil,
+        targetSpeedKmh: Double? = nil
     ) {
         self.id = id
         self.setNumber = setNumber
@@ -257,11 +268,12 @@ struct ActiveSet: Identifiable, Equatable, Codable {
         self.isBodyweight = isBodyweight
         self.durationSeconds = durationSeconds
         self.distanceMeters = distanceMeters
+        self.targetSpeedKmh = targetSpeedKmh
     }
 
     private enum CodingKeys: String, CodingKey {
         case id, setNumber, weight, weightUnit, reps, isCompleted, isBodyweight
-        case durationSeconds, distanceMeters
+        case durationSeconds, distanceMeters, targetSpeedKmh
     }
 
     init(from decoder: Decoder) throws {
@@ -275,6 +287,7 @@ struct ActiveSet: Identifiable, Equatable, Codable {
         self.isBodyweight = try c.decodeIfPresent(Bool.self, forKey: .isBodyweight) ?? false
         self.durationSeconds = try c.decodeIfPresent(Int.self, forKey: .durationSeconds)
         self.distanceMeters = try c.decodeIfPresent(Int.self, forKey: .distanceMeters)
+        self.targetSpeedKmh = try c.decodeIfPresent(Double.self, forKey: .targetSpeedKmh)
     }
 }
 
@@ -341,6 +354,7 @@ struct UpdateSetRequest: Encodable {
     let isCompleted: Bool?
     let durationSeconds: Int?
     let distanceMeters: Int?
+    let targetSpeedKmh: Double?
 
     init(
         weight: Double? = nil,
@@ -348,7 +362,8 @@ struct UpdateSetRequest: Encodable {
         reps: Int? = nil,
         isCompleted: Bool? = nil,
         durationSeconds: Int? = nil,
-        distanceMeters: Int? = nil
+        distanceMeters: Int? = nil,
+        targetSpeedKmh: Double? = nil
     ) {
         self.weight = weight
         self.weightUnit = weightUnit
@@ -356,6 +371,7 @@ struct UpdateSetRequest: Encodable {
         self.isCompleted = isCompleted
         self.durationSeconds = durationSeconds
         self.distanceMeters = distanceMeters
+        self.targetSpeedKmh = targetSpeedKmh
     }
 }
 
@@ -409,10 +425,11 @@ struct SetResponse: Decodable, Identifiable {
     let isBodyweight: Bool
     let durationSeconds: Int?
     let distanceMeters: Int?
+    let targetSpeedKmh: Double?
 
     private enum CodingKeys: String, CodingKey {
         case id, setNumber, weight, weightUnit, reps, isCompleted, isBodyweight
-        case durationSeconds, distanceMeters
+        case durationSeconds, distanceMeters, targetSpeedKmh
     }
 
     init(from decoder: Decoder) throws {
@@ -426,6 +443,7 @@ struct SetResponse: Decodable, Identifiable {
         self.isBodyweight = try c.decodeIfPresent(Bool.self, forKey: .isBodyweight) ?? false
         self.durationSeconds = try c.decodeIfPresent(Int.self, forKey: .durationSeconds)
         self.distanceMeters = try c.decodeIfPresent(Int.self, forKey: .distanceMeters)
+        self.targetSpeedKmh = try c.decodeIfPresent(Double.self, forKey: .targetSpeedKmh)
     }
 }
 

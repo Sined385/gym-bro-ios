@@ -178,6 +178,9 @@ final class SessionFlowViewModel: ObservableObject {
                             reps: ps.reps,
                             isCompleted: false,
                             isBodyweight: ps.isBodyweight ?? false,
+                            durationSeconds: ps.durationSeconds,
+                            distanceMeters: ps.distanceMeters,
+                            targetSpeedKmh: ps.targetSpeedKmh,
                         )
                     }
                 } else {
@@ -274,6 +277,22 @@ final class SessionFlowViewModel: ObservableObject {
         )
     }
 
+    /// THE single chokepoint for mutating `exercises`. Copies the array,
+    /// applies `body`, then assigns the whole array back so the @Published
+    /// setter fires `objectWillChange`.
+    ///
+    /// Why this matters: nested in-place mutation
+    /// (`exercises[i].sets[j].x = y`) and `exercises.append/removeAll` go
+    /// through Array's `_modify` accessor, which does NOT reliably publish.
+    /// Views that hold a value-copy of an exercise (e.g. SetLoggingRows'
+    /// `let exercise`) then never refresh — completed sets appeared to
+    /// "lag by one" tap. Route EVERY exercises mutation through here.
+    private func mutateExercises(_ body: (inout [ActiveSessionExercise]) -> Void) {
+        var copy = exercises
+        body(&copy)
+        exercises = copy
+    }
+
     // MARK: - Exercise Management
 
     func addExercise(_ item: ExerciseLibraryItem) async {
@@ -294,7 +313,7 @@ final class SessionFlowViewModel: ObservableObject {
             externalId: item.externalId,
             isFavorite: item.isFavorite
         )
-        exercises.append(newExercise)
+        mutateExercises { $0.append(newExercise) }
 
         analyticsService.track("exercise_added", properties: [
             "exercise_name": item.name,
@@ -309,10 +328,12 @@ final class SessionFlowViewModel: ObservableObject {
         // Local-only: group existing exercises into a superset
         let groupId = UUID().uuidString
         let orders = ["A", "B", "C", "D", "E"]
-        for (index, exerciseId) in exerciseIds.enumerated() {
-            if let idx = exercises.firstIndex(where: { $0.id == exerciseId }) {
-                exercises[idx].supersetGroupId = groupId
-                exercises[idx].supersetOrder = index < orders.count ? orders[index] : "\(index)"
+        mutateExercises { ex in
+            for (index, exerciseId) in exerciseIds.enumerated() {
+                if let idx = ex.firstIndex(where: { $0.id == exerciseId }) {
+                    ex[idx].supersetGroupId = groupId
+                    ex[idx].supersetOrder = index < orders.count ? orders[index] : "\(index)"
+                }
             }
         }
         analyticsService.track("superset_created", properties: ["exercise_count": exerciseIds.count])
@@ -323,30 +344,32 @@ final class SessionFlowViewModel: ObservableObject {
         guard subscriptionManager.requireFeature(.supersets) else { return }
         let groupId = UUID().uuidString
         let orders = ["A", "B", "C", "D", "E"]
-        for (index, item) in items.enumerated() {
-            let order = index < orders.count ? orders[index] : "\(index)"
-            // If exercise is already in the session, group it instead of duplicating
-            if let existingIndex = exercises.firstIndex(where: { $0.libraryExerciseId == item.id && $0.supersetGroupId == nil }) {
-                exercises[existingIndex].supersetGroupId = groupId
-                exercises[existingIndex].supersetOrder = order
-            } else {
-                let newExercise = ActiveSessionExercise(
-                    id: UUID().uuidString,
-                    libraryExerciseId: item.id,
-                    name: item.name,
-                    muscleGroup: item.muscleGroup,
-                    equipment: item.equipment,
-                    accentColor: nextAccentColor(),
-                    stepNumber: exercises.count + 1,
-                    sets: [],
-                    supersetGroupId: groupId,
-                    supersetOrder: order,
-                    targetSets: 0,
-                    targetReps: 0,
-                    imageUrl: ExerciseImageURLBuilder.thumbnailURL(for: item.externalId)?.absoluteString ?? item.images?.first,
-                    externalId: item.externalId
-                )
-                exercises.append(newExercise)
+        mutateExercises { ex in
+            for (index, item) in items.enumerated() {
+                let order = index < orders.count ? orders[index] : "\(index)"
+                // If exercise is already in the session, group it instead of duplicating
+                if let existingIndex = ex.firstIndex(where: { $0.libraryExerciseId == item.id && $0.supersetGroupId == nil }) {
+                    ex[existingIndex].supersetGroupId = groupId
+                    ex[existingIndex].supersetOrder = order
+                } else {
+                    let newExercise = ActiveSessionExercise(
+                        id: UUID().uuidString,
+                        libraryExerciseId: item.id,
+                        name: item.name,
+                        muscleGroup: item.muscleGroup,
+                        equipment: item.equipment,
+                        accentColor: nextAccentColor(),
+                        stepNumber: ex.count + 1,
+                        sets: [],
+                        supersetGroupId: groupId,
+                        supersetOrder: order,
+                        targetSets: 0,
+                        targetReps: 0,
+                        imageUrl: ExerciseImageURLBuilder.thumbnailURL(for: item.externalId)?.absoluteString ?? item.images?.first,
+                        externalId: item.externalId
+                    )
+                    ex.append(newExercise)
+                }
             }
         }
         analyticsService.track("superset_created", properties: ["exercise_count": items.count])
@@ -354,7 +377,7 @@ final class SessionFlowViewModel: ObservableObject {
     }
 
     func removeExercise(_ exerciseId: String) async {
-        exercises.removeAll { $0.id == exerciseId }
+        mutateExercises { $0.removeAll { $0.id == exerciseId } }
         notifySessionChanged()
     }
 
@@ -387,7 +410,7 @@ final class SessionFlowViewModel: ObservableObject {
     }
 
     func removeSuperset(_ groupId: String) async {
-        exercises.removeAll { $0.supersetGroupId == groupId }
+        mutateExercises { $0.removeAll { $0.supersetGroupId == groupId } }
         notifySessionChanged()
     }
 
@@ -400,17 +423,19 @@ final class SessionFlowViewModel: ObservableObject {
               let setIndex = exercises[exerciseIndex].sets.firstIndex(where: { $0.id == setId }) else { return }
 
         let isCardio = durationSeconds != nil
-        // When the user flipped the bodyweight toggle (or this is a cardio
-        // set), force the stored weight to nil so display sites never read
-        // a stale value.
-        exercises[exerciseIndex].sets[setIndex].weight = (isBodyweight || isCardio) ? nil : weight
-        exercises[exerciseIndex].sets[setIndex].reps = reps
-        exercises[exerciseIndex].sets[setIndex].isCompleted = true
-        exercises[exerciseIndex].sets[setIndex].isBodyweight = isBodyweight
-        if isCardio {
-            exercises[exerciseIndex].sets[setIndex].durationSeconds = durationSeconds
-            if let distanceMeters {
-                exercises[exerciseIndex].sets[setIndex].distanceMeters = distanceMeters
+        mutateExercises { ex in
+            // When the user flipped the bodyweight toggle (or this is a
+            // cardio set), force the stored weight to nil so display sites
+            // never read a stale value.
+            ex[exerciseIndex].sets[setIndex].weight = (isBodyweight || isCardio) ? nil : weight
+            ex[exerciseIndex].sets[setIndex].reps = reps
+            ex[exerciseIndex].sets[setIndex].isCompleted = true
+            ex[exerciseIndex].sets[setIndex].isBodyweight = isBodyweight
+            if isCardio {
+                ex[exerciseIndex].sets[setIndex].durationSeconds = durationSeconds
+                if let distanceMeters {
+                    ex[exerciseIndex].sets[setIndex].distanceMeters = distanceMeters
+                }
             }
         }
 
@@ -433,6 +458,42 @@ final class SessionFlowViewModel: ObservableObject {
         ] as [String: Any])
     }
 
+    /// Record a completed cardio block (time + distance). Updates the
+    /// exercise's first not-yet-completed set, or APPENDS a completed set
+    /// when the exercise has none yet — ad-hoc-added cardio starts with no
+    /// sets, and the old path (completeSet on `sets.first`) silently
+    /// dropped the recording, so the walk saved with no duration.
+    func completeCardioSet(exerciseId: String, durationSeconds: Int, distanceMeters: Int?) async {
+        sessionManager.cancelStillThereNotification()
+        guard let exIdx = exercises.firstIndex(where: { $0.id == exerciseId }) else { return }
+        mutateExercises { ex in
+            let targetIdx = ex[exIdx].sets.firstIndex(where: { !$0.isCompleted })
+                ?? ex[exIdx].sets.indices.first
+            if let setIdx = targetIdx {
+                ex[exIdx].sets[setIdx].weight = nil
+                ex[exIdx].sets[setIdx].reps = 0
+                ex[exIdx].sets[setIdx].isBodyweight = false
+                ex[exIdx].sets[setIdx].isCompleted = true
+                ex[exIdx].sets[setIdx].durationSeconds = durationSeconds
+                ex[exIdx].sets[setIdx].distanceMeters = distanceMeters
+            } else {
+                ex[exIdx].sets.append(ActiveSet(
+                    id: UUID().uuidString,
+                    setNumber: 1,
+                    weight: nil,
+                    weightUnit: "kg",
+                    reps: 0,
+                    isCompleted: true,
+                    isBodyweight: false,
+                    durationSeconds: durationSeconds,
+                    distanceMeters: distanceMeters
+                ))
+            }
+        }
+        notifySessionChanged()
+        sessionManager.scheduleStartReminder()
+    }
+
     func logSet(exerciseId: String, weight: Double?, weightUnit: String = "kg", reps: Int, isBodyweight: Bool = false) async {
         sessionManager.cancelStillThereNotification()
 
@@ -448,7 +509,7 @@ final class SessionFlowViewModel: ObservableObject {
             isCompleted: true,
             isBodyweight: isBodyweight
         )
-        exercises[exerciseIndex].sets.append(newSet)
+        mutateExercises { $0[exerciseIndex].sets.append(newSet) }
 
         notifySessionChanged()
         sessionManager.scheduleStartReminder()
@@ -465,22 +526,24 @@ final class SessionFlowViewModel: ObservableObject {
         guard let exerciseIndex = exercises.firstIndex(where: { $0.id == exerciseId }),
               let setIndex = exercises[exerciseIndex].sets.firstIndex(where: { $0.id == setId }) else { return }
 
-        if let isBodyweight { exercises[exerciseIndex].sets[setIndex].isBodyweight = isBodyweight }
-        // If the set is now bodyweight, clear the weight; otherwise accept the new value.
-        if exercises[exerciseIndex].sets[setIndex].isBodyweight {
-            exercises[exerciseIndex].sets[setIndex].weight = nil
-        } else if let weight = weight {
-            exercises[exerciseIndex].sets[setIndex].weight = weight
+        mutateExercises { ex in
+            if let isBodyweight { ex[exerciseIndex].sets[setIndex].isBodyweight = isBodyweight }
+            // If the set is now bodyweight, clear the weight; otherwise accept the new value.
+            if ex[exerciseIndex].sets[setIndex].isBodyweight {
+                ex[exerciseIndex].sets[setIndex].weight = nil
+            } else if let weight = weight {
+                ex[exerciseIndex].sets[setIndex].weight = weight
+            }
+            if let weightUnit = weightUnit { ex[exerciseIndex].sets[setIndex].weightUnit = weightUnit }
+            if let reps = reps { ex[exerciseIndex].sets[setIndex].reps = reps }
+            if let isCompleted = isCompleted { ex[exerciseIndex].sets[setIndex].isCompleted = isCompleted }
         }
-        if let weightUnit = weightUnit { exercises[exerciseIndex].sets[setIndex].weightUnit = weightUnit }
-        if let reps = reps { exercises[exerciseIndex].sets[setIndex].reps = reps }
-        if let isCompleted = isCompleted { exercises[exerciseIndex].sets[setIndex].isCompleted = isCompleted }
         notifySessionChanged()
     }
 
     func deleteSet(exerciseId: String, setId: String) async {
         guard let exerciseIndex = exercises.firstIndex(where: { $0.id == exerciseId }) else { return }
-        exercises[exerciseIndex].sets.removeAll { $0.id == setId }
+        mutateExercises { $0[exerciseIndex].sets.removeAll { $0.id == setId } }
         notifySessionChanged()
     }
 
@@ -497,6 +560,43 @@ final class SessionFlowViewModel: ObservableObject {
             // No previous data available
             return []
         }
+    }
+
+    /// The user's body weight (kg) from their onboarding profile. Used as
+    /// the calorie-estimate fallback when HealthKit has no weight sample
+    /// (e.g. permission not granted, or the simulator). Returns nil when
+    /// onboarding has no recorded weight.
+    func loadBodyWeightKg() async -> Double? {
+        struct OnboardingBodyWeight: Decodable {
+            let bodyWeightKg: Double?
+        }
+        do {
+            let response = try await networkService.request(
+                OnboardingRouter.fetch.endpoint,
+                responseType: OnboardingBodyWeight.self
+            )
+            return response.bodyWeightKg
+        } catch {
+            return nil
+        }
+    }
+
+    /// Update the user-editable cardio targets (duration + pace) on the
+    /// exercise's single cardio set, before recording starts. Persists
+    /// through the session cache (and the completion payload) so the
+    /// edited target survives backgrounding and reaches the server when
+    /// the workout finishes. No-op once the set is completed.
+    func updateCardioTargets(exerciseId: String, durationSeconds: Int?, targetSpeedKmh: Double?) {
+        guard let exIdx = exercises.firstIndex(where: { $0.id == exerciseId }),
+              let setIdx = exercises[exIdx].sets.firstIndex(where: { !$0.isCompleted })
+                ?? exercises[exIdx].sets.indices.first else { return }
+        mutateExercises { ex in
+            if let durationSeconds, durationSeconds > 0 {
+                ex[exIdx].sets[setIdx].durationSeconds = durationSeconds
+            }
+            ex[exIdx].sets[setIdx].targetSpeedKmh = targetSpeedKmh
+        }
+        notifySessionChanged()
     }
 
     // MARK: - Repeat Last Set (Live Activity)
@@ -608,7 +708,8 @@ final class SessionFlowViewModel: ObservableObject {
                             weightUnit: set.weightUnit,
                             isBodyweight: set.isBodyweight,
                             durationSeconds: set.durationSeconds,
-                            distanceMeters: set.distanceMeters
+                            distanceMeters: set.distanceMeters,
+                            targetSpeedKmh: set.targetSpeedKmh
                         )
                     },
                     libraryExerciseId: ex.libraryExerciseId,

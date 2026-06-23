@@ -236,12 +236,21 @@ struct WorkoutAttachmentView: View {
     }
 
     private func setChip(_ set: AttachmentSetData) -> some View {
-        let text = SetDisplay.line(
-            weight: set.weight,
-            weightUnit: set.weightUnit,
-            reps: set.reps,
-            isBodyweight: set.isBodyweight
-        )
+        // Cardio sets show time + distance, not "× 0".
+        let text: String
+        if set.durationSeconds != nil {
+            text = WorkoutSnapshotExercise.cardioLine(
+                seconds: set.durationSeconds ?? 0,
+                meters: set.distanceMeters ?? 0
+            )
+        } else {
+            text = SetDisplay.line(
+                weight: set.weight,
+                weightUnit: set.weightUnit,
+                reps: set.reps,
+                isBodyweight: set.isBodyweight
+            )
+        }
 
         return Text(text)
             .font(.system(size: 11, weight: .semibold))

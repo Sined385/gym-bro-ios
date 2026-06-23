@@ -16,6 +16,7 @@ struct ShareEditorView: View {
 
     @State private var config: ShareConfig
     @State private var caption: String = ""
+    @FocusState private var captionFocused: Bool
     @State private var visibility: String = "global"
     @State private var isSharing: Bool = false
     @State private var errorMessage: String?
@@ -64,6 +65,7 @@ struct ShareEditorView: View {
                     .padding(.top, 8)
                     .padding(.bottom, 24)
                 }
+                .scrollDismissesKeyboard(.interactively)
                 shareRail
             }
             .background(Color.gymBroBackground.ignoresSafeArea())
@@ -363,23 +365,35 @@ struct ShareEditorView: View {
                         }
                     }
                     if let mg = ex.muscleGroup, !mg.isEmpty {
-                        Text("\(mg.uppercased()) · \(ex.setChips.count) SETS")
+                        // Cardio shows time + distance instead of "N SETS".
+                        Text(ex.isCardio ? mg.uppercased() : "\(mg.uppercased()) · \(ex.setChips.count) SETS")
                             .font(.system(size: 9, weight: .heavy))
                             .tracking(0.4)
                             .foregroundColor(.gymBroTextSecondary)
                     }
                 }
                 Spacer(minLength: 4)
-                HStack(spacing: 3) {
-                    ForEach(Array(ex.setChips.prefix(4).enumerated()), id: \.offset) { _, chip in
-                        Text(chip)
-                            .font(.system(size: 9, weight: .heavy))
-                            .foregroundColor(accent)
-                            .monospacedDigit()
-                            .padding(.horizontal, 5)
-                            .padding(.vertical, 2)
-                            .background(accent.opacity(0.12))
-                            .clipShape(RoundedRectangle(cornerRadius: 4))
+                if ex.isCardio {
+                    Text(ex.bestSetLine)
+                        .font(.system(size: 10, weight: .heavy))
+                        .foregroundColor(accent)
+                        .monospacedDigit()
+                        .padding(.horizontal, 6)
+                        .padding(.vertical, 2)
+                        .background(accent.opacity(0.12))
+                        .clipShape(RoundedRectangle(cornerRadius: 4))
+                } else {
+                    HStack(spacing: 3) {
+                        ForEach(Array(ex.setChips.prefix(4).enumerated()), id: \.offset) { _, chip in
+                            Text(chip)
+                                .font(.system(size: 9, weight: .heavy))
+                                .foregroundColor(accent)
+                                .monospacedDigit()
+                                .padding(.horizontal, 5)
+                                .padding(.vertical, 2)
+                                .background(accent.opacity(0.12))
+                                .clipShape(RoundedRectangle(cornerRadius: 4))
+                        }
                     }
                 }
             }
@@ -422,6 +436,7 @@ struct ShareEditorView: View {
             TextField("Say something about this workout…", text: $caption, axis: .vertical)
                 .font(.system(size: 14, weight: .medium))
                 .foregroundColor(.gymBroNeutral900)
+                .focused($captionFocused)
                 .padding(12)
                 .background(Color.white)
                 .clipShape(RoundedRectangle(cornerRadius: 12))
@@ -430,6 +445,16 @@ struct ShareEditorView: View {
                         .stroke(Color(hex: "ECECF0"), lineWidth: 1)
                 )
                 .lineLimit(3...6)
+                .toolbar {
+                    // The vertical TextField turns Return into a newline, so
+                    // give the keyboard an explicit Done to dismiss it.
+                    ToolbarItemGroup(placement: .keyboard) {
+                        Spacer()
+                        Button("Done") { captionFocused = false }
+                            .font(.system(size: 16, weight: .semibold))
+                            .foregroundColor(.gymBroPrimary)
+                    }
+                }
         }
     }
 

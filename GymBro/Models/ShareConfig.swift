@@ -289,9 +289,30 @@ struct WorkoutSnapshotExercise: Equatable, Identifiable {
     let accentColorHex: String
     let isPR: Bool
     /// Compact display chips for the card — e.g. ["60", "70", "80", "85"].
+    /// Empty for cardio (no weight chips).
     let setChips: [String]
-    /// Full "best set" line used in carousel slide 3 — e.g. "85kg × 6".
+    /// Full "best set" line used in carousel slide 3 — e.g. "85kg × 6",
+    /// or for cardio the duration + distance, e.g. "20:00 · 2.5 km".
     let bestSetLine: String
+    /// Cardio is duration-based — views render `bestSetLine` (time +
+    /// distance) and skip the "N sets × reps" weight presentation.
+    var isCardio: Bool = false
+}
+
+extension WorkoutSnapshotExercise {
+    /// "20:00 · 2.5 km" / "20:00" (no distance). Time-only when distance
+    /// wasn't logged.
+    static func cardioLine(seconds: Int, meters: Int) -> String {
+        let s = max(0, seconds)
+        let h = s / 3600, m = (s % 3600) / 60, sec = s % 60
+        let time = h > 0
+            ? String(format: "%d:%02d:%02d", h, m, sec)
+            : String(format: "%d:%02d", m, sec)
+        guard meters > 0 else { return time }
+        let km = Double(meters) / 1000.0
+        let dist = String(format: km >= 10 ? "%.1f km" : "%.2f km", km)
+        return "\(time) · \(dist)"
+    }
 }
 
 // MARK: - Adapters
@@ -349,6 +370,25 @@ extension WorkoutSnapshot {
 extension WorkoutSnapshotExercise {
     static func from(_ ex: ActiveSessionExercise) -> WorkoutSnapshotExercise {
         let completed = ex.sets.filter(\.isCompleted)
+
+        // Cardio is duration-based — show time + distance, not "1 set × 0".
+        let isCardio = ex.muscleGroup.caseInsensitiveCompare("Cardio") == .orderedSame
+            || completed.contains { $0.durationSeconds != nil }
+        if isCardio {
+            let secs = completed.reduce(0) { $0 + ($1.durationSeconds ?? 0) }
+            let meters = completed.reduce(0) { $0 + ($1.distanceMeters ?? 0) }
+            return WorkoutSnapshotExercise(
+                id: ex.name,
+                name: ex.name,
+                muscleGroup: ex.muscleGroup,
+                accentColorHex: ex.accentColor,
+                isPR: false,
+                setChips: [],
+                bestSetLine: cardioLine(seconds: secs, meters: meters),
+                isCardio: true
+            )
+        }
+
         // Best set = heaviest weight (reps as tiebreaker). For bodyweight,
         // most reps wins. The previous "weight × reps" picked highest
         // volume, which surfaced warmups like 50kg × 10 (500 vol) over a
@@ -386,6 +426,29 @@ extension WorkoutSnapshotExercise {
 
     static func from(_ ex: AttachmentExercise) -> WorkoutSnapshotExercise {
         let sets = ex.sets ?? []
+
+        // Cardio is duration-based — show time + distance. Prefer the
+        // logged per-set duration/distance; fall back to the AI's
+        // sets_display ("20 min") when the attachment predates those
+        // fields, never "× 0".
+        let isCardio = (ex.muscleGroup?.caseInsensitiveCompare("Cardio") == .orderedSame)
+            || sets.contains { $0.durationSeconds != nil }
+        if isCardio {
+            let secs = sets.reduce(0) { $0 + ($1.durationSeconds ?? 0) }
+            let meters = sets.reduce(0) { $0 + ($1.distanceMeters ?? 0) }
+            let line = secs > 0 ? cardioLine(seconds: secs, meters: meters) : (ex.setsDisplay ?? "—")
+            return WorkoutSnapshotExercise(
+                id: ex.name,
+                name: ex.name,
+                muscleGroup: ex.muscleGroup,
+                accentColorHex: ex.accentColor ?? "#E86A75",
+                isPR: false,
+                setChips: [],
+                bestSetLine: line,
+                isCardio: true
+            )
+        }
+
         // Best = heaviest weight (reps as tiebreaker). See the comment on
         // the ActiveSessionExercise overload for why volume-based picks
         // mis-rank warmups as "best."

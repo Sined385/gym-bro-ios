@@ -171,16 +171,18 @@ struct DashboardExerciseSet: Codable {
     // instead of the weight × reps row.
     let durationSeconds: Int?
     let distanceMeters: Int?
+    // Target pace (km/h) — coach/plan-prescribed. Guidance only.
+    let targetSpeedKmh: Double?
 
-    // Older payloads (and unit tests) omit the two cardio fields
-    // entirely. With `let`s on a strict Codable struct, that's a hard
-    // decode error. Custom init treats them as optional.
+    // Older payloads (and unit tests) omit the cardio fields entirely.
+    // With `let`s on a strict Codable struct, that's a hard decode
+    // error. Custom init treats them as optional.
     enum CodingKeys: String, CodingKey {
         case setNumber, weight, weightUnit, reps, isBodyweight
-        case durationSeconds, distanceMeters
+        case durationSeconds, distanceMeters, targetSpeedKmh
     }
 
-    init(setNumber: Int, weight: Double?, weightUnit: String?, reps: Int, isBodyweight: Bool?, durationSeconds: Int? = nil, distanceMeters: Int? = nil) {
+    init(setNumber: Int, weight: Double?, weightUnit: String?, reps: Int, isBodyweight: Bool?, durationSeconds: Int? = nil, distanceMeters: Int? = nil, targetSpeedKmh: Double? = nil) {
         self.setNumber = setNumber
         self.weight = weight
         self.weightUnit = weightUnit
@@ -188,6 +190,7 @@ struct DashboardExerciseSet: Codable {
         self.isBodyweight = isBodyweight
         self.durationSeconds = durationSeconds
         self.distanceMeters = distanceMeters
+        self.targetSpeedKmh = targetSpeedKmh
     }
 
     init(from decoder: Decoder) throws {
@@ -199,6 +202,7 @@ struct DashboardExerciseSet: Codable {
         isBodyweight = try c.decodeIfPresent(Bool.self, forKey: .isBodyweight)
         durationSeconds = try c.decodeIfPresent(Int.self, forKey: .durationSeconds)
         distanceMeters = try c.decodeIfPresent(Int.self, forKey: .distanceMeters)
+        targetSpeedKmh = try c.decodeIfPresent(Double.self, forKey: .targetSpeedKmh)
     }
 }
 
@@ -263,17 +267,24 @@ struct ExerciseSetData: Decodable, Identifiable {
     let weightUnit: String
     let reps: Int
     let isBodyweight: Bool
+    // Cardio fields — duration is the logged time, distance the logged
+    // metres. Nil for strength sets.
+    let durationSeconds: Int?
+    let distanceMeters: Int?
 
     private enum CodingKeys: String, CodingKey {
         case setNumber, weight, weightUnit, reps, isBodyweight
+        case durationSeconds, distanceMeters
     }
 
-    init(setNumber: Int, weight: Double?, weightUnit: String, reps: Int, isBodyweight: Bool = false) {
+    init(setNumber: Int, weight: Double?, weightUnit: String, reps: Int, isBodyweight: Bool = false, durationSeconds: Int? = nil, distanceMeters: Int? = nil) {
         self.setNumber = setNumber
         self.weight = weight
         self.weightUnit = weightUnit
         self.reps = reps
         self.isBodyweight = isBodyweight
+        self.durationSeconds = durationSeconds
+        self.distanceMeters = distanceMeters
     }
 
     init(from decoder: Decoder) throws {
@@ -283,6 +294,8 @@ struct ExerciseSetData: Decodable, Identifiable {
         self.weightUnit = try c.decodeIfPresent(String.self, forKey: .weightUnit) ?? "kg"
         self.reps = try c.decode(Int.self, forKey: .reps)
         self.isBodyweight = try c.decodeIfPresent(Bool.self, forKey: .isBodyweight) ?? false
+        self.durationSeconds = try c.decodeIfPresent(Int.self, forKey: .durationSeconds)
+        self.distanceMeters = try c.decodeIfPresent(Int.self, forKey: .distanceMeters)
     }
 
     var id: Int { setNumber }

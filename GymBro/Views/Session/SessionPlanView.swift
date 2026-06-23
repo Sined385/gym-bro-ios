@@ -262,7 +262,30 @@ struct SessionPlanView: View {
         _ exercise: ActiveSessionExercise,
         dragHandle: AnyView = AnyView(EmptyView()),
     ) -> some View {
-        HStack(spacing: 16) {
+        // Cardio is duration-based (no sets) — show target minutes instead of
+        // "0 / 20 SETS" (the "20 min" sets_display otherwise mis-parses as 20
+        // sets). Computed once so the badge and the done-checkmark agree.
+        let isCardio = exercise.muscleGroup.caseInsensitiveCompare("Cardio") == .orderedSame
+            || exercise.sets.contains { $0.durationSeconds != nil }
+        let completedSets = exercise.sets.filter { $0.isCompleted }.count
+        let hasTarget = exercise.targetSets > 0
+        let allDone = isCardio
+            ? exercise.sets.contains { $0.isCompleted }
+            : (hasTarget && completedSets >= exercise.targetSets)
+        let badgeText: String = {
+            if isCardio {
+                // Target comes from what the coach composed — never a
+                // hardcoded default. Prefer the set's stored duration; fall
+                // back to the AI's sets_display minutes (parsed into
+                // targetSets, e.g. "20 min" → 20). Matches
+                // CardioWorkoutView.targetSeconds so badge and screen agree.
+                let mins = exercise.sets.first?.durationSeconds.map { Int((Double($0) / 60.0).rounded()) }
+                    ?? exercise.targetSets
+                return allDone ? "DONE" : (mins > 0 ? "\(mins) MIN" : "CARDIO")
+            }
+            return hasTarget ? "\(completedSets) / \(exercise.targetSets) SETS" : "\(completedSets) SETS"
+        }()
+        return HStack(spacing: 16) {
             // Accent bar
             RoundedRectangle(cornerRadius: 100)
                 .fill(Color(hex: exercise.accentColor))
@@ -278,11 +301,8 @@ struct SessionPlanView: View {
                     .lineLimit(1)
                     .tracking(-0.3)
 
-                // Sets badge
-                let completedSets = exercise.sets.filter { $0.isCompleted }.count
-                let hasTarget = exercise.targetSets > 0
-                let allDone = hasTarget && completedSets >= exercise.targetSets
-                Text(hasTarget ? "\(completedSets) / \(exercise.targetSets) SETS" : "\(completedSets) SETS")
+                // Progress badge (cardio-aware — see exerciseCardContent top).
+                Text(badgeText)
                     .font(.system(size: 11, weight: .semibold))
                     .tracking(0.6)
                     .foregroundColor(allDone ? Color(hex: "30C08D") : Color(hex: "737373"))
@@ -300,7 +320,7 @@ struct SessionPlanView: View {
 
             dragHandle
 
-            if exercise.targetSets > 0 && exercise.sets.filter({ $0.isCompleted }).count >= exercise.targetSets {
+            if allDone {
                 Image(systemName: "checkmark.circle.fill")
                     .font(.system(size: 24))
                     .foregroundColor(Color(hex: "30C08D"))

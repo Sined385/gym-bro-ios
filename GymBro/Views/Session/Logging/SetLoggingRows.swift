@@ -25,28 +25,39 @@ struct SetLoggingRows: View {
     @State private var editReps: [String: String] = [:]
     @State private var editBodyweight: [String: Bool] = [:]
 
+    /// The live exercise read straight from the observed viewModel by id.
+    /// `exercise` (the passed-in value) is only a seed/fallback for the id;
+    /// rendering off this computed value means set completions reflect
+    /// immediately — SetLoggingRows re-renders on every viewModel publish
+    /// (it's @ObservedObject), so this always returns the freshest copy.
+    /// Passing the exercise by value alone left rows showing stale state
+    /// until the screen was reopened.
+    private var currentExercise: ActiveSessionExercise {
+        viewModel.exercises.first { $0.id == exercise.id } ?? exercise
+    }
+
     var body: some View {
         VStack(spacing: 0) {
             VStack(spacing: 8) {
-                ForEach(exercise.sets) { set in
+                ForEach(currentExercise.sets) { set in
                     let prevSet = lastSets.first { $0.setNumber == set.setNumber }
-                    setInputRow(exercise: exercise, set: set, prevSet: prevSet)
+                    setInputRow(exercise: currentExercise, set: set, prevSet: prevSet)
                 }
             }
 
             addSetDashedButton {
                 editingSetInfo = nil
-                let lastCompleted = exercise.sets.filter { $0.isCompleted }.last
+                let lastCompleted = currentExercise.sets.filter { $0.isCompleted }.last
                 if let lc = lastCompleted, (lc.weight != nil || lc.reps != nil || lc.isBodyweight) {
                     addSetWeight = lc.weight.map { $0.formattedWeight } ?? ""
                     addSetReps = lc.reps.map { "\($0)" } ?? ""
                     addSetIsBodyweight = lc.isBodyweight
                 } else {
-                    let nextSetNumber = exercise.sets.count + 1
+                    let nextSetNumber = currentExercise.sets.count + 1
                     let prevSet = lastSets.first { $0.setNumber == nextSetNumber }
                     addSetWeight = prevSet?.weight.map { $0.formattedWeight } ?? ""
                     addSetReps = prevSet.map { "\($0.reps)" } ?? ""
-                    addSetIsBodyweight = prevSet?.isBodyweight ?? (exercise.equipment == "Bodyweight")
+                    addSetIsBodyweight = prevSet?.isBodyweight ?? (currentExercise.equipment == "Bodyweight")
                 }
                 showAddSetSheet = true
             }

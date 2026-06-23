@@ -198,6 +198,18 @@ final class MockHealthKitService: HealthKitServiceProtocol {
         return mockWeightSamples.last
     }
 
+    func fetchLatestHeight() async throws -> HealthSample? {
+        if shouldFail {
+            throw errorToThrow
+        }
+
+        return nil
+    }
+
+    func fetchBiologicalSex() -> HKBiologicalSex? {
+        nil
+    }
+
     func saveBodyFatPercentage(_ bodyFat: Double, date: Date) async throws {
         if shouldFail {
             throw errorToThrow

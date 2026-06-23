@@ -82,6 +82,120 @@ final class ActiveSessionManager: ObservableObject {
     private(set) var lastCompletedSetDisplay: String?
     @Published var repeatLastSetRequested: Bool = false
 
+    // MARK: - Cardio Recording
+
+    /// Recording state for the currently-running cardio exercise. Lives
+    /// on the manager (not the view) so leaving and returning to
+    /// CardioWorkoutView preserves elapsed time. Nil when no cardio
+    /// exercise is being recorded. Cleared by `endCardio()` and when
+    /// `endSession()` runs.
+    struct CardioRecording: Equatable, Codable {
+        let exerciseId: String
+        /// Wall-clock when the current unpaused run started. Nil while paused.
+        var startDate: Date?
+        /// Seconds banked from prior unpaused runs (reset at Start, +delta at Pause).
+        var accumulatedSeconds: Int
+        var isPaused: Bool
+    }
+
+    @Published var cardioRecording: CardioRecording?
+
+    /// The exercise id of the cardio that's currently being recorded,
+    /// or nil when none is in flight. Used by the cardio screen to
+    /// enforce "only one cardio at a time" — when this is set to a
+    /// different exercise, the idle Start affordance is replaced with an
+    /// "already in progress" notice instead of a second Start.
+    var runningCardioExerciseId: String? { cardioRecording?.exerciseId }
+
+    /// True if cardio is currently being recorded for `exerciseId` AND
+    /// the user hasn't paused. Drives the family widget's TimelineView
+    /// tick frequency.
+    func isCardioActivelyRecording(for exerciseId: String) -> Bool {
+        guard let rec = cardioRecording, rec.exerciseId == exerciseId else { return false }
+        return !rec.isPaused && rec.startDate != nil
+    }
+
+    /// Begin recording for the given cardio exercise. Enforces a single
+    /// in-flight cardio: if a *different* cardio is already recording (or
+    /// paused), this is a no-op and returns `false` so it can never
+    /// clobber another exercise's run. Calling it for the exercise that's
+    /// already recording is also a no-op (returns `false`). Returns
+    /// `true` only when a fresh recording was started.
+    @discardableResult
+    func startCardio(exerciseId: String) -> Bool {
+        if let existing = cardioRecording {
+            // Already recording something — only allow a true fresh start
+            // when nothing is in flight. Same-exercise re-taps are ignored.
+            _ = existing
+            return false
+        }
+        cardioRecording = CardioRecording(
+            exerciseId: exerciseId,
+            startDate: Date(),
+            accumulatedSeconds: 0,
+            isPaused: false
+        )
+        persistCardioRecording()
+        return true
+    }
+
+    /// Bank the active delta into `accumulatedSeconds` and pause.
+    func pauseCardio() {
+        guard var rec = cardioRecording else { return }
+        if let started = rec.startDate, !rec.isPaused {
+            rec.accumulatedSeconds += Int(Date().timeIntervalSince(started))
+        }
+        rec.startDate = nil
+        rec.isPaused = true
+        cardioRecording = rec
+        persistCardioRecording()
+    }
+
+    /// Resume after a pause. Re-arms `startDate` to "now" so subsequent
+    /// elapsed math just adds to `accumulatedSeconds`.
+    func resumeCardio() {
+        guard var rec = cardioRecording else { return }
+        rec.startDate = Date()
+        rec.isPaused = false
+        cardioRecording = rec
+        persistCardioRecording()
+    }
+
+    /// Lightweight save that just re-runs the cache write with the
+    /// current exercises + cardioRecording. Used by the Start/Pause/
+    /// Resume/End calls — without this, the cardioRecording lives only
+    /// in memory and dies with the process.
+    private func persistCardioRecording() {
+        saveSession(
+            exercises: lastSavedExercises ?? [],
+            effortLevel: lastSavedFeedback?.effort ?? 0,
+            energyLevel: lastSavedFeedback?.energy ?? 0,
+            painDiscomfort: lastSavedFeedback?.pain ?? ""
+        )
+    }
+
+    /// Returns the elapsed seconds at the given moment for the
+    /// currently-recorded cardio. Zero when no recording is in flight.
+    func currentCardioElapsed(at now: Date) -> Int {
+        guard let rec = cardioRecording else { return 0 }
+        if let started = rec.startDate, !rec.isPaused {
+            return rec.accumulatedSeconds + Int(now.timeIntervalSince(started))
+        }
+        return rec.accumulatedSeconds
+    }
+
+    /// Finalize recording: returns the total elapsed seconds and clears
+    /// the recording slot. The caller (CardioWorkoutView's Done tap)
+    /// then writes that total into the SessionFlowViewModel via
+    /// completeSet(... durationSeconds:).
+    @discardableResult
+    func endCardio() -> Int {
+        let total = currentCardioElapsed(at: Date())
+        cardioRecording = nil
+        persistCardioRecording()
+        return max(total, 0)
+    }
+
     // MARK: - Watch Connectivity
 
     private let watchConnectivityService: WatchConnectivityServiceProtocol?
@@ -262,6 +376,7 @@ final class ActiveSessionManager: ObservableObject {
         lastCompletedExerciseName = nil
         lastCompletedSetDisplay = nil
         repeatLastSetRequested = false
+        cardioRecording = nil
         restoredExercises = nil
         restoredFeedback = nil
         watchWorkoutSummary = nil
@@ -549,6 +664,12 @@ final class ActiveSessionManager: ObservableObject {
         let restStartDate: Date?
         let restDurationSeconds: Int
         let isWorkoutStarted: Bool
+        /// In-flight cardio recording state — present when the user has
+        /// tapped Start on a cardio exercise and not yet tapped Done.
+        /// Survives app kill so reopening lands the user back on the
+        /// recording state with the timer correctly advanced from
+        /// `startDate`.
+        let cardioRecording: CardioRecording?
 
         // Older builds wrote payloads without the new metadata. Decode
         // them gracefully so a TestFlight upgrade doesn't lose an
@@ -557,7 +678,8 @@ final class ActiveSessionManager: ObservableObject {
             case sessionId, sessionTitle, planDayId, sessionType, aiMessage,
                  sessionStartDate, exercises, sessionExercises,
                  presentationState, effortLevel, energyLevel, painDiscomfort,
-                 restStartDate, restDurationSeconds, isWorkoutStarted
+                 restStartDate, restDurationSeconds, isWorkoutStarted,
+                 cardioRecording
         }
 
         init(
@@ -576,6 +698,7 @@ final class ActiveSessionManager: ObservableObject {
             restStartDate: Date?,
             restDurationSeconds: Int,
             isWorkoutStarted: Bool,
+            cardioRecording: CardioRecording?
         ) {
             self.sessionId = sessionId
             self.sessionTitle = sessionTitle
@@ -592,6 +715,7 @@ final class ActiveSessionManager: ObservableObject {
             self.restStartDate = restStartDate
             self.restDurationSeconds = restDurationSeconds
             self.isWorkoutStarted = isWorkoutStarted
+            self.cardioRecording = cardioRecording
         }
 
         init(from decoder: Decoder) throws {
@@ -611,6 +735,7 @@ final class ActiveSessionManager: ObservableObject {
             self.restStartDate = try c.decodeIfPresent(Date.self, forKey: .restStartDate)
             self.restDurationSeconds = try c.decode(Int.self, forKey: .restDurationSeconds)
             self.isWorkoutStarted = try c.decode(Bool.self, forKey: .isWorkoutStarted)
+            self.cardioRecording = try c.decodeIfPresent(CardioRecording.self, forKey: .cardioRecording)
         }
     }
 
@@ -646,6 +771,7 @@ final class ActiveSessionManager: ObservableObject {
             restStartDate: restStartDate,
             restDurationSeconds: restDurationSeconds,
             isWorkoutStarted: isWorkoutStarted,
+            cardioRecording: cardioRecording
         )
 
         if let data = try? JSONEncoder().encode(cached) {
@@ -699,6 +825,7 @@ final class ActiveSessionManager: ObservableObject {
 
         restoredExercises = cached.exercises
         lastSavedExercises = cached.exercises
+        cardioRecording = cached.cardioRecording
         // Only restore feedback if user actually selected values
         if cached.effortLevel > 0 || cached.energyLevel > 0 || !cached.painDiscomfort.isEmpty {
             restoredFeedback = (cached.effortLevel, cached.energyLevel, cached.painDiscomfort)

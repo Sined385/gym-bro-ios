@@ -66,7 +66,9 @@ struct ExerciseListSlide: View {
                     }
                 }
                 if let mg = ex.muscleGroup, !mg.isEmpty {
-                    Text("\(mg.uppercased()) · \(ex.setChips.count) SETS")
+                    // Cardio shows time + distance in `bestSetLine`, so the
+                    // subtitle is just the muscle group (no "N SETS").
+                    Text(ex.isCardio ? mg.uppercased() : "\(mg.uppercased()) · \(ex.setChips.count) SETS")
                         .font(.system(size: 9, weight: .heavy))
                         .tracking(0.4)
                         .foregroundColor(.gymBroTextSecondary)

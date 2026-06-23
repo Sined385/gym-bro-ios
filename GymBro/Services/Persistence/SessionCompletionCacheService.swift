@@ -21,6 +21,8 @@ struct CompletionSet: Codable {
     // optionally distanceMeters; weight/reps stay at null/0.
     let durationSeconds: Int?
     let distanceMeters: Int?
+    // Target pace (km/h) — coach/plan/user-set guidance; never an actual.
+    let targetSpeedKmh: Double?
 
     enum CodingKeys: String, CodingKey {
         case setNumber = "set_number"
@@ -31,9 +33,10 @@ struct CompletionSet: Codable {
         case isBodyweight = "is_bodyweight"
         case durationSeconds = "duration_seconds"
         case distanceMeters = "distance_meters"
+        case targetSpeedKmh = "target_speed_kmh"
     }
 
-    init(setNumber: Int, reps: Int, isCompleted: Bool, weight: Double?, weightUnit: String, isBodyweight: Bool = false, durationSeconds: Int? = nil, distanceMeters: Int? = nil) {
+    init(setNumber: Int, reps: Int, isCompleted: Bool, weight: Double?, weightUnit: String, isBodyweight: Bool = false, durationSeconds: Int? = nil, distanceMeters: Int? = nil, targetSpeedKmh: Double? = nil) {
         self.setNumber = setNumber
         self.reps = reps
         self.isCompleted = isCompleted
@@ -42,6 +45,7 @@ struct CompletionSet: Codable {
         self.isBodyweight = isBodyweight
         self.durationSeconds = durationSeconds
         self.distanceMeters = distanceMeters
+        self.targetSpeedKmh = targetSpeedKmh
     }
 
     init(from decoder: Decoder) throws {
@@ -56,6 +60,7 @@ struct CompletionSet: Codable {
         self.isBodyweight = try c.decodeIfPresent(Bool.self, forKey: .isBodyweight) ?? false
         self.durationSeconds = try c.decodeIfPresent(Int.self, forKey: .durationSeconds)
         self.distanceMeters = try c.decodeIfPresent(Int.self, forKey: .distanceMeters)
+        self.targetSpeedKmh = try c.decodeIfPresent(Double.self, forKey: .targetSpeedKmh)
     }
 }
 
@@ -182,6 +187,11 @@ struct SessionCompletionPayload: Codable {
                         ]
                         if let weight = set.weight, !set.isBodyweight { setDict["weight"] = weight }
                         setDict["weight_unit"] = set.weightUnit
+                        // Cardio fields — without these the recorded duration /
+                        // distance never reach the server and save as NULL.
+                        if let dur = set.durationSeconds { setDict["duration_seconds"] = dur }
+                        if let dist = set.distanceMeters { setDict["distance_meters"] = dist }
+                        if let speed = set.targetSpeedKmh { setDict["target_speed_kmh"] = speed }
                         return setDict
                     }
                 ]

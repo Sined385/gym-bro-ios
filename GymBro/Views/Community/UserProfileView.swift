@@ -625,7 +625,7 @@ struct UserProfileView: View {
                     .font(.system(size: myWins == true ? 18 : 16, weight: .bold))
                     .foregroundColor(myWins == true ? Color(hex: "30C08D") : (myWins == false ? Color(hex: "E86A75") : .gymBroTextSecondary))
                 if myValue != nil {
-                    Text("LBS")
+                    Text("KG")
                         .font(.system(size: 9, weight: .bold))
                         .foregroundColor(.gymBroTextSecondary)
                 }
@@ -653,7 +653,7 @@ struct UserProfileView: View {
                     .font(.system(size: myWins == false ? 18 : 16, weight: .bold))
                     .foregroundColor(myWins == false ? Color(hex: "30C08D") : (myWins == true ? Color(hex: "E86A75") : .gymBroTextSecondary))
                 if theirValue != nil {
-                    Text("LBS")
+                    Text("KG")
                         .font(.system(size: 9, weight: .bold))
                         .foregroundColor(.gymBroTextSecondary)
                 }

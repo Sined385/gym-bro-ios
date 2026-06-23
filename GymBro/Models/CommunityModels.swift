@@ -162,9 +162,13 @@ struct AttachmentSetData: Decodable, Equatable, Identifiable {
     let weightUnit: String?
     let reps: Int
     let isBodyweight: Bool
+    // Cardio fields — logged time / distance. Nil for strength.
+    let durationSeconds: Int?
+    let distanceMeters: Int?
 
     private enum CodingKeys: String, CodingKey {
         case setNumber, weight, weightUnit, reps, isBodyweight
+        case durationSeconds, distanceMeters
     }
 
     init(from decoder: Decoder) throws {
@@ -174,6 +178,8 @@ struct AttachmentSetData: Decodable, Equatable, Identifiable {
         self.weightUnit = try c.decodeIfPresent(String.self, forKey: .weightUnit)
         self.reps = try c.decode(Int.self, forKey: .reps)
         self.isBodyweight = try c.decodeIfPresent(Bool.self, forKey: .isBodyweight) ?? false
+        self.durationSeconds = try c.decodeIfPresent(Int.self, forKey: .durationSeconds)
+        self.distanceMeters = try c.decodeIfPresent(Int.self, forKey: .distanceMeters)
     }
 
     var id: Int { setNumber }

@@ -131,17 +131,31 @@ struct SessionFlowContainer: View {
                         }
                     )
                 case .exerciseLogging(let exerciseId):
-                    ExerciseLoggingView(
-                        viewModel: viewModel,
-                        exerciseId: exerciseId,
-                        onSwitchToExercise: { newId in
-                            replaceTop(with: .exerciseLogging(exerciseId: newId))
-                        },
-                        onSwitchToSuperset: { groupId in
-                            replaceTop(with: .supersetLogging(groupId: groupId))
-                        },
-                        onEndWorkout: { navigationPath.append(SessionRoute.workoutFeedback) }
-                    )
+                    // Fork on muscle_group: cardio gets a dedicated screen,
+                    // strength keeps the existing ExerciseLoggingView.
+                    if let ex = viewModel.exercises.first(where: { $0.id == exerciseId }),
+                       ex.muscleGroup.caseInsensitiveCompare("Cardio") == .orderedSame {
+                        CardioWorkoutView(
+                            viewModel: viewModel,
+                            exerciseId: exerciseId,
+                            onSwitchToExercise: { newId in
+                                replaceTop(with: .exerciseLogging(exerciseId: newId))
+                            },
+                            onEndWorkout: { navigationPath.append(SessionRoute.workoutFeedback) }
+                        )
+                    } else {
+                        ExerciseLoggingView(
+                            viewModel: viewModel,
+                            exerciseId: exerciseId,
+                            onSwitchToExercise: { newId in
+                                replaceTop(with: .exerciseLogging(exerciseId: newId))
+                            },
+                            onSwitchToSuperset: { groupId in
+                                replaceTop(with: .supersetLogging(groupId: groupId))
+                            },
+                            onEndWorkout: { navigationPath.append(SessionRoute.workoutFeedback) }
+                        )
+                    }
                 case .supersetLogging(let groupId):
                     ExerciseLoggingView(
                         viewModel: viewModel,

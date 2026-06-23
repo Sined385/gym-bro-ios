@@ -20,7 +20,7 @@ struct OnboardingViewModelTests {
         mockAuth.shouldFail = shouldFail
         let mockNetwork = MockNetworkService()
         mockNetwork.shouldFail = shouldFail
-        let viewModel = OnboardingViewModel(authService: mockAuth, networkService: mockNetwork)
+        let viewModel = OnboardingViewModel(authService: mockAuth, networkService: mockNetwork, healthKitService: MockHealthKitService())
         return (viewModel, mockAuth, mockNetwork)
     }
 
@@ -555,7 +555,7 @@ struct OnboardingViewModelTests {
         sut.selectEquipment(.fullGym)
         sut.toggleInjury(.shoulders)
 
-        await sut.submitOnboarding()
+        try? await sut.submitOnboarding()
 
         #expect(mockNetwork.requestCallCount == 1)
         #expect(mockNetwork.lastEndpoint?.path == "/api/v1/onboarding")
@@ -575,7 +575,7 @@ struct OnboardingViewModelTests {
         sut.selectWorkoutDuration(.fortyFive)
         sut.selectEquipment(.bodyweight)
 
-        await sut.submitOnboarding()
+        try? await sut.submitOnboarding()
 
         #expect(mockNetwork.requestCallCount == 1)
         // Verify completed_at is included in the request parameters
@@ -590,7 +590,7 @@ struct OnboardingViewModelTests {
         sut.togglePrimaryGoal(.buildMuscle)
         // Missing other required fields
 
-        await sut.submitOnboarding()
+        try? await sut.submitOnboarding()
 
         #expect(mockNetwork.requestCallCount == 0)
         #expect(sut.errorMessage == "Please complete all required fields")
@@ -607,7 +607,7 @@ struct OnboardingViewModelTests {
         sut.selectWorkoutDuration(.thirty)
         sut.selectEquipment(.bodyweight)
 
-        await sut.submitOnboarding()
+        try? await sut.submitOnboarding()
 
         #expect(sut.errorMessage != nil)
         #expect(!sut.isSubmitting)
