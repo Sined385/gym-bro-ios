@@ -130,7 +130,11 @@ struct WorkoutFeedbackView: View {
                             let watchSummary = sessionManager.watchWorkoutSummary
                             let calories = watchSummary.map { Int($0.activeCalories) }
                                 ?? response.calories
-                            let avgHR = watchSummary?.averageHeartRate.map { Int($0) }
+                            // submitFeedbackAndComplete() already resolved HR
+                            // (awaiting the Watch summary, then samples, then
+                            // HealthKit) — reuse that instead of re-reading the
+                            // racy live summary so the card matches what we saved.
+                            let avgHR = sessionManager.lastResolvedHeartRate
                             let shareData = CompletedWorkoutShareData(
                                 sessionId: viewModel.sessionId,
                                 sessionTitle: viewModel.sessionTitle,

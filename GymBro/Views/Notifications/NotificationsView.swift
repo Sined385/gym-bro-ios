@@ -199,7 +199,7 @@ struct NotificationsView: View {
                         .onTapGesture {
                             Task { await viewModel.markAsRead(notification.id) }
                             switch notification.type {
-                            case "like", "comment", "new_post":
+                            case "like", "reaction", "comment", "new_post":
                                 if let postId = notification.data?.postId {
                                     navigationPath.append(NotificationDestination.post(postId: postId))
                                 }
@@ -243,7 +243,7 @@ private struct NotificationCard: View {
     let notification: AppNotification
 
     private var isSocial: Bool {
-        ["like", "follow", "comment", "new_post"].contains(notification.type)
+        ["like", "reaction", "follow", "comment", "new_post"].contains(notification.type)
     }
 
     var body: some View {
@@ -259,8 +259,8 @@ private struct NotificationCard: View {
             VStack(alignment: .leading, spacing: 6) {
                 notificationText
 
-                // Snippet bar for like/comment
-                if notification.type == "like" || notification.type == "comment" {
+                // Snippet bar for reactions/comments
+                if notification.type == "like" || notification.type == "reaction" || notification.type == "comment" {
                     snippetBar
                 }
 
@@ -385,7 +385,7 @@ private struct NotificationCard: View {
 
     private func parseTitle() -> (name: String, action: String) {
         let title = notification.title
-        let actionVerbs = ["liked", "commented", "started following", "shared"]
+        let actionVerbs = ["liked", "reacted", "commented", "started following", "shared"]
 
         for verb in actionVerbs {
             if let range = title.range(of: verb) {
@@ -409,7 +409,7 @@ private struct NotificationCard: View {
     private var badgeBgColor: Color {
         switch notification.type {
         case "follow": return Color(red: 48/255, green: 192/255, blue: 141/255, opacity: 0.1)
-        case "like": return Color(red: 232/255, green: 106/255, blue: 117/255, opacity: 0.1)
+        case "like", "reaction": return Color(red: 232/255, green: 106/255, blue: 117/255, opacity: 0.1)
         case "comment": return Color(red: 45/255, green: 50/255, blue: 64/255, opacity: 0.1)
         case "new_post": return Color(red: 48/255, green: 192/255, blue: 141/255, opacity: 0.1)
         default: return Color(hex: "F5F5F5")
@@ -419,7 +419,7 @@ private struct NotificationCard: View {
     private var badgeIcon: String {
         switch notification.type {
         case "follow": return "person.fill"
-        case "like": return "heart.fill"
+        case "like", "reaction": return "heart.fill"
         case "comment": return "bubble.left.fill"
         case "new_post": return "doc.text.fill"
         default: return "bell.fill"
@@ -429,7 +429,7 @@ private struct NotificationCard: View {
     private var badgeIconColor: Color {
         switch notification.type {
         case "follow": return Color(hex: "30C08D")
-        case "like": return .gymBroPrimary
+        case "like", "reaction": return .gymBroPrimary
         case "comment": return Color(hex: "2D3240")
         case "new_post": return Color(hex: "30C08D")
         default: return .gymBroNeutral900

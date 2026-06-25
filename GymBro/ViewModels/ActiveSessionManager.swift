@@ -75,6 +75,21 @@ final class ActiveSessionManager: ObservableObject {
     private var foregroundCancellable: AnyCancellable?
     private var backgroundCancellable: AnyCancellable?
 
+    // MARK: - Idle Auto-Complete
+
+    /// Wall-clock of the last in-app activity during the workout. The idle
+    /// auto-complete clock counts from here — once nothing has been done for
+    /// `autoCompleteIdleSeconds`, the workout is wrapped up automatically.
+    @Published private(set) var lastActivityDate: Date?
+    /// Wall-clock of the most recently tracked set. Auto-complete uses this as
+    /// the workout's END time, so the recorded duration is start → last set
+    /// rather than start → (an hour of idling).
+    private var lastSetTrackedDate: Date?
+    /// Guards against re-entrant auto-completion while one is in flight.
+    private var isAutoCompleting = false
+    private static let autoCompleteIdleSeconds: TimeInterval = 3600 // 1 hour
+    private static let autoCompleteNotificationId = "gym-bro-auto-complete"
+
     // MARK: - Live Activity
 
     private let liveActivityService: LiveActivityService
@@ -200,6 +215,10 @@ final class ActiveSessionManager: ObservableObject {
 
     private let watchConnectivityService: WatchConnectivityServiceProtocol?
     @Published var watchWorkoutSummary: WatchWorkoutSummary?
+    /// Average HR resolved at completion (`resolveSessionAverageHeartRate()`),
+    /// cached so the post-workout share screen shows the same value that was
+    /// persisted server-side instead of re-reading the racy Watch summary.
+    @Published private(set) var lastResolvedHeartRate: Int?
     /// Phone-driven hint for the Watch: which exercise the user has actively
     /// open on the phone. Nil when no specific exercise view is open (plan
     /// view, library, etc.); the Watch then falls back to its "first
@@ -325,6 +344,9 @@ final class ActiveSessionManager: ObservableObject {
         isWorkoutStarted = true
         sessionStartDate = Date()
         elapsedSeconds = 0
+        lastActivityDate = Date()
+        lastSetTrackedDate = nil
+        isAutoCompleting = false
         startTimer()
         scheduleStillThereNotification()
         liveActivityService.startActivity(
@@ -340,8 +362,154 @@ final class ActiveSessionManager: ObservableObject {
         scheduleStillThereNotification()
     }
 
+    // MARK: - Idle Auto-Complete
+
+    /// Record that the user did something in the app during the workout —
+    /// resets the 1-hour idle auto-complete clock. Called from set actions,
+    /// rest-timer actions, and exercise navigation.
+    func registerActivity() {
+        guard isWorkoutStarted else { return }
+        lastActivityDate = Date()
+    }
+
+    /// Stamp the time of the latest tracked set. This is the end point used
+    /// for the auto-completed workout's duration. Also counts as activity.
+    func registerSetTracked() {
+        guard isWorkoutStarted else { return }
+        lastSetTrackedDate = Date()
+        lastActivityDate = Date()
+    }
+
+    /// If the workout has been idle for `autoCompleteIdleSeconds`, wrap it up
+    /// (or discard it if nothing was tracked). Cheap; called from the 1s timer
+    /// tick, on foreground, and after restoring a session on launch.
+    private func checkAutoCompleteIfIdle() {
+        guard isWorkoutStarted, !isAutoCompleting,
+              let last = lastActivityDate,
+              Date().timeIntervalSince(last) >= Self.autoCompleteIdleSeconds else { return }
+        isAutoCompleting = true
+        Task { @MainActor in await self.autoCompleteOrDiscardIdleSession() }
+    }
+
+    private func autoCompleteOrDiscardIdleSession() async {
+        guard let sessionId, let start = sessionStartDate else {
+            isAutoCompleting = false
+            return
+        }
+        let exercises = lastSavedExercises ?? []
+        let hasTrackedSet = exercises.contains { $0.sets.contains(where: \.isCompleted) }
+
+        // Nothing logged the entire time — discard rather than save an empty workout.
+        guard hasTrackedSet else {
+            analyticsService.track("workout_auto_discarded", properties: [:])
+            // Cancel the server row for ad-hoc / Coach sessions (plan-day
+            // sessions have no server row under "store on complete").
+            if planDayId == nil {
+                let networkService = DependencyContainer.shared.resolve(NetworkServiceProtocol.self)
+                Task {
+                    _ = try? await networkService.request(
+                        HomeRouter.cancelSession(sessionId: sessionId).endpoint,
+                        responseType: SessionResponse.self,
+                    )
+                }
+            }
+            finishAndResetSession()
+            return
+        }
+
+        // Duration runs start → last tracked set, NOT start → now.
+        let endDate = lastSetTrackedDate ?? Date()
+        let durationMinutes = max(1, Int(endDate.timeIntervalSince(start)) / 60)
+        let avgHeartRate = await resolveSessionAverageHeartRate()
+
+        let payload = SessionCompletionPayload(
+            durationMinutes: durationMinutes,
+            avgHeartRate: avgHeartRate,
+            // Auto-completed workouts have no user feedback — use neutral defaults.
+            feedback: SessionFeedback(effortLevel: 5, energyLevel: 3, painDiscomfort: "None"),
+            exercises: exercises.map { ex in
+                CompletionExercise(
+                    name: ex.name,
+                    muscleGroup: ex.muscleGroup,
+                    stepNumber: ex.stepNumber,
+                    sets: ex.sets.filter(\.isCompleted).map { set in
+                        let isCardio = set.durationSeconds != nil
+                        return CompletionSet(
+                            setNumber: set.setNumber,
+                            reps: set.reps ?? 0,
+                            isCompleted: set.isCompleted,
+                            weight: (set.isBodyweight || isCardio) ? nil : set.weight,
+                            weightUnit: set.weightUnit,
+                            isBodyweight: set.isBodyweight,
+                            durationSeconds: set.durationSeconds,
+                            distanceMeters: set.distanceMeters,
+                            targetSpeedKmh: set.targetSpeedKmh
+                        )
+                    },
+                    libraryExerciseId: ex.libraryExerciseId,
+                    equipment: ex.equipment,
+                    accentColor: ex.accentColor,
+                    supersetGroupId: ex.supersetGroupId,
+                    supersetOrder: ex.supersetOrder
+                )
+            },
+            title: sessionTitle,
+            type: sessionType,
+            aiMessage: aiMessage,
+            startedAt: start,
+            planDayId: planDayId
+        )
+
+        // Persist to disk before the call so the completion survives app kill;
+        // GymBroApp retries cached completions on the next foreground.
+        let completionCache = DependencyContainer.shared.resolve(SessionCompletionCacheServiceProtocol.self)
+        let pending = PendingSessionCompletion(
+            id: UUID(),
+            sessionId: sessionId,
+            sessionTitle: sessionTitle ?? "Workout",
+            payload: payload,
+            createdAt: Date(),
+            retryCount: 0,
+            lastRetryAt: nil
+        )
+        completionCache.save(pending)
+
+        let networkService = DependencyContainer.shared.resolve(NetworkServiceProtocol.self)
+        do {
+            let response = try await networkService.request(
+                SessionRouter.completeSessionFull(sessionId: sessionId, payload: payload.toDictionary()).endpoint,
+                responseType: SessionResponse.self
+            )
+            completionCache.remove(id: pending.id)
+            analyticsService.track("workout_auto_completed", properties: [
+                "duration_minutes": response.durationMinutes ?? durationMinutes,
+                "exercise_count": exercises.count
+            ] as [String: Any])
+        } catch {
+            // Left in the completion cache — the retry sweep will deliver it.
+            print("[ActiveSession] auto-complete failed, cached for retry: \(error)")
+        }
+
+        sendAutoCompleteNotification()
+        finishAndResetSession()
+    }
+
+    private func sendAutoCompleteNotification() {
+        let content = UNMutableNotificationContent()
+        content.title = "Workout saved"
+        content.body = "You went quiet, so we wrapped up and saved your workout."
+        content.sound = .default
+        let request = UNNotificationRequest(
+            identifier: Self.autoCompleteNotificationId,
+            content: content,
+            trigger: nil // deliver now
+        )
+        UNUserNotificationCenter.current().add(request)
+    }
+
     func expand() {
         presentationState = .expanded
+        registerActivity()
     }
 
     func collapse() {
@@ -353,15 +521,23 @@ final class ActiveSessionManager: ObservableObject {
     func endSession() {
         let wasActive = isWorkoutStarted
         let exerciseCount = lastSavedExercises?.count ?? 0
+        if wasActive {
+            analyticsService.track("workout_cancelled", properties: ["exercise_count": exerciseCount])
+        }
+        finishAndResetSession()
+    }
+
+    /// Tears down all session state (timers, live activity, watch, cache) and
+    /// clears the manager back to "no active session". Shared by manual
+    /// cancel (`endSession`), normal completion teardown, and idle
+    /// auto-completion — none of which should leave the workout bar lingering.
+    private func finishAndResetSession() {
         liveActivityService.endActivity()
         pushWatchSessionEnded()
         stopTimer()
         skipRestTimer()
         cancelStillThereNotification()
         cancelStartReminder()
-        if wasActive {
-            analyticsService.track("workout_cancelled", properties: ["exercise_count": exerciseCount])
-        }
         presentationState = .hidden
         sessionId = nil
         sessionTitle = nil
@@ -381,6 +557,10 @@ final class ActiveSessionManager: ObservableObject {
         restoredFeedback = nil
         watchWorkoutSummary = nil
         watchHeartRateSamples.removeAll()
+        lastResolvedHeartRate = nil
+        lastActivityDate = nil
+        lastSetTrackedDate = nil
+        isAutoCompleting = false
         clearCache()
         // Fetch fresh dashboard data, not just bump the reload version.
         // TrainingPlanViewModel only refetches via reloadVersion when
@@ -439,6 +619,10 @@ final class ActiveSessionManager: ObservableObject {
     private func recalculateElapsedTime() {
         guard let start = sessionStartDate else { return }
         elapsedSeconds = max(0, Int(Date().timeIntervalSince(start)))
+        // Piggyback the idle check on the 1s tick (foreground) and on the
+        // foreground recalc — covers "app open but untouched" and "returned
+        // after a long background".
+        checkAutoCompleteIfIdle()
     }
 
     func startTimer() {
@@ -487,6 +671,7 @@ final class ActiveSessionManager: ObservableObject {
         restStartDate = Date()
         restDurationSeconds = seconds
         restTimeRemaining = seconds
+        registerActivity()
         scheduleRestNotification(seconds: seconds)
         scheduleStillThereNotification()
 
@@ -503,6 +688,7 @@ final class ActiveSessionManager: ObservableObject {
 
     func addRestTime(_ seconds: Int) {
         restDurationSeconds += seconds
+        registerActivity()
         recalculateRestTime()
         if let remaining = restTimeRemaining, remaining > 0 {
             scheduleRestNotification(seconds: remaining)
@@ -670,6 +856,10 @@ final class ActiveSessionManager: ObservableObject {
         /// recording state with the timer correctly advanced from
         /// `startDate`.
         let cardioRecording: CardioRecording?
+        /// Idle auto-complete state — so a relaunch after a long idle still
+        /// knows when the user last did something / last tracked a set.
+        let lastActivityDate: Date?
+        let lastSetTrackedDate: Date?
 
         // Older builds wrote payloads without the new metadata. Decode
         // them gracefully so a TestFlight upgrade doesn't lose an
@@ -679,7 +869,7 @@ final class ActiveSessionManager: ObservableObject {
                  sessionStartDate, exercises, sessionExercises,
                  presentationState, effortLevel, energyLevel, painDiscomfort,
                  restStartDate, restDurationSeconds, isWorkoutStarted,
-                 cardioRecording
+                 cardioRecording, lastActivityDate, lastSetTrackedDate
         }
 
         init(
@@ -698,7 +888,9 @@ final class ActiveSessionManager: ObservableObject {
             restStartDate: Date?,
             restDurationSeconds: Int,
             isWorkoutStarted: Bool,
-            cardioRecording: CardioRecording?
+            cardioRecording: CardioRecording?,
+            lastActivityDate: Date?,
+            lastSetTrackedDate: Date?
         ) {
             self.sessionId = sessionId
             self.sessionTitle = sessionTitle
@@ -716,6 +908,8 @@ final class ActiveSessionManager: ObservableObject {
             self.restDurationSeconds = restDurationSeconds
             self.isWorkoutStarted = isWorkoutStarted
             self.cardioRecording = cardioRecording
+            self.lastActivityDate = lastActivityDate
+            self.lastSetTrackedDate = lastSetTrackedDate
         }
 
         init(from decoder: Decoder) throws {
@@ -736,6 +930,8 @@ final class ActiveSessionManager: ObservableObject {
             self.restDurationSeconds = try c.decode(Int.self, forKey: .restDurationSeconds)
             self.isWorkoutStarted = try c.decode(Bool.self, forKey: .isWorkoutStarted)
             self.cardioRecording = try c.decodeIfPresent(CardioRecording.self, forKey: .cardioRecording)
+            self.lastActivityDate = try c.decodeIfPresent(Date.self, forKey: .lastActivityDate)
+            self.lastSetTrackedDate = try c.decodeIfPresent(Date.self, forKey: .lastSetTrackedDate)
         }
     }
 
@@ -771,7 +967,9 @@ final class ActiveSessionManager: ObservableObject {
             restStartDate: restStartDate,
             restDurationSeconds: restDurationSeconds,
             isWorkoutStarted: isWorkoutStarted,
-            cardioRecording: cardioRecording
+            cardioRecording: cardioRecording,
+            lastActivityDate: lastActivityDate,
+            lastSetTrackedDate: lastSetTrackedDate
         )
 
         if let data = try? JSONEncoder().encode(cached) {
@@ -826,10 +1024,17 @@ final class ActiveSessionManager: ObservableObject {
         restoredExercises = cached.exercises
         lastSavedExercises = cached.exercises
         cardioRecording = cached.cardioRecording
+        lastActivityDate = cached.lastActivityDate
+        lastSetTrackedDate = cached.lastSetTrackedDate
         // Only restore feedback if user actually selected values
         if cached.effortLevel > 0 || cached.energyLevel > 0 || !cached.painDiscomfort.isEmpty {
             restoredFeedback = (cached.effortLevel, cached.energyLevel, cached.painDiscomfort)
             lastSavedFeedback = (cached.effortLevel, cached.energyLevel, cached.painDiscomfort)
+        }
+
+        // Relaunched after a long idle? Wrap up immediately.
+        if isWorkoutStarted {
+            checkAutoCompleteIfIdle()
         }
     }
 
@@ -931,6 +1136,7 @@ final class ActiveSessionManager: ObservableObject {
     /// reverts to its "first incomplete" heuristic.
     func setPhoneActiveExercise(_ exerciseId: String?) {
         guard phoneActiveExerciseId != exerciseId else { return }
+        registerActivity()
         phoneActiveExerciseId = exerciseId
         guard let exercises = lastSavedExercises, isSessionActive else { return }
         pushStateToWatch(exercises: exercises)
@@ -1041,5 +1247,46 @@ final class ActiveSessionManager: ObservableObject {
         guard !watchHeartRateSamples.isEmpty else { return nil }
         let total = watchHeartRateSamples.reduce(0.0) { $0 + $1.bpm }
         return Int((total / Double(watchHeartRateSamples.count)).rounded())
+    }
+
+    /// Resolves the session's average heart rate at completion time.
+    ///
+    /// The Watch sends its end-of-workout summary asynchronously a beat AFTER
+    /// `pushWatchSessionEnded()`, so reading `sessionAverageHeartRate` inline at
+    /// completion races the summary and usually loses. This:
+    ///   1. briefly awaits the summary when the Watch was streaming this session,
+    ///   2. falls back to averaging the streamed sample batches,
+    ///   3. falls back to a direct HealthKit query over the session window — so a
+    ///      plain Apple Watch workout (HR in Apple Health, even without the
+    ///      GymJam Watch app live) still records a value.
+    /// Caches the result in `lastResolvedHeartRate` for the share screen.
+    @discardableResult
+    func resolveSessionAverageHeartRate() async -> Int? {
+        // Only wait if the Watch actually streamed — otherwise non-Watch users
+        // would eat the delay for nothing.
+        if watchWorkoutSummary == nil, !watchHeartRateSamples.isEmpty {
+            for _ in 0..<12 { // up to ~3s, broken early the moment it lands
+                try? await Task.sleep(nanoseconds: 250_000_000)
+                if watchWorkoutSummary != nil { break }
+            }
+        }
+
+        if let hr = sessionAverageHeartRate {
+            lastResolvedHeartRate = hr
+            return hr
+        }
+
+        // No Watch-derived value — best-effort HealthKit query for the window.
+        if let start = sessionStartDate {
+            let healthKit = DependencyContainer.shared.resolve(HealthKitServiceProtocol.self)
+            if let avg = try? await healthKit.fetchAverageHeartRate(from: start, to: Date()),
+               avg > 0 {
+                lastResolvedHeartRate = Int(avg.rounded())
+                return lastResolvedHeartRate
+            }
+        }
+
+        lastResolvedHeartRate = nil
+        return nil
     }
 }

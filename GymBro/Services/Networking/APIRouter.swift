@@ -373,7 +373,6 @@ enum CommunityRouter: APIRouter {
     case getPost(postId: String)
     case createPost(content: String, visibility: String, workoutSessionId: String?, photoUrl: String?, shareConfig: [String: Any]?, cardImageUrl: String?)
     case deletePost(postId: String)
-    case toggleLike(postId: String)
     case toggleReaction(postId: String, emoji: String)
     case getComments(postId: String, cursor: String?, limit: Int)
     case createComment(postId: String, content: String)
@@ -386,6 +385,9 @@ enum CommunityRouter: APIRouter {
     case suggestedUsers(limit: Int)
     case userProfile(userId: String)
     case userWorkouts(userId: String, cursor: String?, limit: Int)
+    case userPosts(userId: String, cursor: String?, limit: Int)
+    case userFollowers(userId: String, cursor: String?, limit: Int)
+    case userFollowing(userId: String, cursor: String?, limit: Int)
     case userCompare(userId: String)
     case myFollowers(cursor: String?, limit: Int)
     case myFollowing(cursor: String?, limit: Int)
@@ -404,8 +406,6 @@ enum CommunityRouter: APIRouter {
             return "/api/v1/community/posts"
         case .deletePost(let postId):
             return "/api/v1/community/posts/\(postId)"
-        case .toggleLike(let postId):
-            return "/api/v1/community/posts/\(postId)/like"
         case .toggleReaction(let postId, _):
             return "/api/v1/community/posts/\(postId)/react"
         case .getComments(let postId, _, _):
@@ -430,6 +430,12 @@ enum CommunityRouter: APIRouter {
             return "/api/v1/community/users/\(userId)/profile"
         case .userWorkouts(let userId, _, _):
             return "/api/v1/community/users/\(userId)/workouts"
+        case .userPosts(let userId, _, _):
+            return "/api/v1/community/users/\(userId)/posts"
+        case .userFollowers(let userId, _, _):
+            return "/api/v1/community/users/\(userId)/followers"
+        case .userFollowing(let userId, _, _):
+            return "/api/v1/community/users/\(userId)/following"
         case .userCompare(let userId):
             return "/api/v1/community/users/\(userId)/compare"
         case .myFollowers:
@@ -450,9 +456,9 @@ enum CommunityRouter: APIRouter {
     var method: HTTPMethod {
         switch self {
         case .feed, .getPost, .getComments, .myProfile, .myWorkouts, .searchUsers, .suggestedUsers,
-             .userProfile, .userWorkouts, .userCompare, .myFollowers, .myFollowing, .blockedUsers:
+             .userProfile, .userWorkouts, .userPosts, .userFollowers, .userFollowing, .userCompare, .myFollowers, .myFollowing, .blockedUsers:
             return .get
-        case .createPost, .toggleLike, .toggleReaction, .createComment, .followUser, .reportContent, .blockUser:
+        case .createPost, .toggleReaction, .createComment, .followUser, .reportContent, .blockUser:
             return .post
         case .deletePost, .deleteComment, .unfollowUser, .unblockUser:
             return .delete
@@ -488,6 +494,18 @@ enum CommunityRouter: APIRouter {
             var params: [String: Any] = ["limit": limit]
             if let cursor { params["cursor"] = cursor }
             return params
+        case .userPosts(_, let cursor, let limit):
+            var params: [String: Any] = ["limit": limit]
+            if let cursor { params["cursor"] = cursor }
+            return params
+        case .userFollowers(_, let cursor, let limit):
+            var params: [String: Any] = ["limit": limit]
+            if let cursor { params["cursor"] = cursor }
+            return params
+        case .userFollowing(_, let cursor, let limit):
+            var params: [String: Any] = ["limit": limit]
+            if let cursor { params["cursor"] = cursor }
+            return params
         case .myFollowers(let cursor, let limit):
             var params: [String: Any] = ["limit": limit]
             if let cursor { params["cursor"] = cursor }
@@ -508,7 +526,7 @@ enum CommunityRouter: APIRouter {
             return ["q": query, "limit": limit]
         case .suggestedUsers(let limit):
             return ["limit": limit]
-        case .getPost, .deletePost, .toggleLike, .deleteComment, .unfollowUser,
+        case .getPost, .deletePost, .deleteComment, .unfollowUser,
              .myProfile, .userProfile, .userCompare, .unblockUser, .blockedUsers:
             return nil
         }
@@ -517,7 +535,7 @@ enum CommunityRouter: APIRouter {
     var encoding: ParameterEncoding {
         switch self {
         case .feed, .getPost, .getComments, .myProfile, .myWorkouts, .searchUsers, .suggestedUsers,
-             .userProfile, .userWorkouts, .userCompare,
+             .userProfile, .userWorkouts, .userPosts, .userFollowers, .userFollowing, .userCompare,
              .deletePost, .deleteComment, .unfollowUser, .myFollowers, .myFollowing, .unblockUser, .blockedUsers:
             return .url
         default:

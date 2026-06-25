@@ -9,7 +9,7 @@ import Foundation
 import Combine
 
 @MainActor
-final class MyProfileViewModel: ObservableObject {
+final class MyProfileViewModel: ObservableObject, ProfilePostsSource {
 
     // MARK: - Published Properties
 
@@ -22,6 +22,23 @@ final class MyProfileViewModel: ObservableObject {
     @Published var isLoadingWorkouts: Bool = false
     @Published var hasMoreWorkouts: Bool = false
     private var workoutCursor: String?
+
+    // Posts grid (mirrors UserProfileViewModel so the shared grid/feed works)
+    @Published var postFilter: PostFilter = .all
+    @Published var posts: [CommunityPost] = []
+    @Published var isLoadingPosts: Bool = false
+    @Published var hasMorePosts: Bool = false
+    private var postsCursor: String?
+    private var hasLoadedPosts = false
+    let canDeletePosts = true
+
+    var filteredPosts: [CommunityPost] {
+        switch postFilter {
+        case .all: return posts
+        case .workouts: return posts.filter { $0.workoutAttachment != nil }
+        case .photos: return posts.filter { ($0.photoUrl?.isEmpty == false) }
+        }
+    }
 
     // MARK: - Properties
 
@@ -114,6 +131,45 @@ final class MyProfileViewModel: ObservableObject {
         isLoadingWorkouts = false
     }
 
+    // MARK: - Posts Grid
+
+    func loadPostsIfNeeded() async {
+        guard !hasLoadedPosts, let uid = profile?.user.id else { return }
+        hasLoadedPosts = true
+        await loadPosts(userId: uid)
+    }
+
+    private func loadPosts(userId: String) async {
+        guard !isLoadingPosts else { return }
+        isLoadingPosts = true
+        do {
+            let r = try await networkService.request(
+                CommunityRouter.userPosts(userId: userId, cursor: nil, limit: 18).endpoint,
+                responseType: ProfilePostsResponse.self
+            )
+            posts = r.posts
+            postsCursor = r.nextCursor
+            hasMorePosts = r.nextCursor != nil
+        } catch { }
+        isLoadingPosts = false
+    }
+
+    func loadMorePosts() async {
+        guard hasMorePosts, !isLoadingPosts,
+              let cursor = postsCursor, let uid = profile?.user.id else { return }
+        isLoadingPosts = true
+        do {
+            let r = try await networkService.request(
+                CommunityRouter.userPosts(userId: uid, cursor: cursor, limit: 18).endpoint,
+                responseType: ProfilePostsResponse.self
+            )
+            posts.append(contentsOf: r.posts)
+            postsCursor = r.nextCursor
+            hasMorePosts = r.nextCursor != nil
+        } catch { }
+        isLoadingPosts = false
+    }
+
     // MARK: - Post Interactions
 
     func toggleReaction(postId: String, emoji: String) {
@@ -122,23 +178,9 @@ final class MyProfileViewModel: ObservableObject {
         likeInFlight.insert(key)
 
         // Optimistic update
-        if let index = profile?.recentPosts.firstIndex(where: { $0.id == postId }) {
-            let post = profile!.recentPosts[index]
-            var reactions = post.reactions ?? []
-            if let ri = reactions.firstIndex(where: { $0.emoji == emoji }) {
-                let r = reactions[ri]
-                if r.isReacted {
-                    let newCount = max(0, r.count - 1)
-                    if newCount == 0 { reactions.remove(at: ri) }
-                    else { reactions[ri] = PostReaction(emoji: emoji, count: newCount, isReacted: false) }
-                } else {
-                    reactions[ri] = PostReaction(emoji: emoji, count: r.count + 1, isReacted: true)
-                }
-            } else {
-                reactions.append(PostReaction(emoji: emoji, count: 1, isReacted: true))
-            }
-            let totalCount = reactions.reduce(0) { $0 + $1.count }
-            updatePost(at: index, reactions: reactions, reactionCount: totalCount)
+        if let post = findPost(postId) {
+            let reactions = optimisticToggle(post.reactions ?? [], emoji: emoji)
+            applyPostUpdate(post.withReactions(reactions, reactionCount: reactions.reduce(0) { $0 + $1.count }))
         }
 
         Task {
@@ -147,12 +189,29 @@ final class MyProfileViewModel: ObservableObject {
                     CommunityRouter.toggleReaction(postId: postId, emoji: emoji).endpoint,
                     responseType: ReactionResponse.self
                 )
-                if let index = profile?.recentPosts.firstIndex(where: { $0.id == postId }) {
-                    updatePost(at: index, reactions: response.reactions, reactionCount: response.totalReactionCount)
+                if let post = findPost(postId) {
+                    applyPostUpdate(post.withReactions(response.reactions, reactionCount: response.totalReactionCount))
                 }
             } catch { }
             likeInFlight.remove(key)
         }
+    }
+
+    private func optimisticToggle(_ reactions: [PostReaction], emoji: String) -> [PostReaction] {
+        var result = reactions
+        if let ri = result.firstIndex(where: { $0.emoji == emoji }) {
+            let r = result[ri]
+            if r.isReacted {
+                let c = max(0, r.count - 1)
+                if c == 0 { result.remove(at: ri) }
+                else { result[ri] = PostReaction(emoji: emoji, count: c, isReacted: false) }
+            } else {
+                result[ri] = PostReaction(emoji: emoji, count: r.count + 1, isReacted: true)
+            }
+        } else {
+            result.append(PostReaction(emoji: emoji, count: 1, isReacted: true))
+        }
+        return result
     }
 
     func toggleComments(postId: String) {
@@ -189,9 +248,8 @@ final class MyProfileViewModel: ObservableObject {
             commentsMap[postId] = existing
 
             // Update comment count
-            if let index = profile?.recentPosts.firstIndex(where: { $0.id == postId }) {
-                let post = profile!.recentPosts[index]
-                updatePost(at: index, commentCount: post.commentCount + 1)
+            if let post = findPost(postId) {
+                applyPostUpdate(post.withCommentCount(post.commentCount + 1))
             }
         } catch { }
     }
@@ -202,58 +260,44 @@ final class MyProfileViewModel: ObservableObject {
                 CommunityRouter.deletePost(postId: postId).endpoint,
                 responseType: SuccessResponse.self
             )
-            guard var p = profile else { return }
-            var posts = p.recentPosts
             posts.removeAll { $0.id == postId }
-            profile = MyProfileResponse(
-                user: p.user,
-                primaryGoals: p.primaryGoals,
-                experienceLevel: p.experienceLevel,
-                bodyWeightKg: p.bodyWeightKg,
-                memberSince: p.memberSince,
-                consistencyStats: p.consistencyStats,
-                extendedStats: p.extendedStats,
-                followerCount: p.followerCount,
-                followingCount: p.followingCount,
-                recentPosts: posts
-            )
+            if let p = profile {
+                profile = rebuild(p, recentPosts: p.recentPosts.filter { $0.id != postId })
+            }
         } catch { }
     }
 
     // MARK: - Private Helpers
 
-    private func updatePost(at index: Int, reactions: [PostReaction]? = nil, reactionCount: Int? = nil, commentCount: Int? = nil) {
-        guard let p = profile else { return }
-        let post = p.recentPosts[index]
-        let updated = CommunityPost(
-            id: post.id,
-            user: post.user,
-            content: post.content,
-            visibility: post.visibility,
-            photoUrl: post.photoUrl,
-            workoutAttachment: post.workoutAttachment,
-            likeCount: reactionCount ?? post.likeCount,
-            commentCount: commentCount ?? post.commentCount,
-            isLiked: post.isLiked,
-            reactions: reactions ?? post.reactions,
-            reactionCount: reactionCount ?? post.reactionCount,
-            isFollowingAuthor: post.isFollowingAuthor,
-            isOwnPost: post.isOwnPost,
-            createdAt: post.createdAt
-        )
-        var posts = p.recentPosts
-        posts[index] = updated
-        profile = MyProfileResponse(
+    /// Find a post across both the grid (`posts`) and the profile's recent list.
+    private func findPost(_ id: String) -> CommunityPost? {
+        posts.first { $0.id == id } ?? profile?.recentPosts.first { $0.id == id }
+    }
+
+    /// Write an updated post back to every array that holds it.
+    private func applyPostUpdate(_ updated: CommunityPost) {
+        if let i = posts.firstIndex(where: { $0.id == updated.id }) { posts[i] = updated }
+        guard let p = profile,
+              let i = p.recentPosts.firstIndex(where: { $0.id == updated.id }) else { return }
+        var recent = p.recentPosts
+        recent[i] = updated
+        profile = rebuild(p, recentPosts: recent)
+    }
+
+    private func rebuild(_ p: MyProfileResponse, recentPosts: [CommunityPost]) -> MyProfileResponse {
+        MyProfileResponse(
             user: p.user,
+            primaryGoal: p.primaryGoal,
             primaryGoals: p.primaryGoals,
             experienceLevel: p.experienceLevel,
             bodyWeightKg: p.bodyWeightKg,
             memberSince: p.memberSince,
             consistencyStats: p.consistencyStats,
             extendedStats: p.extendedStats,
+            profileStats: p.profileStats,
             followerCount: p.followerCount,
             followingCount: p.followingCount,
-            recentPosts: posts
+            recentPosts: recentPosts
         )
     }
 

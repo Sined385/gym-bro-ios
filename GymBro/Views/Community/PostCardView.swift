@@ -152,61 +152,37 @@ struct PostCardView: View {
                 photoURL: post.photoUrl.flatMap { URL(string: $0) }
             )
 
-            // Emoji reactions + add emoji row (always visible)
-            HStack(spacing: 6) {
-                if let emojiReactions = post.reactions?.filter({ $0.emoji != "heart" && $0.count > 0 }), !emojiReactions.isEmpty {
-                    ForEach(emojiReactions) { reaction in
-                        Button {
-                            onReaction(reaction.emoji)
-                        } label: {
-                            HStack(spacing: 3) {
-                                Text(ReactionEmoji(rawValue: reaction.emoji)?.display ?? reaction.emoji)
-                                    .font(.system(size: 15))
-                                Text("\(reaction.count)")
-                                    .font(.system(size: 12, weight: .semibold))
-                                    .foregroundColor(reaction.isReacted ? .gymBroPrimary : .gymBroNeutral600)
+            // Reactions + Comment / Share — one line
+            HStack(spacing: 8) {
+                // Emoji reactions + add emoji
+                HStack(spacing: 6) {
+                    if let emojiReactions = post.reactions?.filter({ $0.count > 0 }), !emojiReactions.isEmpty {
+                        ForEach(emojiReactions) { reaction in
+                            Button {
+                                onReaction(reaction.emoji)
+                            } label: {
+                                HStack(spacing: 3) {
+                                    Text(ReactionEmoji(rawValue: reaction.emoji)?.display ?? reaction.emoji)
+                                        .font(.system(size: 15))
+                                    Text("\(reaction.count)")
+                                        .font(.system(size: 12, weight: .semibold))
+                                        .foregroundColor(reaction.isReacted ? .gymBroPrimary : .gymBroNeutral600)
+                                }
+                                .padding(.horizontal, 8)
+                                .padding(.vertical, 4)
+                                .background(reaction.isReacted ? Color.gymBroPrimary.opacity(0.10) : Color.gymBroNeutral100)
+                                .clipShape(Capsule())
                             }
-                            .padding(.horizontal, 8)
-                            .padding(.vertical, 4)
-                            .background(reaction.isReacted ? Color.gymBroPrimary.opacity(0.10) : Color.gymBroNeutral100)
-                            .clipShape(Capsule())
+                            .buttonStyle(.plain)
                         }
-                        .buttonStyle(.plain)
-                    }
 
-                    if !emojiReactions.contains(where: { $0.isReacted }) {
+                        if !emojiReactions.contains(where: { $0.isReacted }) {
+                            addEmojiButton
+                        }
+                    } else {
                         addEmojiButton
                     }
-                } else {
-                    addEmojiButton
                 }
-
-                Spacer()
-            }
-
-            // Like / Comment / Share row
-            HStack(spacing: 8) {
-                // Like button
-                Button {
-                    onReaction("heart")
-                } label: {
-                    HStack(spacing: 5) {
-                        Image(systemName: post.isLiked ? "heart.fill" : "heart")
-                            .font(.system(size: 18, weight: .medium))
-                            .foregroundColor(post.isLiked ? .gymBroPrimary : .gymBroNeutral400)
-
-                        if post.likeCount > 0 {
-                            Text("\(post.likeCount)")
-                                .font(.system(size: 13, weight: .semibold))
-                                .foregroundColor(post.isLiked ? .gymBroPrimary : .gymBroNeutral600)
-                        }
-                    }
-                    .padding(.horizontal, 12)
-                    .padding(.vertical, 6)
-                    .background(post.isLiked ? Color.gymBroPrimary.opacity(0.08) : Color.clear)
-                    .clipShape(Capsule())
-                }
-                .buttonStyle(.plain)
 
                 // Comment button
                 Button {

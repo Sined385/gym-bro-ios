@@ -65,7 +65,7 @@ final class DeepLinkRouter: ObservableObject {
         let userId = userInfo["userId"] as? String
 
         switch type {
-        case "new_post", "like", "comment":
+        case "new_post", "like", "reaction", "comment":
             if let postId {
                 pendingDeepLink = .post(postId: postId)
             }

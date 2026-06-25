@@ -174,7 +174,7 @@ struct ShareCardView: View {
                 .fixedSize(horizontal: false, vertical: true)
             Text(workout.value(for: stat))
                 .font(.system(size: 18 * s, weight: .heavy))
-                .foregroundColor(stat == .prs && workout.prCount > 0 ? Color.gymBroPrimary : palette.title)
+                .foregroundColor(palette.title)
                 .monospacedDigit()
                 .lineLimit(1)
                 .minimumScaleFactor(0.7)
@@ -209,16 +209,6 @@ struct ShareCardView: View {
                 .truncationMode(.tail)
 
             Spacer(minLength: 4 * s)
-
-            if ex.isPR {
-                Text("PR")
-                    .font(.system(size: 8 * s, weight: .heavy))
-                    .foregroundColor(.white)
-                    .padding(.horizontal, 4 * s)
-                    .padding(.vertical, 1 * s)
-                    .background(Color.gymBroPrimary)
-                    .clipShape(RoundedRectangle(cornerRadius: 3 * s))
-            }
 
             HStack(spacing: 6 * s) {
                 if !ex.setChips.isEmpty {

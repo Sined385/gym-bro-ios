@@ -354,15 +354,6 @@ struct ShareEditorView: View {
                             .font(.system(size: 13, weight: .heavy))
                             .foregroundColor(.gymBroNeutral900)
                             .lineLimit(1)
-                        if ex.isPR {
-                            Text("PR")
-                                .font(.system(size: 8, weight: .heavy))
-                                .foregroundColor(.white)
-                                .padding(.horizontal, 4)
-                                .padding(.vertical, 1)
-                                .background(Color.gymBroPrimary)
-                                .clipShape(RoundedRectangle(cornerRadius: 3))
-                        }
                     }
                     if let mg = ex.muscleGroup, !mg.isEmpty {
                         // Cardio shows time + distance instead of "N SETS".

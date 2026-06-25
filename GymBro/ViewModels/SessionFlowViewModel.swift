@@ -418,6 +418,7 @@ final class SessionFlowViewModel: ObservableObject {
 
     func completeSet(exerciseId: String, setId: String, weight: Double?, reps: Int, isBodyweight: Bool = false, durationSeconds: Int? = nil, distanceMeters: Int? = nil) async {
         sessionManager.cancelStillThereNotification()
+        sessionManager.registerSetTracked()
 
         guard let exerciseIndex = exercises.firstIndex(where: { $0.id == exerciseId }),
               let setIndex = exercises[exerciseIndex].sets.firstIndex(where: { $0.id == setId }) else { return }
@@ -465,6 +466,7 @@ final class SessionFlowViewModel: ObservableObject {
     /// dropped the recording, so the walk saved with no duration.
     func completeCardioSet(exerciseId: String, durationSeconds: Int, distanceMeters: Int?) async {
         sessionManager.cancelStillThereNotification()
+        sessionManager.registerSetTracked()
         guard let exIdx = exercises.firstIndex(where: { $0.id == exerciseId }) else { return }
         mutateExercises { ex in
             let targetIdx = ex[exIdx].sets.firstIndex(where: { !$0.isCompleted })
@@ -496,6 +498,7 @@ final class SessionFlowViewModel: ObservableObject {
 
     func logSet(exerciseId: String, weight: Double?, weightUnit: String = "kg", reps: Int, isBodyweight: Bool = false) async {
         sessionManager.cancelStillThereNotification()
+        sessionManager.registerSetTracked()
 
         guard let exerciseIndex = exercises.firstIndex(where: { $0.id == exerciseId }) else { return }
 
@@ -538,12 +541,14 @@ final class SessionFlowViewModel: ObservableObject {
             if let reps = reps { ex[exerciseIndex].sets[setIndex].reps = reps }
             if let isCompleted = isCompleted { ex[exerciseIndex].sets[setIndex].isCompleted = isCompleted }
         }
+        sessionManager.registerActivity()
         notifySessionChanged()
     }
 
     func deleteSet(exerciseId: String, setId: String) async {
         guard let exerciseIndex = exercises.firstIndex(where: { $0.id == exerciseId }) else { return }
         mutateExercises { $0[exerciseIndex].sets.removeAll { $0.id == setId } }
+        sessionManager.registerActivity()
         notifySessionChanged()
     }
 
@@ -679,6 +684,12 @@ final class SessionFlowViewModel: ObservableObject {
 
         let trackedDuration = max(1, sessionManager.elapsedSeconds / 60)
 
+        // Resolve avg HR before building the payload. The Watch summary lands
+        // asynchronously just after pushWatchSessionEnded() above, so this
+        // briefly awaits it (then falls back to samples / HealthKit) instead
+        // of reading a value that hasn't arrived yet.
+        let resolvedHeartRate = await sessionManager.resolveSessionAverageHeartRate()
+
         // Build typed payload for cache persistence. Metadata fields
         // (title/type/aiMessage/startedAt/planDayId) let the server
         // construct the WorkoutSession row from scratch when the new
@@ -687,7 +698,7 @@ final class SessionFlowViewModel: ObservableObject {
         // tells it.
         let completionPayload = SessionCompletionPayload(
             durationMinutes: trackedDuration,
-            avgHeartRate: sessionManager.sessionAverageHeartRate,
+            avgHeartRate: resolvedHeartRate,
             feedback: SessionFeedback(
                 effortLevel: effortLevel,
                 energyLevel: energyLevel,

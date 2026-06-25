@@ -28,6 +28,8 @@ final class FollowListViewModel: ObservableObject {
 
     private let networkService: NetworkServiceProtocol
     private let analyticsService: AnalyticsTrackingServiceProtocol
+    /// nil = the current user's own lists; non-nil = another user's profile.
+    private let targetUserId: String?
     private var followInFlight: Set<String> = []
     private var hasLoadedFollowers = false
     private var hasLoadedFollowing = false
@@ -36,12 +38,30 @@ final class FollowListViewModel: ObservableObject {
 
     init(
         initialTab: FollowListTab,
+        userId: String? = nil,
         networkService: NetworkServiceProtocol,
         analyticsService: AnalyticsTrackingServiceProtocol
     ) {
         self.selectedTab = initialTab
+        self.targetUserId = userId
         self.networkService = networkService
         self.analyticsService = analyticsService
+    }
+
+    // MARK: - Endpoints
+
+    private func followersEndpoint(cursor: String?) -> APIEndpoint {
+        if let targetUserId {
+            return CommunityRouter.userFollowers(userId: targetUserId, cursor: cursor, limit: 20).endpoint
+        }
+        return CommunityRouter.myFollowers(cursor: cursor, limit: 20).endpoint
+    }
+
+    private func followingEndpoint(cursor: String?) -> APIEndpoint {
+        if let targetUserId {
+            return CommunityRouter.userFollowing(userId: targetUserId, cursor: cursor, limit: 20).endpoint
+        }
+        return CommunityRouter.myFollowing(cursor: cursor, limit: 20).endpoint
     }
 
     // MARK: - Loading
@@ -69,7 +89,7 @@ final class FollowListViewModel: ObservableObject {
 
         do {
             let response = try await networkService.request(
-                CommunityRouter.myFollowers(cursor: nil, limit: 20).endpoint,
+                followersEndpoint(cursor: nil),
                 responseType: FollowListResponse.self
             )
             followers = response.users
@@ -90,7 +110,7 @@ final class FollowListViewModel: ObservableObject {
 
         do {
             let response = try await networkService.request(
-                CommunityRouter.myFollowing(cursor: nil, limit: 20).endpoint,
+                followingEndpoint(cursor: nil),
                 responseType: FollowListResponse.self
             )
             following = response.users
@@ -112,7 +132,7 @@ final class FollowListViewModel: ObservableObject {
             isLoadingMore = true
             do {
                 let response = try await networkService.request(
-                    CommunityRouter.myFollowers(cursor: followersCursor, limit: 20).endpoint,
+                    followersEndpoint(cursor: followersCursor),
                     responseType: FollowListResponse.self
                 )
                 followers.append(contentsOf: response.users)
@@ -125,7 +145,7 @@ final class FollowListViewModel: ObservableObject {
             isLoadingMore = true
             do {
                 let response = try await networkService.request(
-                    CommunityRouter.myFollowing(cursor: followingCursor, limit: 20).endpoint,
+                    followingEndpoint(cursor: followingCursor),
                     responseType: FollowListResponse.self
                 )
                 following.append(contentsOf: response.users)

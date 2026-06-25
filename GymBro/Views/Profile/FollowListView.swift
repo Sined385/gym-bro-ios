@@ -8,9 +8,10 @@ import SwiftUI
 struct FollowListView: View {
     @StateObject private var viewModel: FollowListViewModel
 
-    init(initialTab: FollowListTab) {
+    init(initialTab: FollowListTab, userId: String? = nil) {
         _viewModel = StateObject(wrappedValue: FollowListViewModel(
             initialTab: initialTab,
+            userId: userId,
             networkService: DependencyContainer.shared.resolve(NetworkServiceProtocol.self),
             analyticsService: DependencyContainer.shared.resolve(AnalyticsTrackingServiceProtocol.self)
         ))

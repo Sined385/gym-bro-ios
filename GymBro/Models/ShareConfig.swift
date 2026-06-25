@@ -12,7 +12,7 @@ import SwiftUI
 // MARK: - Stat keys
 
 enum StatKey: String, CaseIterable, Identifiable, Codable {
-    case time, volume, sets, prs, calories, avgHR
+    case time, volume, sets, calories, avgHR
 
     var id: String { rawValue }
 
@@ -22,7 +22,6 @@ enum StatKey: String, CaseIterable, Identifiable, Codable {
         case .time:     return "Time"
         case .volume:   return "Volume"
         case .sets:     return "Sets"
-        case .prs:      return "PRs"
         case .calories: return "Calories"
         case .avgHR:    return "Avg HR"
         }
@@ -33,7 +32,6 @@ enum StatKey: String, CaseIterable, Identifiable, Codable {
         case .time:     return "TIME"
         case .volume:   return "VOLUME"
         case .sets:     return "SETS"
-        case .prs:      return "PRs"
         case .calories: return "CALORIES"
         case .avgHR:    return "AVG HR"
         }
@@ -179,8 +177,8 @@ struct ShareConfig: Equatable, Codable {
     static func defaultConfig(for workout: WorkoutSnapshot) -> ShareConfig {
         ShareConfig(
             background: .preset(.paper),
-            // Always-on baseline: Time, Volume, Sets, PRs.
-            selectedStatKeys: [.time, .volume, .sets, .prs],
+            // Always-on baseline: Time, Volume, Sets.
+            selectedStatKeys: [.time, .volume, .sets],
             selectedExerciseIds: Set(workout.exercises.map(\.id)),
             title: workout.title,
             category: workout.category
@@ -215,7 +213,7 @@ struct ShareConfig: Equatable, Codable {
         // payloads from a newer client (with extra keys) or an older client
         // (missing keys) both round-trip.
         self.background = (try? c.decode(ShareBackground.self, forKey: .background)) ?? .preset(.paper)
-        self.selectedStatKeys = (try? c.decode(Set<StatKey>.self, forKey: .selectedStatKeys)) ?? [.time, .volume, .sets, .prs]
+        self.selectedStatKeys = (try? c.decode(Set<StatKey>.self, forKey: .selectedStatKeys)) ?? [.time, .volume, .sets]
         self.selectedExerciseIds = (try? c.decode(Set<String>.self, forKey: .selectedExerciseIds)) ?? []
         self.title = (try? c.decode(String.self, forKey: .title)) ?? ""
         self.category = try? c.decodeIfPresent(String.self, forKey: .category)
@@ -245,7 +243,6 @@ struct WorkoutSnapshot: Equatable {
     let durationMinutes: Int?
     let totalVolumeKg: Double
     let totalSets: Int
-    let prCount: Int
     let calories: Int?
     let avgHeartRate: Int?
     let exercises: [WorkoutSnapshotExercise]
@@ -275,7 +272,6 @@ struct WorkoutSnapshot: Equatable {
         case .time:     return formattedDuration
         case .volume:   return formattedVolume
         case .sets:     return "\(totalSets)"
-        case .prs:      return "\(prCount)"
         case .calories: return calories.map { "\($0)" } ?? "—"
         case .avgHR:    return avgHeartRate.map { "\($0)" } ?? "—"
         }
@@ -287,7 +283,6 @@ struct WorkoutSnapshotExercise: Equatable, Identifiable {
     let name: String
     let muscleGroup: String?
     let accentColorHex: String
-    let isPR: Bool
     /// Compact display chips for the card — e.g. ["60", "70", "80", "85"].
     /// Empty for cardio (no weight chips).
     let setChips: [String]
@@ -333,7 +328,6 @@ extension WorkoutSnapshot {
             durationMinutes: data.durationMinutes,
             totalVolumeKg: volume,
             totalSets: allSets.count,
-            prCount: 0,
             calories: data.calories,
             avgHeartRate: data.avgHeartRate,
             exercises: data.exercises.map { WorkoutSnapshotExercise.from($0) },
@@ -358,7 +352,6 @@ extension WorkoutSnapshot {
             durationMinutes: attachment.durationMinutes,
             totalVolumeKg: volume,
             totalSets: totalSets,
-            prCount: 0,
             calories: attachment.calories,
             avgHeartRate: attachment.avgHeartRate,
             exercises: exList.map { WorkoutSnapshotExercise.from($0) },
@@ -382,7 +375,6 @@ extension WorkoutSnapshotExercise {
                 name: ex.name,
                 muscleGroup: ex.muscleGroup,
                 accentColorHex: ex.accentColor,
-                isPR: false,
                 setChips: [],
                 bestSetLine: cardioLine(seconds: secs, meters: meters),
                 isCardio: true
@@ -418,7 +410,6 @@ extension WorkoutSnapshotExercise {
             name: ex.name,
             muscleGroup: ex.muscleGroup,
             accentColorHex: ex.accentColor,
-            isPR: false,
             setChips: chips,
             bestSetLine: bestLine
         )
@@ -442,7 +433,6 @@ extension WorkoutSnapshotExercise {
                 name: ex.name,
                 muscleGroup: ex.muscleGroup,
                 accentColorHex: ex.accentColor ?? "#E86A75",
-                isPR: false,
                 setChips: [],
                 bestSetLine: line,
                 isCardio: true
@@ -470,7 +460,6 @@ extension WorkoutSnapshotExercise {
             name: ex.name,
             muscleGroup: ex.muscleGroup,
             accentColorHex: ex.accentColor ?? "#E86A75",
-            isPR: false,
             setChips: chips,
             bestSetLine: bestLine
         )

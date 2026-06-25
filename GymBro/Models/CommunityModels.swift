@@ -18,9 +18,7 @@ struct CommunityPost: Decodable, Identifiable, Equatable {
     let shareConfig: ShareConfig?
     let cardImageUrl: String?
     let workoutAttachment: WorkoutAttachment?
-    let likeCount: Int
     let commentCount: Int
-    let isLiked: Bool
     let reactions: [PostReaction]?
     let reactionCount: Int?
     let isFollowingAuthor: Bool
@@ -29,9 +27,7 @@ struct CommunityPost: Decodable, Identifiable, Equatable {
 
     static func == (lhs: Self, rhs: Self) -> Bool {
         lhs.id == rhs.id &&
-        lhs.likeCount == rhs.likeCount &&
         lhs.commentCount == rhs.commentCount &&
-        lhs.isLiked == rhs.isLiked &&
         lhs.reactions == rhs.reactions &&
         lhs.isFollowingAuthor == rhs.isFollowingAuthor
     }
@@ -40,21 +36,21 @@ struct CommunityPost: Decodable, Identifiable, Equatable {
         id: String, user: PostUser, content: String, visibility: String,
         photoUrl: String?, shareConfig: ShareConfig? = nil, cardImageUrl: String? = nil,
         workoutAttachment: WorkoutAttachment?,
-        likeCount: Int, commentCount: Int, isLiked: Bool,
+        commentCount: Int,
         reactions: [PostReaction]?, reactionCount: Int?,
         isFollowingAuthor: Bool, isOwnPost: Bool, createdAt: String
     ) {
         self.id = id; self.user = user; self.content = content; self.visibility = visibility
         self.photoUrl = photoUrl; self.shareConfig = shareConfig; self.cardImageUrl = cardImageUrl
         self.workoutAttachment = workoutAttachment
-        self.likeCount = likeCount; self.commentCount = commentCount; self.isLiked = isLiked
+        self.commentCount = commentCount
         self.reactions = reactions; self.reactionCount = reactionCount
         self.isFollowingAuthor = isFollowingAuthor; self.isOwnPost = isOwnPost; self.createdAt = createdAt
     }
 
     private enum CodingKeys: String, CodingKey {
         case id, user, content, visibility, photoUrl, shareConfig, cardImageUrl
-        case workoutAttachment, likeCount, commentCount, isLiked, reactions, reactionCount
+        case workoutAttachment, commentCount, reactions, reactionCount
         case isFollowingAuthor, isOwnPost, createdAt
     }
 
@@ -68,9 +64,7 @@ struct CommunityPost: Decodable, Identifiable, Equatable {
         self.shareConfig = try c.decodeIfPresent(ShareConfig.self, forKey: .shareConfig)
         self.cardImageUrl = try c.decodeIfPresent(String.self, forKey: .cardImageUrl)
         self.workoutAttachment = try c.decodeIfPresent(WorkoutAttachment.self, forKey: .workoutAttachment)
-        self.likeCount = try c.decode(Int.self, forKey: .likeCount)
         self.commentCount = try c.decode(Int.self, forKey: .commentCount)
-        self.isLiked = try c.decode(Bool.self, forKey: .isLiked)
         self.reactions = try c.decodeIfPresent([PostReaction].self, forKey: .reactions)
         self.reactionCount = try c.decodeIfPresent(Int.self, forKey: .reactionCount)
         self.isFollowingAuthor = try c.decode(Bool.self, forKey: .isFollowingAuthor)
@@ -79,14 +73,11 @@ struct CommunityPost: Decodable, Identifiable, Equatable {
     }
 
     func withReactions(_ newReactions: [PostReaction], reactionCount newCount: Int) -> CommunityPost {
-        let heartReaction = newReactions.first(where: { $0.emoji == "heart" })
-        let newIsLiked = heartReaction?.isReacted ?? isLiked
-        let newLikeCount = heartReaction?.count ?? likeCount
-        return CommunityPost(
+        CommunityPost(
             id: id, user: user, content: content, visibility: visibility,
             photoUrl: photoUrl, shareConfig: shareConfig, cardImageUrl: cardImageUrl,
             workoutAttachment: workoutAttachment,
-            likeCount: newLikeCount, commentCount: commentCount, isLiked: newIsLiked,
+            commentCount: commentCount,
             reactions: newReactions, reactionCount: newCount,
             isFollowingAuthor: isFollowingAuthor, isOwnPost: isOwnPost, createdAt: createdAt
         )
@@ -97,7 +88,7 @@ struct CommunityPost: Decodable, Identifiable, Equatable {
             id: id, user: user, content: content, visibility: visibility,
             photoUrl: photoUrl, shareConfig: shareConfig, cardImageUrl: cardImageUrl,
             workoutAttachment: workoutAttachment,
-            likeCount: likeCount, commentCount: count, isLiked: isLiked,
+            commentCount: count,
             reactions: reactions, reactionCount: reactionCount,
             isFollowingAuthor: isFollowingAuthor, isOwnPost: isOwnPost, createdAt: createdAt
         )
@@ -108,9 +99,9 @@ struct CommunityPost: Decodable, Identifiable, Equatable {
             id: id, user: user, content: content, visibility: visibility,
             photoUrl: photoUrl, shareConfig: shareConfig, cardImageUrl: cardImageUrl,
             workoutAttachment: workoutAttachment,
-            likeCount: likeCount, commentCount: commentCount, isLiked: isLiked,
+            commentCount: commentCount,
             reactions: reactions, reactionCount: reactionCount,
-            isFollowingAuthor: following, isOwnPost: isOwnPost, createdAt: createdAt
+            isFollowingAuthor: isFollowingAuthor, isOwnPost: isOwnPost, createdAt: createdAt
         )
     }
 }
@@ -234,10 +225,11 @@ struct PostReaction: Decodable, Equatable, Identifiable {
 }
 
 enum ReactionEmoji: String, CaseIterable {
-    case fire, muscle, clap, wow, trophy
+    case heart, fire, muscle, clap, wow, trophy
 
     var display: String {
         switch self {
+        case .heart: return "\u{2764}\u{FE0F}"
         case .fire: return "\u{1F525}"
         case .muscle: return "\u{1F4AA}"
         case .clap: return "\u{1F44F}"
@@ -250,13 +242,6 @@ enum ReactionEmoji: String, CaseIterable {
 struct ReactionResponse: Decodable {
     let reactions: [PostReaction]
     let totalReactionCount: Int
-}
-
-// MARK: - Like Response (legacy)
-
-struct LikeResponse: Decodable {
-    let isLiked: Bool
-    let likeCount: Int
 }
 
 // MARK: - User Search
@@ -298,18 +283,36 @@ struct FollowResponse: Decodable {
 
 struct UserProfile: Decodable {
     let user: PostUser
+    let primaryGoal: String?
     let primaryGoals: [String]?
     let experienceLevel: String?
     let bodyWeightKg: Double?
     let memberSince: String?
     let consistencyStats: ConsistencyStats
     let extendedStats: ExtendedStats?
+    let profileStats: ProfileStats?
     let followerCount: Int?
     let followingCount: Int?
     let isFollowing: Bool
     let followsMe: Bool
     let recentPosts: [CommunityPost]
     let isOwnProfile: Bool
+}
+
+/// Grouped stats that lead the redesigned Overview tab.
+struct ProfileStats: Decodable {
+    let oneRepMax: OneRepMax?
+    let bodyWeightKg: Double?
+    let weekStreak: Int?
+    let avgSessionsPerWeek: Double?
+    let topMuscleGroups: [String]?
+}
+
+/// Estimated 1-rep maxes (kg). Nil for a lift the user has never logged.
+struct OneRepMax: Decodable {
+    let bench: Int?
+    let squat: Int?
+    let deadlift: Int?
 }
 
 struct ConsistencyStats: Decodable {
@@ -324,12 +327,14 @@ struct ConsistencyStats: Decodable {
 
 struct MyProfileResponse: Decodable {
     let user: PostUser
+    let primaryGoal: String?
     let primaryGoals: [String]?
     let experienceLevel: String?
     let bodyWeightKg: Double?
     let memberSince: String
     let consistencyStats: ConsistencyStats
     let extendedStats: ExtendedStats
+    let profileStats: ProfileStats?
     let followerCount: Int
     let followingCount: Int
     let recentPosts: [CommunityPost]
@@ -351,6 +356,13 @@ struct PersonalRecord: Decodable, Identifiable {
     let reps: Int
     let date: String?
     var id: String { exerciseName }
+}
+
+// MARK: - Profile Posts (grid)
+
+struct ProfilePostsResponse: Decodable {
+    let posts: [CommunityPost]
+    let nextCursor: String?
 }
 
 // MARK: - Profile Workouts
@@ -390,43 +402,42 @@ struct ProfileWorkout: Decodable, Identifiable {
     }
 }
 
-// MARK: - AI Comparison
+// MARK: - Head-to-head comparison
 
-struct AiComparison: Decodable {
-    let currentUser: LiftStats
-    let otherUser: LiftStats
-    let comparison: ComparisonAnalysis?
-    let overlapAnalysis: String?
+/// Deterministic head-to-head between the viewer and the profile owner. The
+/// server picks whatever metrics the two users have in common (shared lifts by
+/// estimated 1RM, plus shared activity stats) — `metrics` is dynamic.
+struct HeadToHead: Decodable {
+    // currentUser/otherUser/metrics are absent when `locked` (free tier) — the
+    // server skips generation and returns only `{ locked: true }`.
+    let currentUser: ComparisonParticipant?
+    let otherUser: ComparisonParticipant?
+    let metrics: [ComparisonMetric]?
+    let analysis: ComparisonAnalysis?
+    let locked: Bool?
 }
 
-struct LiftStats: Decodable {
+struct ComparisonParticipant: Decodable {
     let userId: String
     let fullName: String
-    let benchPress: Double?
-    let squat: Double?
-    let deadlift: Double?
-    let bodyWeightKg: Double?
-    let experienceLevel: String?
-    let primaryGoals: [String]?
-    let totalSessions3mo: Int?
-    let avgSessionsPerWeek: Double?
-    let avgSessionDurationMin: Int?
-    let topMuscleGroups: [String]?
-    let avgEffortLevel: Double?
-    let volumeTrend: String?
 }
 
+/// AI-written read of the head-to-head, generated from the dynamic metrics.
 struct ComparisonAnalysis: Decodable {
-    let summary: String
-    let trainingPatterns: String
-    let volumeTrends: String
-    let strengths: ComparisonStrengths
-    let recommendation: String
+    let verdict: String
+    let yourEdge: String?
+    let theirEdge: String?
+    let takeaway: String?
 }
 
-struct ComparisonStrengths: Decodable {
-    let currentUser: String
-    let otherUser: String
+struct ComparisonMetric: Decodable, Identifiable {
+    let key: String
+    let label: String
+    let unit: String?
+    let currentValue: Double
+    let otherValue: Double
+    let higherIsBetter: Bool?
+    var id: String { key }
 }
 
 // MARK: - Follow List

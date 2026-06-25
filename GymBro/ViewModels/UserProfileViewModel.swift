@@ -8,13 +8,44 @@
 import Foundation
 import Combine
 
+/// Top-level tabs on the redesigned community profile.
+enum ProfileTab: String, CaseIterable, Identifiable {
+    case overview, workouts, posts
+    var id: String { rawValue }
+    var title: String {
+        switch self {
+        case .overview: return "Overview"
+        case .workouts: return "Workouts"
+        case .posts: return "Posts"
+        }
+    }
+}
+
+/// Filter chips on the Posts grid.
+enum PostFilter: String, CaseIterable, Identifiable {
+    case all, workouts, photos
+    var id: String { rawValue }
+    var title: String {
+        switch self {
+        case .all: return "All"
+        case .workouts: return "Workouts"
+        case .photos: return "Photos"
+        }
+    }
+}
+
 @MainActor
-final class UserProfileViewModel: ObservableObject {
+final class UserProfileViewModel: ObservableObject, ProfilePostsSource {
+
+    /// Other users' posts aren't deletable from here.
+    let canDeletePosts = false
+    func deletePost(_ id: String) async {}
+
 
     // MARK: - Published Properties
 
     @Published var profile: UserProfile?
-    @Published var comparison: AiComparison?
+    @Published var comparison: HeadToHead?
     @Published var isLoading: Bool = false
     @Published var isLoadingComparison: Bool = false
     @Published var isFollowActionLoading: Bool = false
@@ -25,21 +56,41 @@ final class UserProfileViewModel: ObservableObject {
     @Published var isLoadingWorkouts: Bool = false
     @Published var hasMoreWorkouts: Bool = false
     private var workoutCursor: String?
+    private var hasLoadedWorkouts = false
+
+    // Tabs + posts grid
+    @Published var selectedTab: ProfileTab = .overview
+    @Published var postFilter: PostFilter = .all
+    @Published var posts: [CommunityPost] = []
+    @Published var isLoadingPosts: Bool = false
+    @Published var hasMorePosts: Bool = false
+    private var postsCursor: String?
+    private var hasLoadedPosts = false
 
     // MARK: - Properties
 
     let userId: String
     private let networkService: NetworkServiceProtocol
+    let subscriptionManager: SubscriptionManager
     private var likeInFlight: Set<String> = []
 
     // MARK: - Initialization
 
-    init(userId: String, networkService: NetworkServiceProtocol) {
+    init(
+        userId: String,
+        networkService: NetworkServiceProtocol,
+        subscriptionManager: SubscriptionManager = DependencyContainer.shared.resolve(SubscriptionManager.self)
+    ) {
         self.userId = userId
         self.networkService = networkService
+        self.subscriptionManager = subscriptionManager
     }
 
     // MARK: - Computed
+
+    var isPremium: Bool {
+        subscriptionManager.isPremium
+    }
 
     var isFollowing: Bool {
         profile?.isFollowing ?? false
@@ -51,6 +102,18 @@ final class UserProfileViewModel: ObservableObject {
 
     var recentPosts: [CommunityPost] {
         profile?.recentPosts ?? []
+    }
+
+    /// Posts shown in the grid, after the active filter chip.
+    var filteredPosts: [CommunityPost] {
+        switch postFilter {
+        case .all:
+            return posts
+        case .workouts:
+            return posts.filter { $0.workoutAttachment != nil }
+        case .photos:
+            return posts.filter { ($0.photoUrl?.isEmpty == false) }
+        }
     }
 
     // MARK: - Data Loading
@@ -73,18 +136,65 @@ final class UserProfileViewModel: ObservableObject {
 
     func loadComparison() async {
         guard profile != nil, profile?.isOwnProfile == false else { return }
+        // Premium-only AI feature — the server skips generation for free users
+        // and the card shows an upgrade teaser instead.
+        guard isPremium else { return }
         isLoadingComparison = true
 
         do {
             comparison = try await networkService.request(
                 CommunityRouter.userCompare(userId: userId).endpoint,
-                responseType: AiComparison.self
+                responseType: HeadToHead.self
             )
         } catch {
             print("[UserProfileVM] comparison failed: \(error)")
         }
 
         isLoadingComparison = false
+    }
+
+    // MARK: - Posts Grid
+
+    func loadPostsIfNeeded() async {
+        guard !hasLoadedPosts else { return }
+        hasLoadedPosts = true
+        await loadPosts()
+    }
+
+    func loadPosts() async {
+        guard !isLoadingPosts else { return }
+        isLoadingPosts = true
+        do {
+            let response = try await networkService.request(
+                CommunityRouter.userPosts(userId: userId, cursor: nil, limit: 18).endpoint,
+                responseType: ProfilePostsResponse.self
+            )
+            posts = response.posts
+            postsCursor = response.nextCursor
+            hasMorePosts = response.nextCursor != nil
+        } catch { }
+        isLoadingPosts = false
+    }
+
+    func loadMorePosts() async {
+        guard hasMorePosts, !isLoadingPosts, let cursor = postsCursor else { return }
+        isLoadingPosts = true
+        do {
+            let response = try await networkService.request(
+                CommunityRouter.userPosts(userId: userId, cursor: cursor, limit: 18).endpoint,
+                responseType: ProfilePostsResponse.self
+            )
+            posts.append(contentsOf: response.posts)
+            postsCursor = response.nextCursor
+            hasMorePosts = response.nextCursor != nil
+        } catch { }
+        isLoadingPosts = false
+    }
+
+    func loadWorkoutsIfNeeded() async {
+        guard !hasLoadedWorkouts else { return }
+        hasLoadedWorkouts = true
+        await loadWorkouts()
     }
 
     // MARK: - Workout History
@@ -131,13 +241,11 @@ final class UserProfileViewModel: ObservableObject {
         likeInFlight.insert(key)
 
         // Optimistic update
-        if let index = profile?.recentPosts.firstIndex(where: { $0.id == postId }) {
-            let post = profile!.recentPosts[index]
-            let updated = post.withReactions(
+        if let post = findPost(postId) {
+            applyPostUpdate(post.withReactions(
                 optimisticToggle(post.reactions ?? [], emoji: emoji),
                 reactionCount: optimisticCount(post.reactions ?? [], emoji: emoji)
-            )
-            updateProfilePost(at: index, with: updated)
+            ))
         }
 
         Task {
@@ -146,10 +254,8 @@ final class UserProfileViewModel: ObservableObject {
                     CommunityRouter.toggleReaction(postId: postId, emoji: emoji).endpoint,
                     responseType: ReactionResponse.self
                 )
-                if let index = profile?.recentPosts.firstIndex(where: { $0.id == postId }) {
-                    let post = profile!.recentPosts[index]
-                    let updated = post.withReactions(response.reactions, reactionCount: response.totalReactionCount)
-                    updateProfilePost(at: index, with: updated)
+                if let post = findPost(postId) {
+                    applyPostUpdate(post.withReactions(response.reactions, reactionCount: response.totalReactionCount))
                 }
             } catch { }
             likeInFlight.remove(key)
@@ -177,23 +283,36 @@ final class UserProfileViewModel: ObservableObject {
         optimisticToggle(reactions, emoji: emoji).reduce(0) { $0 + $1.count }
     }
 
-    private func updateProfilePost(at index: Int, with updated: CommunityPost) {
-        guard let p = profile else { return }
-        var posts = p.recentPosts
-        posts[index] = updated
+    /// Look up a post by id across both the grid (`posts`) and the profile's
+    /// `recentPosts` — either surface can drive an interaction.
+    private func findPost(_ id: String) -> CommunityPost? {
+        posts.first(where: { $0.id == id }) ?? profile?.recentPosts.first(where: { $0.id == id })
+    }
+
+    /// Write an updated post back to every array that holds it.
+    private func applyPostUpdate(_ updated: CommunityPost) {
+        if let i = posts.firstIndex(where: { $0.id == updated.id }) {
+            posts[i] = updated
+        }
+        guard let p = profile,
+              let i = p.recentPosts.firstIndex(where: { $0.id == updated.id }) else { return }
+        var recent = p.recentPosts
+        recent[i] = updated
         profile = UserProfile(
             user: p.user,
+            primaryGoal: p.primaryGoal,
             primaryGoals: p.primaryGoals,
             experienceLevel: p.experienceLevel,
             bodyWeightKg: p.bodyWeightKg,
             memberSince: p.memberSince,
             consistencyStats: p.consistencyStats,
             extendedStats: p.extendedStats,
+            profileStats: p.profileStats,
             followerCount: p.followerCount,
             followingCount: p.followingCount,
             isFollowing: p.isFollowing,
             followsMe: p.followsMe,
-            recentPosts: posts,
+            recentPosts: recent,
             isOwnProfile: p.isOwnProfile
         )
     }
@@ -232,9 +351,8 @@ final class UserProfileViewModel: ObservableObject {
             commentsMap[postId] = existing
 
             // Update comment count
-            if let index = profile?.recentPosts.firstIndex(where: { $0.id == postId }) {
-                let post = profile!.recentPosts[index]
-                updateProfilePost(at: index, with: post.withCommentCount(post.commentCount + 1))
+            if let post = findPost(postId) {
+                applyPostUpdate(post.withCommentCount(post.commentCount + 1))
             }
         } catch { }
     }

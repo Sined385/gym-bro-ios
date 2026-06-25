@@ -24,6 +24,7 @@ enum PremiumFeature: String {
     case customExercises = "custom_exercises"
     case supersets = "supersets"
     case planGeneration = "plan_generation"
+    case profileComparison = "profile_comparison"
 
     var displayName: String {
         switch self {
@@ -31,6 +32,7 @@ enum PremiumFeature: String {
         case .customExercises: return "Custom Exercises"
         case .supersets: return "Supersets"
         case .planGeneration: return "Plan Generation"
+        case .profileComparison: return "AI Comparison"
         }
     }
 }
