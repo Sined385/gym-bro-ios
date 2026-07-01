@@ -245,6 +245,17 @@ final class SessionFlowViewModel: ObservableObject {
                     await self?.completeSetFromWatch(exerciseId: exerciseId, setId: setId, weight: weight, reps: reps)
                 }
             }
+
+            sessionManager.onWatchCardioCompletion = { [weak self] exerciseId, durationSeconds in
+                Task { @MainActor [weak self] in
+                    // Watch-logged cardio has no distance; duration only.
+                    await self?.completeCardioSet(
+                        exerciseId: exerciseId,
+                        durationSeconds: durationSeconds,
+                        distanceMeters: nil
+                    )
+                }
+            }
         }
     }
 
@@ -418,7 +429,7 @@ final class SessionFlowViewModel: ObservableObject {
 
     func completeSet(exerciseId: String, setId: String, weight: Double?, reps: Int, isBodyweight: Bool = false, durationSeconds: Int? = nil, distanceMeters: Int? = nil) async {
         sessionManager.cancelStillThereNotification()
-        sessionManager.registerSetTracked()
+        sessionManager.registerSetTracked(exerciseId: exerciseId)
 
         guard let exerciseIndex = exercises.firstIndex(where: { $0.id == exerciseId }),
               let setIndex = exercises[exerciseIndex].sets.firstIndex(where: { $0.id == setId }) else { return }
@@ -466,7 +477,7 @@ final class SessionFlowViewModel: ObservableObject {
     /// dropped the recording, so the walk saved with no duration.
     func completeCardioSet(exerciseId: String, durationSeconds: Int, distanceMeters: Int?) async {
         sessionManager.cancelStillThereNotification()
-        sessionManager.registerSetTracked()
+        sessionManager.registerSetTracked(exerciseId: exerciseId)
         guard let exIdx = exercises.firstIndex(where: { $0.id == exerciseId }) else { return }
         mutateExercises { ex in
             let targetIdx = ex[exIdx].sets.firstIndex(where: { !$0.isCompleted })
@@ -498,7 +509,7 @@ final class SessionFlowViewModel: ObservableObject {
 
     func logSet(exerciseId: String, weight: Double?, weightUnit: String = "kg", reps: Int, isBodyweight: Bool = false) async {
         sessionManager.cancelStillThereNotification()
-        sessionManager.registerSetTracked()
+        sessionManager.registerSetTracked(exerciseId: exerciseId)
 
         guard let exerciseIndex = exercises.firstIndex(where: { $0.id == exerciseId }) else { return }
 

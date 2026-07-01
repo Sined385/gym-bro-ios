@@ -18,6 +18,8 @@ enum WatchMessageType: String, Codable {
 
     // Watch → iPhone
     case completeSet
+    case startCardio
+    case completeCardio
     case restTimerAction
     case requestSessionStart
     case heartRateBatch
@@ -44,6 +46,9 @@ enum WatchMessageKey {
     static let weight = "weight"
     static let reps = "reps"
     static let action = "action"
+
+    // Cardio completion
+    static let durationSeconds = "durationSeconds"
 
     // Rest timer
     static let restAction = "restAction"
@@ -80,6 +85,21 @@ enum WatchMessageCoder {
             message[WatchMessageKey.weight] = weight
         }
         return message
+    }
+
+    static func encodeStartCardio(exerciseId: String) -> [String: Any] {
+        [
+            WatchMessageKey.type: WatchMessageType.startCardio.rawValue,
+            WatchMessageKey.exerciseId: exerciseId,
+        ]
+    }
+
+    static func encodeCardioCompletion(exerciseId: String, durationSeconds: Int) -> [String: Any] {
+        [
+            WatchMessageKey.type: WatchMessageType.completeCardio.rawValue,
+            WatchMessageKey.exerciseId: exerciseId,
+            WatchMessageKey.durationSeconds: durationSeconds,
+        ]
     }
 
     static func encodeRestTimerAction(_ action: WatchRestTimerAction) -> [String: Any] {

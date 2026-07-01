@@ -10,6 +10,9 @@ import SwiftUI
 struct RestTimerBar: View {
     @EnvironmentObject var sessionManager: ActiveSessionManager
     let remaining: Int
+    /// Tapping the bar (not the +30s/Skip buttons) jumps back to the exercise
+    /// whose set was logged most recently, so you can log the next set.
+    var onTapBar: (() -> Void)? = nil
 
     private let purpleAccent = Color(hex: "7A82F6")
 
@@ -81,6 +84,10 @@ struct RestTimerBar: View {
         )
         .clipShape(RoundedRectangle(cornerRadius: 24))
         .shadow(color: purpleAccent.opacity(0.4), radius: 16, y: 8)
+        // Whole-bar tap → jump to the last-executed exercise. The +30s/Skip
+        // Buttons sit above this and consume their own taps first.
+        .contentShape(RoundedRectangle(cornerRadius: 24))
+        .onTapGesture { onTapBar?() }
         .padding(.horizontal, 24)
         .padding(.bottom, 8)
     }

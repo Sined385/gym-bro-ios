@@ -63,6 +63,28 @@ final class WatchSetLoggingViewModel: ObservableObject {
 
     // MARK: - Submit
 
+    /// Ask the phone to start its cardio clock (phone is source of truth).
+    /// The resulting state push flips this exercise into the recording phase
+    /// on both devices.
+    func startCardio(exerciseId: String) {
+        connectivityService.sendStartCardio(exerciseId: exerciseId)
+        WatchHaptics.setCompleted()
+    }
+
+    /// Cardio is time-based: send the recorded duration; the phone applies it
+    /// via completeCardioSet (distance stays empty for watch-logged cardio).
+    func completeCardio(exerciseId: String, durationSeconds: Int) {
+        isSubmitting = true
+        connectivityService.sendCardioCompletion(
+            exerciseId: exerciseId,
+            durationSeconds: durationSeconds
+        )
+        WatchHaptics.setCompleted()
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) { [weak self] in
+            self?.isSubmitting = false
+        }
+    }
+
     func completeSet(exerciseId: String, setId: String) {
         isSubmitting = true
         lastCompletedWeight = weight > 0 ? weight : nil

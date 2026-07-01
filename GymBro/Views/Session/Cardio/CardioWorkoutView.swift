@@ -680,9 +680,15 @@ struct CardioWorkoutView: View {
                             .font(.system(size: 9, weight: .heavy))
                             .tracking(0.8)
                             .opacity(0.85)
+                            .lineLimit(1)
+                            .minimumScaleFactor(0.7)
+                        // Downscale instead of wrapping to a second line on
+                        // narrow devices (e.g. "Start Cardio" on a small phone).
                         Text(primaryCTATitle)
                             .font(.system(size: 17, weight: .heavy))
                             .tracking(-0.3)
+                            .lineLimit(1)
+                            .minimumScaleFactor(0.6)
                     }
                     Spacer()
                     Image(systemName: primaryCTAIcon)
@@ -798,15 +804,9 @@ struct CardioWorkoutView: View {
                 let totalSec = entry.sets.reduce(0) { $0 + ($1.durationSeconds ?? 0) }
                 let totalMeters = entry.sets.reduce(0) { $0 + ($1.distanceMeters ?? 0) }
                 VStack(alignment: .leading, spacing: 8) {
-                    HStack(spacing: 10) {
-                        Text(formattedSessionDate(entry.sessionDate))
-                            .font(.system(size: 13, weight: .heavy))
-                            .foregroundColor(.gymBroNeutral900)
-                        Spacer()
-                        Image(systemName: "figure.indoor.cycle")
-                            .font(.system(size: 13, weight: .semibold))
-                            .foregroundColor(family.accent)
-                    }
+                    Text(formattedSessionDate(entry.sessionDate))
+                        .font(.system(size: 13, weight: .heavy))
+                        .foregroundColor(.gymBroNeutral900)
                     HStack(spacing: 18) {
                         historyMetric(label: "DURATION", value: totalSec > 0 ? formatColon(totalSec) : "—")
                         historyMetric(

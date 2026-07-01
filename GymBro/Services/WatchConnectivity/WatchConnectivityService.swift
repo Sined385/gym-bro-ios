@@ -21,6 +21,8 @@ final class WatchConnectivityService: NSObject, ObservableObject, WatchConnectiv
     // MARK: - Callbacks (set by ActiveSessionManager)
 
     var onSetCompletion: ((_ exerciseId: String, _ setId: String, _ weight: Double?, _ reps: Int) -> Void)?
+    var onCardioStart: ((_ exerciseId: String) -> Void)?
+    var onCardioCompletion: ((_ exerciseId: String, _ durationSeconds: Int) -> Void)?
     var onRestTimerAction: ((_ action: WatchRestTimerAction) -> Void)?
     var onHeartRateBatch: ((_ batch: WatchHeartRateBatch) -> Void)?
     var onWorkoutSummary: ((_ summary: WatchWorkoutSummary) -> Void)?
@@ -165,6 +167,17 @@ extension WatchConnectivityService: @preconcurrency WCSessionDelegate {
             let reps = message[WatchMessageKey.reps] as? Int ?? 0
 
             onSetCompletion?(exerciseId, setId, weight, reps)
+            replyHandler?(["confirmed": true])
+
+        case .startCardio:
+            let exerciseId = message[WatchMessageKey.exerciseId] as? String ?? ""
+            onCardioStart?(exerciseId)
+            replyHandler?(["confirmed": true])
+
+        case .completeCardio:
+            let exerciseId = message[WatchMessageKey.exerciseId] as? String ?? ""
+            let durationSeconds = message[WatchMessageKey.durationSeconds] as? Int ?? 0
+            onCardioCompletion?(exerciseId, durationSeconds)
             replyHandler?(["confirmed": true])
 
         case .restTimerAction:

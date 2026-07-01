@@ -124,7 +124,15 @@ struct ExerciseLoggingView: View {
             // priority over the up-next peek card to keep the bottom
             // edge from getting too busy.
             if let remaining = sessionManager.restTimeRemaining {
-                RestTimerBar(remaining: remaining)
+                RestTimerBar(remaining: remaining, onTapBar: {
+                    // Jump to the exercise whose set was logged most recently,
+                    // unless we're already there. Lets you rest from anywhere
+                    // and tap back to keep logging.
+                    if let lastId = sessionManager.lastExecutedExerciseId,
+                       lastId != exerciseId {
+                        onSwitchToExercise?(lastId)
+                    }
+                })
                     .transition(.move(edge: .bottom).combined(with: .opacity))
             } else {
                 NextExercisePeekCard(
@@ -161,7 +169,13 @@ struct ExerciseLoggingView: View {
             .presentationDragIndicator(.visible)
             .presentationCornerRadius(28)
         }
-        .task {
+        // Keyed on the current target: switching exercises via the peek card
+        // does `replaceTop(.exerciseLogging(newId))`, which reuses THIS view
+        // (same nav route case) with a new id rather than pushing a fresh one.
+        // A plain `.task` only fires once per view identity, so without the id
+        // the next exercise's history would never load. `.task(id:)` re-runs
+        // each time the id changes.
+        .task(id: loadDataKey) {
             await loadPreviousData()
         }
         // Tell the Watch which exercise the phone has open so it stays in
@@ -175,6 +189,10 @@ struct ExerciseLoggingView: View {
         }
         .analyticsScreen("ExerciseLogging")
     }
+
+    /// Identity for the previous-sets load. Changes whenever the view is
+    /// reused for a different exercise/superset (see `.task(id:)` above).
+    private var loadDataKey: String { exerciseId ?? supersetGroupId ?? "" }
 
     /// What to pin on the Watch for this view: the individual exercise id, or
     /// the currently-shown step of a superset.

@@ -394,6 +394,12 @@ struct WorkoutLibraryView: View {
     }
 
     private static func formatLastSet(_ set: ExerciseLibraryLastSet) -> String {
+        if set.isCardio {
+            return WorkoutSnapshotExercise.cardioLine(
+                seconds: set.durationSeconds ?? 0,
+                meters: set.distanceMeters ?? 0
+            )
+        }
         let weightPart: String
         if set.isBodyweight {
             weightPart = "BW"

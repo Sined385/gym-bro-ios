@@ -116,6 +116,38 @@ final class PhoneConnectivityService: NSObject, ObservableObject {
         })
     }
 
+    func sendStartCardio(exerciseId: String) {
+        let message = WatchMessageCoder.encodeStartCardio(exerciseId: exerciseId)
+        guard let session = wcSession, session.isReachable else {
+            pendingUserInfoTransfers.append(message)
+            transferPendingUserInfo()
+            return
+        }
+        session.sendMessage(message, replyHandler: nil, errorHandler: { @Sendable error in
+            print("⌚ Failed to send start cardio: \(error)")
+            session.transferUserInfo(message)
+        })
+    }
+
+    func sendCardioCompletion(exerciseId: String, durationSeconds: Int) {
+        let message = WatchMessageCoder.encodeCardioCompletion(
+            exerciseId: exerciseId,
+            durationSeconds: durationSeconds
+        )
+
+        guard let session = wcSession, session.isReachable else {
+            // Queue for guaranteed delivery
+            pendingUserInfoTransfers.append(message)
+            transferPendingUserInfo()
+            return
+        }
+
+        session.sendMessage(message, replyHandler: nil, errorHandler: { @Sendable error in
+            print("⌚ Failed to send cardio completion: \(error)")
+            session.transferUserInfo(message)
+        })
+    }
+
     func sendRestTimerAction(_ action: WatchRestTimerAction) {
         let message = WatchMessageCoder.encodeRestTimerAction(action)
         guard let session = wcSession else { return }

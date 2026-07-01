@@ -305,6 +305,10 @@ struct SessionPlanView: View {
                 Text(badgeText)
                     .font(.system(size: 11, weight: .semibold))
                     .tracking(0.6)
+                    // Downscale instead of wrapping (e.g. "DONE" losing a letter
+                    // to the next row) on narrow cells / small devices.
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.6)
                     .foregroundColor(allDone ? Color(hex: "30C08D") : Color(hex: "737373"))
                     .padding(.horizontal, 8)
                     .padding(.vertical, 2.5)
@@ -600,6 +604,14 @@ struct SessionPlanView: View {
         )
         .clipShape(RoundedRectangle(cornerRadius: 24))
         .shadow(color: purpleAccent.opacity(0.4), radius: 16, y: 8)
+        // Tap the bar (not +30s/Skip) → jump into the exercise you last logged
+        // a set on, so you can keep logging without hunting through the plan.
+        .contentShape(RoundedRectangle(cornerRadius: 24))
+        .onTapGesture {
+            if let lastId = sessionManager.lastExecutedExerciseId {
+                onTapExercise(lastId)
+            }
+        }
         .padding(.horizontal, 16)
     }
 }

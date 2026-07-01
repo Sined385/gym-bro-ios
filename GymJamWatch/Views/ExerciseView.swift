@@ -47,6 +47,11 @@ struct ExerciseView: View {
                 .padding(.horizontal, 8)
 
                 if let exercise = sessionViewModel.currentExercise {
+                    if exercise.isCardioExercise {
+                        // Cardio (walking/running/etc.) is time-based — show a
+                        // Start → live timer → Done flow, not set rows.
+                        CardioExerciseCard(exercise: exercise)
+                    } else {
                     ExerciseCard(exercise: exercise) { set in
                         setLoggingViewModel.loadFromSet(set)
                         showSetInput = true
@@ -76,6 +81,7 @@ struct ExerciseView: View {
                             }
                         }
                         .buttonStyle(WatchOutlineButtonStyle())
+                    }
                     }
                 } else if sessionViewModel.exercises.isEmpty {
                     Text("Waiting for exercises...")
@@ -213,5 +219,118 @@ struct SetRow: View {
         let r = set.reps.map { "\($0)" } ?? "—"
         let unit = set.weight != nil && set.weight != 0 ? set.weightUnit : ""
         return "\(w)\(unit) × \(r)"
+    }
+}
+
+// MARK: - Cardio Exercise Card
+
+/// Time-based cardio on the Watch: Start → live timer (+ HR) → Done, mirroring
+/// the phone's idle/recording cardio states. On Done the recorded duration is
+/// sent to the phone, which completes the cardio set (distance left empty).
+struct CardioExerciseCard: View {
+    @EnvironmentObject var sessionViewModel: WatchSessionViewModel
+    @EnvironmentObject var setLoggingViewModel: WatchSetLoggingViewModel
+
+    let exercise: WatchExerciseState
+
+    private enum Phase { case idle, recording, completed }
+
+    /// Phase is derived from the SYNCED phone state — never local — so a walk
+    /// started/stopped/restarted on the phone is reflected here, and vice
+    /// versa (the Watch's Start/Done just drive the phone's clock).
+    private var phase: Phase {
+        if sessionViewModel.sessionState?.isRecordingCardio(exercise.id) == true {
+            return .recording
+        }
+        if let set = exercise.sets.first, set.isCompleted,
+           let dur = set.durationSeconds, dur > 0 {
+            return .completed
+        }
+        return .idle
+    }
+
+    private var completedDuration: Int {
+        exercise.sets.first?.durationSeconds ?? 0
+    }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            HStack(spacing: 8) {
+                Rectangle()
+                    .fill(WatchColors.primary)
+                    .frame(width: 2)
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(exercise.name)
+                        .font(WatchTypography.sectionTitle)
+                        .foregroundColor(.white)
+                        .lineLimit(2)
+                    Text(exercise.muscleGroup)
+                        .font(WatchTypography.caption)
+                        .foregroundColor(WatchColors.textSecondary)
+                }
+            }
+
+            switch phase {
+            case .recording:
+                // Live elapsed driven by the synced recording start; matches
+                // the phone tick-for-tick without per-second messages.
+                TimelineView(.periodic(from: Date(), by: 1)) { context in
+                    let elapsed = sessionViewModel.sessionState?.cardioElapsed(at: context.date) ?? 0
+                    Text(Self.formatElapsed(elapsed))
+                        .font(.system(size: 34, weight: .bold).monospacedDigit())
+                        .foregroundColor(.white)
+                        .frame(maxWidth: .infinity)
+                }
+
+                Button {
+                    let elapsed = sessionViewModel.sessionState?.cardioElapsed(at: Date()) ?? 0
+                    setLoggingViewModel.completeCardio(exerciseId: exercise.id, durationSeconds: elapsed)
+                } label: {
+                    Text("Done")
+                        .font(WatchTypography.body)
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.6)
+                        .frame(maxWidth: .infinity)
+                }
+                .buttonStyle(WatchPrimaryButtonStyle())
+
+            case .completed:
+                HStack(spacing: 6) {
+                    Image(systemName: "checkmark.circle.fill")
+                        .font(.system(size: 18))
+                        .foregroundColor(WatchColors.green)
+                    Text(Self.formatElapsed(completedDuration))
+                        .font(.system(size: 22, weight: .bold).monospacedDigit())
+                        .foregroundColor(.white)
+                }
+                .frame(maxWidth: .infinity)
+
+            case .idle:
+                Button {
+                    setLoggingViewModel.startCardio(exerciseId: exercise.id)
+                } label: {
+                    HStack(spacing: 4) {
+                        Image(systemName: "play.fill")
+                            .font(.system(size: 13))
+                        Text("Start")
+                            .font(WatchTypography.body)
+                    }
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.6)
+                    .frame(maxWidth: .infinity)
+                }
+                .buttonStyle(WatchPrimaryButtonStyle())
+            }
+        }
+        .padding(10)
+        .background(WatchColors.cardBackground)
+        .cornerRadius(12)
+    }
+
+    private static func formatElapsed(_ seconds: Int) -> String {
+        let h = seconds / 3600, m = (seconds % 3600) / 60, s = seconds % 60
+        return h > 0
+            ? String(format: "%d:%02d:%02d", h, m, s)
+            : String(format: "%d:%02d", m, s)
     }
 }

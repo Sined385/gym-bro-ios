@@ -24,6 +24,28 @@ struct WatchSessionState: Codable {
     /// Watch follows. When nil (no specific view open), Watch falls back to
     /// the "first incomplete" heuristic so watch-only flow stays natural.
     var activeExerciseId: String?
+    // Cardio recording mirror (phone is source of truth). Lets the Watch
+    // reflect a walk started/stopped on the phone and run a matching live
+    // timer between pushes. All optional so older payloads still decode.
+    var cardioRecordingExerciseId: String?
+    /// Wall-clock the current unpaused run started; nil while paused.
+    var cardioRecordingStartDate: Date?
+    /// Seconds banked from prior unpaused runs.
+    var cardioRecordingAccumulatedSeconds: Int?
+
+    func isRecordingCardio(_ exerciseId: String) -> Bool {
+        cardioRecordingExerciseId == exerciseId
+    }
+
+    /// Live elapsed for the recorded cardio at `now` — mirrors the phone's
+    /// `currentCardioElapsed`: banked seconds + (now − start) when running.
+    func cardioElapsed(at now: Date) -> Int {
+        let banked = cardioRecordingAccumulatedSeconds ?? 0
+        if let start = cardioRecordingStartDate {
+            return max(0, banked + Int(now.timeIntervalSince(start)))
+        }
+        return banked
+    }
 
     var currentExercise: WatchExerciseState? {
         if let pinned = activeExerciseId,
@@ -56,6 +78,12 @@ struct WatchExerciseState: Codable, Identifiable {
     let supersetOrder: String?
     let targetSets: Int
     let targetReps: Int
+    /// Cardio exercises (walking/running/etc.) are time-based, not set/rep
+    /// based — the Watch shows a Start→timer→Done flow instead of set rows.
+    /// Optional so older payloads still decode; treat nil as false.
+    let isCardio: Bool?
+
+    var isCardioExercise: Bool { isCardio == true }
 
     var completedSetsCount: Int {
         sets.filter(\.isCompleted).count
@@ -79,6 +107,8 @@ struct WatchSetState: Codable, Identifiable {
     let weightUnit: String
     let reps: Int?
     let isCompleted: Bool
+    /// Set for completed cardio sets so the Watch can show the final time.
+    let durationSeconds: Int?
 }
 
 // MARK: - Today Plan (iPhone → Watch)

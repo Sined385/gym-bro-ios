@@ -71,7 +71,14 @@ struct ExerciseLibraryLastSet: Decodable, Hashable {
     let weightUnit: String
     let reps: Int
     let isBodyweight: Bool
+    // Cardio: duration/distance of the last logged set. Both nil for strength,
+    // so the card can show "20:00 · 2.5 km" instead of a meaningless "— × 0".
+    let durationSeconds: Int?
+    let distanceMeters: Int?
     let completedAt: String?
+
+    /// True when the last set was cardio (logged by time/distance, not reps).
+    var isCardio: Bool { durationSeconds != nil || distanceMeters != nil }
 }
 
 struct ExerciseLibraryResponse: Decodable {

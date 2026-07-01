@@ -95,6 +95,9 @@ final class ActiveSessionManager: ObservableObject {
     private let liveActivityService: LiveActivityService
     private(set) var lastCompletedExerciseName: String?
     private(set) var lastCompletedSetDisplay: String?
+    /// The session-exercise id whose set was logged most recently. Backs the
+    /// "tap the rest timer to jump back to the exercise you're on" shortcut.
+    private(set) var lastExecutedExerciseId: String?
     @Published var repeatLastSetRequested: Bool = false
 
     // MARK: - Cardio Recording
@@ -346,6 +349,7 @@ final class ActiveSessionManager: ObservableObject {
         elapsedSeconds = 0
         lastActivityDate = Date()
         lastSetTrackedDate = nil
+        lastExecutedExerciseId = nil
         isAutoCompleting = false
         startTimer()
         scheduleStillThereNotification()
@@ -374,10 +378,11 @@ final class ActiveSessionManager: ObservableObject {
 
     /// Stamp the time of the latest tracked set. This is the end point used
     /// for the auto-completed workout's duration. Also counts as activity.
-    func registerSetTracked() {
+    func registerSetTracked(exerciseId: String? = nil) {
         guard isWorkoutStarted else { return }
         lastSetTrackedDate = Date()
         lastActivityDate = Date()
+        if let exerciseId { lastExecutedExerciseId = exerciseId }
     }
 
     /// If the workout has been idle for `autoCompleteIdleSeconds`, wrap it up
@@ -560,6 +565,7 @@ final class ActiveSessionManager: ObservableObject {
         lastResolvedHeartRate = nil
         lastActivityDate = nil
         lastSetTrackedDate = nil
+        lastExecutedExerciseId = nil
         isAutoCompleting = false
         clearCache()
         // Fetch fresh dashboard data, not just bump the reload version.
@@ -1053,6 +1059,26 @@ final class ActiveSessionManager: ObservableObject {
             }
         }
 
+        watchService.onCardioStart = { [weak self] exerciseId in
+            Task { @MainActor [weak self] in
+                // Start the phone's recording clock so both devices share one
+                // source of truth; this pushes updated state back to the Watch.
+                _ = self?.startCardio(exerciseId: exerciseId)
+            }
+        }
+
+        watchService.onCardioCompletion = { [weak self] exerciseId, durationSeconds in
+            Task { @MainActor [weak self] in
+                guard let self else { return }
+                // The phone owns the clock: finalize its recording (clearing
+                // the slot so the Watch stops showing "recording") and prefer
+                // its authoritative elapsed over the Watch's local count.
+                let recorded = self.endCardio()
+                let duration = recorded > 0 ? recorded : durationSeconds
+                self.onWatchCardioCompletion?(exerciseId, duration)
+            }
+        }
+
         watchService.onRestTimerAction = { [weak self] action in
             Task { @MainActor [weak self] in
                 switch action {
@@ -1103,13 +1129,15 @@ final class ActiveSessionManager: ObservableObject {
                         weight: set.weight,
                         weightUnit: set.weightUnit,
                         reps: set.reps,
-                        isCompleted: set.isCompleted
+                        isCompleted: set.isCompleted,
+                        durationSeconds: set.durationSeconds
                     )
                 },
                 supersetGroupId: ex.supersetGroupId,
                 supersetOrder: ex.supersetOrder,
                 targetSets: ex.targetSets,
-                targetReps: ex.targetReps
+                targetReps: ex.targetReps,
+                isCardio: ex.muscleGroup.caseInsensitiveCompare("Cardio") == .orderedSame
             )
         }
 
@@ -1123,7 +1151,10 @@ final class ActiveSessionManager: ObservableObject {
             restTimeRemaining: restTimeRemaining,
             restStartDate: restStartDate,
             restDurationSeconds: restDurationSeconds,
-            activeExerciseId: phoneActiveExerciseId
+            activeExerciseId: phoneActiveExerciseId,
+            cardioRecordingExerciseId: cardioRecording?.exerciseId,
+            cardioRecordingStartDate: cardioRecording?.startDate,
+            cardioRecordingAccumulatedSeconds: cardioRecording?.accumulatedSeconds
         )
 
         watchService.pushSessionState(state)
@@ -1193,6 +1224,7 @@ final class ActiveSessionManager: ObservableObject {
 
     /// Callback set by SessionFlowViewModel to handle Watch set completions
     var onWatchSetCompletion: ((_ exerciseId: String, _ setId: String, _ weight: Double?, _ reps: Int) -> Void)?
+    var onWatchCardioCompletion: ((_ exerciseId: String, _ durationSeconds: Int) -> Void)?
 
     private func handleWatchSetCompletion(exerciseId: String, setId: String, weight: Double?, reps: Int) {
         onWatchSetCompletion?(exerciseId, setId, weight, reps)
