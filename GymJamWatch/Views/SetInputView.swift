@@ -14,6 +14,7 @@ struct SetInputView: View {
     let exerciseName: String
 
     @EnvironmentObject var setLoggingViewModel: WatchSetLoggingViewModel
+    @EnvironmentObject var restTimerViewModel: WatchRestTimerViewModel
     @Environment(\.dismiss) private var dismiss
 
     var body: some View {
@@ -108,6 +109,9 @@ struct SetInputView: View {
                 // Complete button
                 Button {
                     setLoggingViewModel.completeSet(exerciseId: exerciseId, setId: setId)
+                    // Jump straight to the rest countdown — don't leave the
+                    // user on the sets screen waiting for the phone's push.
+                    restTimerViewModel.startOptimistically()
                     dismiss()
                 } label: {
                     HStack {

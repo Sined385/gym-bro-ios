@@ -38,6 +38,15 @@ final class WatchRestTimerViewModel: ObservableObject {
     private var restStartDate: Date?
     private var restDurationSeconds: Int = 0
     private var lastHaptic30s: Int = 0
+    /// Best-known rest duration for optimistic starts — updated from every
+    /// real (phone-anchored) timer start so mid-session it matches the
+    /// user's configured rest time. 90s only before the first real rest.
+    private var lastKnownRestDuration = 90
+    /// Set when the countdown was started optimistically (set completed on
+    /// the Watch, phone push not yet arrived). Shields the timer from the
+    /// phone's set-completion state push, which is sent BEFORE its rest
+    /// timer starts and still says isResting=false.
+    private var optimisticStartDate: Date?
 
     // MARK: - Init
 
@@ -60,12 +69,20 @@ final class WatchRestTimerViewModel: ObservableObject {
             .sink { [weak self] state in
                 guard let self else { return }
                 if let state, state.isResting, let restRemaining = state.restTimeRemaining {
+                    // Authoritative phone state — re-anchor (also corrects
+                    // an optimistic start's guessed duration).
+                    self.optimisticStartDate = nil
                     self.startLocalTimer(
                         remaining: restRemaining,
                         restStartDate: state.restStartDate,
                         totalDuration: state.restDurationSeconds
                     )
                 } else if state?.isResting == false {
+                    // Ignore isResting=false pushes right after an
+                    // optimistic start: the phone sends its set-completion
+                    // state before starting its own rest timer.
+                    if let optimistic = self.optimisticStartDate,
+                       Date().timeIntervalSince(optimistic) < 5 { return }
                     self.stopTimer()
                 }
             }
@@ -76,7 +93,23 @@ final class WatchRestTimerViewModel: ObservableObject {
 
     // MARK: - Local Timer (fallback when phone unreachable)
 
+    /// Start counting immediately after a set is completed ON the Watch,
+    /// without waiting for the phone's rest-state push (a reachability
+    /// round-trip away — the user otherwise lingers on the sets screen).
+    /// Flipping isActive here is what auto-pages ActiveWorkoutView to the
+    /// timer. The phone's authoritative push re-anchors moments later.
+    func startOptimistically() {
+        guard !isActive else { return }
+        optimisticStartDate = Date()
+        startLocalTimer(
+            remaining: lastKnownRestDuration,
+            restStartDate: Date(),
+            totalDuration: lastKnownRestDuration
+        )
+    }
+
     func startLocalTimer(remaining: Int, restStartDate: Date?, totalDuration: Int) {
+        if totalDuration > 0 { lastKnownRestDuration = totalDuration }
         self.remaining = remaining
         self.totalDuration = totalDuration
         self.restStartDate = restStartDate
@@ -146,6 +179,7 @@ final class WatchRestTimerViewModel: ObservableObject {
         isFinished = false
         remaining = 0
         restStartDate = nil
+        optimisticStartDate = nil
     }
 
     // MARK: - Actions

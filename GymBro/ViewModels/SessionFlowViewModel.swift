@@ -675,6 +675,11 @@ final class SessionFlowViewModel: ObservableObject {
         // resting now. Without this the user just sees "set logged" and no
         // countdown on either device.
         sessionManager.startRestTimer()
+        // Push the resting state right away: the completion push above went
+        // out with isResting=false, and the Watch has already optimistically
+        // paged to its timer — this anchors it to the real duration instead
+        // of leaving it on the guess until the next tick/save.
+        sessionManager.pushStateToWatch(exercises: exercises)
     }
 
     // MARK: - Session Completion

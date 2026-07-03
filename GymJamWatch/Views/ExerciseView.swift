@@ -11,6 +11,7 @@ struct ExerciseView: View {
 
     @EnvironmentObject var sessionViewModel: WatchSessionViewModel
     @EnvironmentObject var setLoggingViewModel: WatchSetLoggingViewModel
+    @EnvironmentObject var restTimerViewModel: WatchRestTimerViewModel
 
     @State private var showSetInput = false
 
@@ -72,6 +73,9 @@ struct ExerciseView: View {
                             } else {
                                 setLoggingViewModel.logSet(exerciseId: exercise.id, weight: lastWeight, reps: lastReps)
                             }
+                            // Jump straight to the rest countdown — don't
+                            // wait for the phone's rest-state push.
+                            restTimerViewModel.startOptimistically()
                         } label: {
                             HStack(spacing: 4) {
                                 Image(systemName: "arrow.counterclockwise")
