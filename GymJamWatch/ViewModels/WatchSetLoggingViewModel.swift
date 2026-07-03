@@ -73,11 +73,12 @@ final class WatchSetLoggingViewModel: ObservableObject {
 
     /// Cardio is time-based: send the recorded duration; the phone applies it
     /// via completeCardioSet (distance stays empty for watch-logged cardio).
-    func completeCardio(exerciseId: String, durationSeconds: Int) {
+    func completeCardio(exerciseId: String, durationSeconds: Int, distanceMeters: Int?) {
         isSubmitting = true
         connectivityService.sendCardioCompletion(
             exerciseId: exerciseId,
-            durationSeconds: durationSeconds
+            durationSeconds: durationSeconds,
+            distanceMeters: distanceMeters
         )
         WatchHaptics.setCompleted()
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) { [weak self] in

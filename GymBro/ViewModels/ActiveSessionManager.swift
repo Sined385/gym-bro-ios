@@ -87,6 +87,9 @@ final class ActiveSessionManager: ObservableObject {
     private var lastSetTrackedDate: Date?
     /// Guards against re-entrant auto-completion while one is in flight.
     private var isAutoCompleting = false
+    /// True when the session is being torn down after a real completion (vs a
+    /// discard). Drives whether the Watch shows a summary. Reset on teardown.
+    private var endedByCompletion = false
     private static let autoCompleteIdleSeconds: TimeInterval = 3600 // 1 hour
     private static let autoCompleteNotificationId = "gym-bro-auto-complete"
 
@@ -496,6 +499,7 @@ final class ActiveSessionManager: ObservableObject {
         }
 
         sendAutoCompleteNotification()
+        endedByCompletion = true
         finishAndResetSession()
     }
 
@@ -538,7 +542,7 @@ final class ActiveSessionManager: ObservableObject {
     /// auto-completion — none of which should leave the workout bar lingering.
     private func finishAndResetSession() {
         liveActivityService.endActivity()
-        pushWatchSessionEnded()
+        pushWatchSessionEnded(completed: endedByCompletion)
         stopTimer()
         skipRestTimer()
         cancelStillThereNotification()
@@ -567,6 +571,7 @@ final class ActiveSessionManager: ObservableObject {
         lastSetTrackedDate = nil
         lastExecutedExerciseId = nil
         isAutoCompleting = false
+        endedByCompletion = false
         clearCache()
         // Fetch fresh dashboard data, not just bump the reload version.
         // TrainingPlanViewModel only refetches via reloadVersion when
@@ -1067,15 +1072,16 @@ final class ActiveSessionManager: ObservableObject {
             }
         }
 
-        watchService.onCardioCompletion = { [weak self] exerciseId, durationSeconds in
+        watchService.onCardioCompletion = { [weak self] exerciseId, durationSeconds, distanceMeters in
             Task { @MainActor [weak self] in
                 guard let self else { return }
-                // The phone owns the clock: finalize its recording (clearing
-                // the slot so the Watch stops showing "recording") and prefer
-                // its authoritative elapsed over the Watch's local count.
+                // Clear the recording slot (so the Watch leaves the recording
+                // phase). Prefer the Watch's frozen duration — it was captured
+                // when the user tapped Done, before the distance-entry sheet,
+                // so endCardio() here would over-count by the entry time.
                 let recorded = self.endCardio()
-                let duration = recorded > 0 ? recorded : durationSeconds
-                self.onWatchCardioCompletion?(exerciseId, duration)
+                let duration = durationSeconds > 0 ? durationSeconds : recorded
+                self.onWatchCardioCompletion?(exerciseId, duration, distanceMeters)
             }
         }
 
@@ -1173,9 +1179,14 @@ final class ActiveSessionManager: ObservableObject {
         pushStateToWatch(exercises: exercises)
     }
 
-    func pushWatchSessionEnded() {
-        watchConnectivityService?.pushSessionEnded()
+    func pushWatchSessionEnded(completed: Bool) {
+        watchConnectivityService?.pushSessionEnded(completed: completed)
     }
+
+    /// Marks the imminent teardown as a real completion (feedback submit / auto
+    /// -complete) so the Watch shows its summary. A discard leaves this false
+    /// and the Watch silently clears instead of flashing a "completed" summary.
+    func markSessionCompleted() { endedByCompletion = true }
 
     func pushRestTickToWatch() {
         guard let remaining = restTimeRemaining else { return }
@@ -1224,7 +1235,7 @@ final class ActiveSessionManager: ObservableObject {
 
     /// Callback set by SessionFlowViewModel to handle Watch set completions
     var onWatchSetCompletion: ((_ exerciseId: String, _ setId: String, _ weight: Double?, _ reps: Int) -> Void)?
-    var onWatchCardioCompletion: ((_ exerciseId: String, _ durationSeconds: Int) -> Void)?
+    var onWatchCardioCompletion: ((_ exerciseId: String, _ durationSeconds: Int, _ distanceMeters: Int?) -> Void)?
 
     private func handleWatchSetCompletion(exerciseId: String, setId: String, weight: Double?, reps: Int) {
         onWatchSetCompletion?(exerciseId, setId, weight, reps)

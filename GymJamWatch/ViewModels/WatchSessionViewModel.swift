@@ -144,15 +144,29 @@ final class WatchSessionViewModel: ObservableObject {
             self?.connectivityService.sendHeartRateBatch(batch)
         }
 
-        // Handle session ended from phone
-        connectivityService.onSessionEnded = { [weak self] in
+        // Handle session ended from phone. `completed` distinguishes a real
+        // finish from a discard: always end the HealthKit workout (releases the
+        // session + sends the summary the phone may use for calories/HR), but
+        // only surface the summary UI when the workout was actually completed.
+        // A discard clears silently — no "completed" summary flash.
+        connectivityService.onSessionEnded = { [weak self] completed in
             Task { @MainActor [weak self] in
                 guard let self else { return }
                 let summary = await self.workoutService.endWorkout()
-                if let summary {
-                    self.workoutSummary = summary
-                    self.connectivityService.sendWorkoutSummary(summary)
-                    self.showSummary = true
+                if completed {
+                    // Show the summary. `sessionEnded` fires twice per end
+                    // (VM + teardown); the 2nd endWorkout() returns nil, so
+                    // only set when we actually have a summary — never clear a
+                    // summary already shown by the 1st call.
+                    if let summary {
+                        self.workoutSummary = summary
+                        self.connectivityService.sendWorkoutSummary(summary)
+                        self.showSummary = true
+                    }
+                } else {
+                    // Discard → clear silently, no summary.
+                    self.workoutSummary = nil
+                    self.showSummary = false
                 }
                 self.isSessionActive = false
             }

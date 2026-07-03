@@ -148,7 +148,10 @@ struct WorkoutFeedbackView: View {
                             appDataState.pendingShareData = shareData
                             // Fully end the session — MainTabView will present
                             // the share sheet from appDataState as a decoupled
-                            // overlay on top of the home tab.
+                            // overlay on top of the home tab. Flag it as a real
+                            // completion so the Watch shows its summary (a
+                            // discard leaves this unset → Watch silently clears).
+                            sessionManager.markSessionCompleted()
                             onDismiss()
                         } else {
                             errorMessage = "Failed to save workout. Please try again."

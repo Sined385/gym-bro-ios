@@ -27,7 +27,9 @@ final class PhoneConnectivityService: NSObject, ObservableObject {
 
     var onSetCompletionConfirmed: ((_ exerciseId: String, _ setId: String, _ weight: Double?, _ reps: Int) -> Void)?
     var onRestTimerTick: ((Int) -> Void)?
-    var onSessionEnded: (() -> Void)?
+    /// Bool = the session was really completed (show summary). false = discard
+    /// (silently clear, no summary).
+    var onSessionEnded: ((Bool) -> Void)?
 
     // MARK: - Private
 
@@ -129,10 +131,11 @@ final class PhoneConnectivityService: NSObject, ObservableObject {
         })
     }
 
-    func sendCardioCompletion(exerciseId: String, durationSeconds: Int) {
+    func sendCardioCompletion(exerciseId: String, durationSeconds: Int, distanceMeters: Int?) {
         let message = WatchMessageCoder.encodeCardioCompletion(
             exerciseId: exerciseId,
-            durationSeconds: durationSeconds
+            durationSeconds: durationSeconds,
+            distanceMeters: distanceMeters
         )
 
         guard let session = wcSession, session.isReachable else {
@@ -212,10 +215,11 @@ final class PhoneConnectivityService: NSObject, ObservableObject {
                 }
             }
         } else if context["sessionEnded"] as? Bool == true {
+            let completed = context[WatchMessageKey.sessionCompleted] as? Bool ?? false
             Task { @MainActor in
                 self.sessionState = nil
                 self.isSessionActive = false
-                self.onSessionEnded?()
+                self.onSessionEnded?(completed)
             }
         }
 
@@ -302,9 +306,10 @@ extension PhoneConnectivityService: @preconcurrency WCSessionDelegate {
             }
 
         case .sessionEnded:
+            let completed = message[WatchMessageKey.sessionCompleted] as? Bool ?? false
             self.sessionState = nil
             self.isSessionActive = false
-            onSessionEnded?()
+            onSessionEnded?(completed)
 
         case .todayPlanUpdate:
             if let data = message[WatchMessageKey.payload] as? Data,

@@ -233,6 +233,11 @@ struct CardioExerciseCard: View {
 
     let exercise: WatchExerciseState
 
+    // Distance entry after tapping Done. Duration is frozen at the tap so the
+    // time spent dialing distance doesn't count toward the walk.
+    @State private var showDistanceEntry = false
+    @State private var pendingDuration = 0
+
     private enum Phase { case idle, recording, completed }
 
     /// Phase is derived from the SYNCED phone state — never local — so a walk
@@ -283,8 +288,8 @@ struct CardioExerciseCard: View {
                 }
 
                 Button {
-                    let elapsed = sessionViewModel.sessionState?.cardioElapsed(at: Date()) ?? 0
-                    setLoggingViewModel.completeCardio(exerciseId: exercise.id, durationSeconds: elapsed)
+                    pendingDuration = sessionViewModel.sessionState?.cardioElapsed(at: Date()) ?? 0
+                    showDistanceEntry = true
                 } label: {
                     Text("Done")
                         .font(WatchTypography.body)
@@ -325,6 +330,16 @@ struct CardioExerciseCard: View {
         .padding(10)
         .background(WatchColors.cardBackground)
         .cornerRadius(12)
+        .sheet(isPresented: $showDistanceEntry) {
+            CardioDistanceEntry(durationSeconds: pendingDuration) { meters in
+                setLoggingViewModel.completeCardio(
+                    exerciseId: exercise.id,
+                    durationSeconds: pendingDuration,
+                    distanceMeters: meters
+                )
+                showDistanceEntry = false
+            }
+        }
     }
 
     private static func formatElapsed(_ seconds: Int) -> String {
@@ -332,5 +347,56 @@ struct CardioExerciseCard: View {
         return h > 0
             ? String(format: "%d:%02d:%02d", h, m, s)
             : String(format: "%d:%02d", m, s)
+    }
+}
+
+// MARK: - Cardio Distance Entry (Watch)
+
+/// Post-Done distance prompt. Digital Crown dials kilometres; Save sends the
+/// distance, Skip completes with none. Duration was frozen at the Done tap.
+struct CardioDistanceEntry: View {
+    let durationSeconds: Int
+    /// meters, or nil when skipped.
+    let onDone: (Int?) -> Void
+
+    @State private var km: Double = 0
+
+    var body: some View {
+        VStack(spacing: 10) {
+            Text("DISTANCE")
+                .font(WatchTypography.caption)
+                .foregroundColor(WatchColors.textSecondary)
+
+            Text(String(format: "%.2f km", km))
+                .font(.system(size: 34, weight: .bold).monospacedDigit())
+                .foregroundColor(.white)
+                .focusable(true)
+                .digitalCrownRotation(
+                    $km,
+                    from: 0,
+                    through: 60,
+                    by: 0.05,
+                    sensitivity: .medium,
+                    isContinuous: false,
+                    isHapticFeedbackEnabled: true
+                )
+
+            HStack(spacing: 8) {
+                Button {
+                    onDone(nil)
+                } label: {
+                    Text("Skip").font(WatchTypography.body).frame(maxWidth: .infinity)
+                }
+                .buttonStyle(WatchOutlineButtonStyle())
+
+                Button {
+                    onDone(km > 0 ? Int((km * 1000).rounded()) : nil)
+                } label: {
+                    Text("Save").font(WatchTypography.body).frame(maxWidth: .infinity)
+                }
+                .buttonStyle(WatchPrimaryButtonStyle())
+            }
+        }
+        .padding(.horizontal, 8)
     }
 }

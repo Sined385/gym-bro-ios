@@ -22,7 +22,7 @@ final class WatchConnectivityService: NSObject, ObservableObject, WatchConnectiv
 
     var onSetCompletion: ((_ exerciseId: String, _ setId: String, _ weight: Double?, _ reps: Int) -> Void)?
     var onCardioStart: ((_ exerciseId: String) -> Void)?
-    var onCardioCompletion: ((_ exerciseId: String, _ durationSeconds: Int) -> Void)?
+    var onCardioCompletion: ((_ exerciseId: String, _ durationSeconds: Int, _ distanceMeters: Int?) -> Void)?
     var onRestTimerAction: ((_ action: WatchRestTimerAction) -> Void)?
     var onHeartRateBatch: ((_ batch: WatchHeartRateBatch) -> Void)?
     var onWorkoutSummary: ((_ summary: WatchWorkoutSummary) -> Void)?
@@ -71,16 +71,18 @@ final class WatchConnectivityService: NSObject, ObservableObject, WatchConnectiv
         }
     }
 
-    func pushSessionEnded() {
+    func pushSessionEnded(completed: Bool) {
         guard let session = wcSession, session.activationState == .activated else { return }
 
         var context = (try? session.applicationContext) ?? [:]
         context["sessionEnded"] = true
+        context[WatchMessageKey.sessionCompleted] = completed
         context.removeValue(forKey: "sessionState")
         try? session.updateApplicationContext(context)
 
         if session.isReachable {
-            let message = WatchMessageCoder.encode(type: .sessionEnded)
+            var message = WatchMessageCoder.encode(type: .sessionEnded)
+            message[WatchMessageKey.sessionCompleted] = completed
             session.sendMessage(message, replyHandler: nil, errorHandler: nil)
         }
 
@@ -177,7 +179,8 @@ extension WatchConnectivityService: @preconcurrency WCSessionDelegate {
         case .completeCardio:
             let exerciseId = message[WatchMessageKey.exerciseId] as? String ?? ""
             let durationSeconds = message[WatchMessageKey.durationSeconds] as? Int ?? 0
-            onCardioCompletion?(exerciseId, durationSeconds)
+            let distanceMeters = message[WatchMessageKey.distanceMeters] as? Int
+            onCardioCompletion?(exerciseId, durationSeconds, distanceMeters)
             replyHandler?(["confirmed": true])
 
         case .restTimerAction:

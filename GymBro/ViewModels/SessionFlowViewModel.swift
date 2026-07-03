@@ -246,13 +246,12 @@ final class SessionFlowViewModel: ObservableObject {
                 }
             }
 
-            sessionManager.onWatchCardioCompletion = { [weak self] exerciseId, durationSeconds in
+            sessionManager.onWatchCardioCompletion = { [weak self] exerciseId, durationSeconds, distanceMeters in
                 Task { @MainActor [weak self] in
-                    // Watch-logged cardio has no distance; duration only.
                     await self?.completeCardioSet(
                         exerciseId: exerciseId,
                         durationSeconds: durationSeconds,
-                        distanceMeters: nil
+                        distanceMeters: distanceMeters
                     )
                 }
             }
@@ -633,12 +632,27 @@ final class SessionFlowViewModel: ObservableObject {
         guard let exerciseIndex = lastExerciseIndex, let set = lastSet else { return }
         let exercise = exercises[exerciseIndex]
         Task {
-            await logSet(
-                exerciseId: exercise.id,
-                weight: set.weight,
-                weightUnit: set.weightUnit,
-                reps: set.reps ?? 0
-            )
+            // Planned workouts pre-fill the exercise with template sets —
+            // "repeat" should tick the next pending one off (with the last
+            // set's numbers), not grow the list past the plan. Only append
+            // when every pre-filled set is already done (or there are none).
+            if let pending = exercise.sets.first(where: { !$0.isCompleted }) {
+                await completeSet(
+                    exerciseId: exercise.id,
+                    setId: pending.id,
+                    weight: set.weight,
+                    reps: set.reps ?? 0,
+                    isBodyweight: set.isBodyweight
+                )
+            } else {
+                await logSet(
+                    exerciseId: exercise.id,
+                    weight: set.weight,
+                    weightUnit: set.weightUnit,
+                    reps: set.reps ?? 0,
+                    isBodyweight: set.isBodyweight
+                )
+            }
         }
     }
 
@@ -670,7 +684,7 @@ final class SessionFlowViewModel: ObservableObject {
     /// the row will reconcile on the next dashboard load.
     func cancelSession() async -> Bool {
         sessionManager.stopTimer()
-        sessionManager.pushWatchSessionEnded()
+        sessionManager.pushWatchSessionEnded(completed: false)
         isLoading = true
         do {
             try await networkService.request(
@@ -689,7 +703,8 @@ final class SessionFlowViewModel: ObservableObject {
 
     func submitFeedbackAndComplete() async -> SessionResponse? {
         sessionManager.stopTimer()
-        sessionManager.pushWatchSessionEnded()
+        sessionManager.markSessionCompleted()
+        sessionManager.pushWatchSessionEnded(completed: true)
         isLoading = true
         errorMessage = nil
 

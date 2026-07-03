@@ -187,6 +187,15 @@ struct ExerciseLoggingView: View {
         .onChange(of: supersetStepIndex) {
             sessionManager.setPhoneActiveExercise(activeExerciseIdForWatch)
         }
+        // Switching via the "Up Next" peek card reuses THIS view with a new
+        // id (see `.task(id:)` above), so `.onAppear` never re-fires. `.task(id:)`
+        // has also proven unreliable at re-triggering on the reused destination,
+        // so drive BOTH the Watch pin and the previous-sets reload from an
+        // explicit onChange, which fires reliably when the value changes.
+        .onChange(of: loadDataKey) {
+            sessionManager.setPhoneActiveExercise(activeExerciseIdForWatch)
+            Task { await loadPreviousData() }
+        }
         .analyticsScreen("ExerciseLogging")
     }
 
@@ -226,7 +235,7 @@ struct ExerciseLoggingView: View {
             // Tab content
             if detailTab == .workouts {
                 if !readOnly {
-                    LiveComparisonCard(exercise: exercise, lastSets: lastSessionSets(for: exercise.id))
+                    LiveComparisonCard(viewModel: viewModel, exercise: exercise, lastSets: lastSessionSets(for: exercise.id))
                     todayCard(for: exercise)
                 }
 

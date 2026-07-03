@@ -49,6 +49,10 @@ enum WatchMessageKey {
 
     // Cardio completion
     static let durationSeconds = "durationSeconds"
+    static let distanceMeters = "distanceMeters"
+
+    // Session ended: true = real completion (show summary), false = discard.
+    static let sessionCompleted = "sessionCompleted"
 
     // Rest timer
     static let restAction = "restAction"
@@ -94,12 +98,14 @@ enum WatchMessageCoder {
         ]
     }
 
-    static func encodeCardioCompletion(exerciseId: String, durationSeconds: Int) -> [String: Any] {
-        [
+    static func encodeCardioCompletion(exerciseId: String, durationSeconds: Int, distanceMeters: Int?) -> [String: Any] {
+        var message: [String: Any] = [
             WatchMessageKey.type: WatchMessageType.completeCardio.rawValue,
             WatchMessageKey.exerciseId: exerciseId,
             WatchMessageKey.durationSeconds: durationSeconds,
         ]
+        if let distanceMeters { message[WatchMessageKey.distanceMeters] = distanceMeters }
+        return message
     }
 
     static func encodeRestTimerAction(_ action: WatchRestTimerAction) -> [String: Any] {

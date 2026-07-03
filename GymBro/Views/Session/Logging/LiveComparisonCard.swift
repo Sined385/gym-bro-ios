@@ -8,12 +8,23 @@
 import SwiftUI
 
 struct LiveComparisonCard: View {
+    @ObservedObject var viewModel: SessionFlowViewModel
     let exercise: ActiveSessionExercise
     let lastSets: [PreviousSet]
 
+    /// Read the exercise live from the observed view model (mirrors
+    /// SetLoggingRows.currentExercise). The passed-in `exercise` is only a
+    /// seed for the id — after an "Up Next" switch this view is reused and the
+    /// parent's re-render doesn't always fire on set completion, so trusting
+    /// the value copy left the "today" numbers stale. Re-fetching here means
+    /// the card updates on every view-model publish.
+    private var currentExercise: ActiveSessionExercise {
+        viewModel.exercises.first { $0.id == exercise.id } ?? exercise
+    }
+
     var body: some View {
         let prevSets = lastSets
-        let currentSets = exercise.sets.filter { $0.isCompleted }
+        let currentSets = currentExercise.sets.filter { $0.isCompleted }
 
         let totalVolume = currentSets.reduce(0.0) { $0 + (($1.weight ?? 0) * Double($1.reps ?? 0)) }
         let avgWeight = currentSets.isEmpty ? 0.0 : currentSets.reduce(0.0) { $0 + ($1.weight ?? 0) } / Double(currentSets.count)
