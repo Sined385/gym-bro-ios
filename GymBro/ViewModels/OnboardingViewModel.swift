@@ -61,6 +61,7 @@ final class OnboardingViewModel: ObservableObject {
     /// Advance to next onboarding step
     func nextStep() {
         guard canContinue else { return }
+        errorMessage = nil
 
         // Commit custom sport text if active
         if currentStep == .primarySport && showCustomInput && !customInputText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
@@ -79,6 +80,7 @@ final class OnboardingViewModel: ObservableObject {
 
     /// Go back to previous onboarding step
     func previousStep() {
+        errorMessage = nil
         let currentIndex = currentStep.rawValue
         let allSteps = OnboardingStep.allCases
 

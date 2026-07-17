@@ -20,11 +20,20 @@ final class AppCoordinator: ObservableObject {
     // MARK: - Dependencies
 
     private let authViewModel: AuthViewModel
+    private var cancellables = Set<AnyCancellable>()
+    private var isHandlingUnauthorized = false
 
     // MARK: - Initialization
 
     init(authViewModel: AuthViewModel) {
         self.authViewModel = authViewModel
+
+        NotificationCenter.default.publisher(for: .networkUnauthorized)
+            .receive(on: DispatchQueue.main)
+            .sink { [weak self] _ in
+                Task { await self?.handleUnauthorized() }
+            }
+            .store(in: &cancellables)
     }
 
     // MARK: - Route Determination
@@ -74,6 +83,24 @@ final class AppCoordinator: ObservableObject {
     func handleSignOut() async {
         Analytics.setUserID(nil)
         await authViewModel.signOut()
+        currentRoute = .authentication
+    }
+
+    /// A request came back 401. If the session can't be refreshed the
+    /// account is gone or the tokens were revoked — force sign-out instead
+    /// of letting every subsequent request fail silently.
+    private func handleUnauthorized() async {
+        guard !isHandlingUnauthorized else { return }
+        guard currentRoute != .authentication, currentRoute != .loading else { return }
+        isHandlingUnauthorized = true
+        defer { isHandlingUnauthorized = false }
+
+        // A successful refresh round-trips to Supabase, so the 401 was
+        // transient (or the caller raced an expiring token) — stay put.
+        if await authViewModel.verifySession() { return }
+
+        Analytics.setUserID(nil)
+        await authViewModel.forceSignOut()
         currentRoute = .authentication
     }
 }

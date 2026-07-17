@@ -256,6 +256,7 @@ final class NetworkService: NetworkServiceProtocol {
         if let statusCode = response?.statusCode {
             switch statusCode {
             case 401:
+                NotificationCenter.default.post(name: .networkUnauthorized, object: nil)
                 return .unauthorized
             case 400..<500:
                 return .statusCode(statusCode)
@@ -268,6 +269,15 @@ final class NetworkService: NetworkServiceProtocol {
 
         return .requestFailed(error)
     }
+}
+
+// MARK: - Notifications
+
+extension Notification.Name {
+    /// Posted whenever any API request comes back 401. AppCoordinator
+    /// verifies the session and forces sign-out if it can't be refreshed
+    /// (e.g. the account was deleted server-side).
+    static let networkUnauthorized = Notification.Name("gymbro.network.unauthorized")
 }
 
 // MARK: - Configuration

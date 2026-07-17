@@ -125,6 +125,29 @@ final class AuthViewModel: ObservableObject {
         isLoading = false
     }
 
+    /// Check whether the current session is still alive by forcing a token
+    /// refresh. A refresh round-trips to Supabase, so it fails when the
+    /// account no longer exists — unlike reading the cached session.
+    func verifySession() async -> Bool {
+        do {
+            try await authService.refreshSession()
+            return true
+        } catch {
+            return false
+        }
+    }
+
+    /// Sign out unconditionally — used when the session is known dead
+    /// (e.g. account deleted server-side). Unlike signOut(), local auth
+    /// state is cleared even if the server call fails.
+    func forceSignOut() async {
+        try? await authService.signOut()
+        currentUser = nil
+        isAuthenticated = false
+        hasCompletedOnboarding = false
+        errorMessage = "Your session has expired. Please sign in again."
+    }
+
     /// Check authentication status on app launch
     func checkAuthStatus() async {
         isLoading = true

@@ -31,6 +31,12 @@ struct OnboardingContainerView: View {
                     currentStepView
                         .frame(maxHeight: .infinity)
 
+                    // Submission/network errors — without this, a failed
+                    // "Build My Plan" tap is completely silent.
+                    if let errorMessage = viewModel.errorMessage {
+                        errorBanner(errorMessage)
+                    }
+
                     // Footer with navigation buttons
                     footerSection
                 }
@@ -171,6 +177,27 @@ struct OnboardingContainerView: View {
         .padding(.horizontal, 24)
         .padding(.top, 16)
         .padding(.bottom, 8)
+    }
+
+    // MARK: - Error Banner
+
+    private func errorBanner(_ message: String) -> some View {
+        HStack(spacing: 8) {
+            Image(systemName: "exclamationmark.triangle.fill")
+                .font(.system(size: 14))
+            Text(message)
+                .font(.system(size: 14, weight: .semibold))
+                .fixedSize(horizontal: false, vertical: true)
+            Spacer(minLength: 0)
+        }
+        .foregroundColor(.red)
+        .padding(12)
+        .background(
+            RoundedRectangle(cornerRadius: 12)
+                .fill(Color.red.opacity(0.1))
+        )
+        .padding(.horizontal, 24)
+        .transition(.opacity)
     }
 
     // MARK: - Helpers

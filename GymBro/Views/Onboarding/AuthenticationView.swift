@@ -65,6 +65,25 @@ struct AuthenticationView: View {
                     VStack(spacing: 32) {
                         embeddedContent
 
+                        // Auth errors (incl. forced sign-out after a dead
+                        // session) were previously never shown anywhere.
+                        if let errorMessage = authViewModel.errorMessage {
+                            HStack(spacing: 8) {
+                                Image(systemName: "exclamationmark.triangle.fill")
+                                    .font(.system(size: 14))
+                                Text(errorMessage)
+                                    .font(.system(size: 14, weight: .semibold))
+                                    .fixedSize(horizontal: false, vertical: true)
+                                Spacer(minLength: 0)
+                            }
+                            .foregroundColor(.red)
+                            .padding(12)
+                            .background(
+                                RoundedRectangle(cornerRadius: 12)
+                                    .fill(Color.red.opacity(0.1))
+                            )
+                        }
+
                         authButtons
                     }
                     .padding(.horizontal, 24)
