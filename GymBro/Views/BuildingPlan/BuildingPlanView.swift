@@ -13,6 +13,7 @@ struct BuildingPlanView: View {
     @EnvironmentObject var coordinator: AppCoordinator
     @StateObject private var homeViewModel: HomeViewModel = DependencyContainer.shared.resolve(HomeViewModel.self)
     private let networkService: NetworkServiceProtocol = DependencyContainer.shared.resolve(NetworkServiceProtocol.self)
+    private let subscriptionManager: SubscriptionManager = DependencyContainer.shared.resolve(SubscriptionManager.self)
 
     // MARK: - Animation State
 
@@ -361,6 +362,10 @@ struct BuildingPlanView: View {
     private func startAnimations() async {
         // Generate plan (synchronous endpoint — blocks until done) then load dashboard
         Task {
+            // Resolve premium status during the animation so the paywall
+            // decision at hand-off is accurate (e.g. a re-onboarding user
+            // who restored purchases shouldn't see it).
+            await subscriptionManager.loadStatus()
             try? await networkService.request(
                 PlanRouter.generatePlan(forceRegenerate: false).endpoint
             )
@@ -407,6 +412,13 @@ struct BuildingPlanView: View {
 
         // Mark as loaded so HomeView doesn't re-trigger loadDashboard
         homeViewModel.markAsLoaded()
+
+        // Post-onboarding paywall: the plan-built moment is peak
+        // motivation. MainTabView's fullScreenCover is bound to this
+        // flag, so the paywall presents right as home appears.
+        if !subscriptionManager.isPremium {
+            subscriptionManager.showPaywall = true
+        }
 
         withAnimation(.easeInOut(duration: 0.3)) {
             coordinator.navigate(to: .home)
