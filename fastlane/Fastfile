@@ -52,6 +52,33 @@ platform :ios do
     finalize_git(tag: tag, message: "fastlane: bump to #{tag}")
   end
 
+  # ── Recovery: distribute an already-uploaded build ──────
+  # For when upload_to_testflight dies AFTER the binary reached App
+  # Store Connect (e.g. Transporter's 2-hour SSL hang on 1.8(1)) —
+  # re-runs only the distribution + changelog step against the build
+  # that's already processing. No rebuild, no re-upload, no git steps.
+
+  desc 'Distribute an already-uploaded build. Params: version, build, changelog_path'
+  lane :distribute do |options|
+    version = (options[:version] || current_version).to_s
+    build = (options[:build] || current_build_number).to_s
+    changelog =
+      options[:changelog_path] ? File.read(options[:changelog_path]) : nil
+    UI.message("Distributing existing build #{version}(#{build})")
+
+    upload_to_testflight(
+      app_platform: 'ios', # no ipa to infer from — pilot prompts without this
+      app_version: version,
+      build_number: build,
+      distribute_only: true,
+      changelog: changelog,
+      distribute_external: true,
+      notify_external_testers: true,
+      groups: [ENV.fetch('TESTFLIGHT_EXTERNAL_GROUP', DEFAULT_EXTERNAL_GROUP)],
+      reject_build_waiting_for_review: false,
+    )
+  end
+
   # ── General release ─────────────────────────────────────
   # Minor version bump, build resets to 1. Tag: "<version>" e.g. 1.4.
   # AI also writes a new ## v<version> section into release-notes.txt and
