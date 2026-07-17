@@ -144,6 +144,12 @@ final class WatchSessionViewModel: ObservableObject {
             self?.connectivityService.sendHeartRateBatch(batch)
         }
 
+        // Tell the phone the Watch owns the HealthKit workout so it
+        // doesn't write a duplicate HKWorkout at completion.
+        workoutService.onWorkoutStarted = { [weak self] in
+            self?.connectivityService.sendWorkoutStarted()
+        }
+
         // Handle session ended from phone. `completed` distinguishes a real
         // finish from a discard: always end the HealthKit workout (releases the
         // session + sends the summary the phone may use for calories/HR), but

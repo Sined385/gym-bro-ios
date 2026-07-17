@@ -48,6 +48,11 @@ final class MockHealthKitService: HealthKitServiceProtocol {
 
     // MARK: - Workouts
 
+    var startWatchWorkoutAppCallCount = 0
+    func startWatchWorkoutApp() async {
+        startWatchWorkoutAppCallCount += 1
+    }
+
     func saveWorkout(_ workout: WorkoutData) async throws {
         saveWorkoutCallCount += 1
 

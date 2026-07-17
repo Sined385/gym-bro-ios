@@ -176,6 +176,22 @@ final class PhoneConnectivityService: NSObject, ObservableObject {
         wcSession?.transferUserInfo(userInfo)
     }
 
+    /// Tell the phone the Watch's HKWorkoutSession is running, so the
+    /// phone skips its own HKWorkout save at completion (the duplicate-
+    /// workout bug was both sides writing to HealthKit).
+    func sendWorkoutStarted() {
+        let userInfo: [String: Any] = [
+            WatchMessageKey.type: WatchMessageType.watchWorkoutStarted.rawValue
+        ]
+        guard let session = wcSession, session.isReachable else {
+            wcSession?.transferUserInfo(userInfo)
+            return
+        }
+        session.sendMessage(userInfo, replyHandler: nil, errorHandler: { @Sendable _ in
+            session.transferUserInfo(userInfo)
+        })
+    }
+
     func sendWorkoutSummary(_ summary: WatchWorkoutSummary) {
         guard let data = try? JSONEncoder().encode(summary) else { return }
         let userInfo: [String: Any] = [

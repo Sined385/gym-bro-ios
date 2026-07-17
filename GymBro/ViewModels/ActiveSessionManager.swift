@@ -157,6 +157,7 @@ final class ActiveSessionManager: ObservableObject {
             isPaused: false
         )
         persistCardioRecording()
+        updateLiveActivity(isResting: isResting, restEndDate: currentRestEndDate)
         return true
     }
 
@@ -170,6 +171,7 @@ final class ActiveSessionManager: ObservableObject {
         rec.isPaused = true
         cardioRecording = rec
         persistCardioRecording()
+        updateLiveActivity(isResting: isResting, restEndDate: currentRestEndDate)
     }
 
     /// Resume after a pause. Re-arms `startDate` to "now" so subsequent
@@ -180,6 +182,7 @@ final class ActiveSessionManager: ObservableObject {
         rec.isPaused = false
         cardioRecording = rec
         persistCardioRecording()
+        updateLiveActivity(isResting: isResting, restEndDate: currentRestEndDate)
     }
 
     /// Lightweight save that just re-runs the cache write with the
@@ -214,6 +217,7 @@ final class ActiveSessionManager: ObservableObject {
         let total = currentCardioElapsed(at: Date())
         cardioRecording = nil
         persistCardioRecording()
+        updateLiveActivity(isResting: isResting, restEndDate: currentRestEndDate)
         return max(total, 0)
     }
 
@@ -361,6 +365,15 @@ final class ActiveSessionManager: ObservableObject {
             startDate: sessionStartDate!,
             exerciseCount: exerciseCount
         )
+        // Launch the Watch app with a workout configuration so it starts
+        // its HKWorkoutSession even when closed — otherwise the Watch has
+        // no idea a workout is running and watchOS keeps asking "Are you
+        // working out?". The Watch reports back via watchWorkoutStarted,
+        // which is what stops the phone writing a duplicate HKWorkout.
+        Task {
+            let healthKit = DependencyContainer.shared.resolve(HealthKitServiceProtocol.self)
+            await healthKit.startWatchWorkoutApp()
+        }
         Analytics.logEvent("workout_started", parameters: [:])
     }
 
@@ -725,13 +738,33 @@ final class ActiveSessionManager: ObservableObject {
     }
 
     private func updateLiveActivity(isResting: Bool, restEndDate: Date?) {
+        // Cardio recording state — gives the Live Activity something to
+        // show during a walk/row: a ticking elapsed timer anchored so
+        // (now − anchor) == elapsed, or the frozen value while paused.
+        var cardioName: String?
+        var cardioAnchor: Date?
+        var cardioPausedElapsed: Int?
+        if let rec = cardioRecording {
+            cardioName = lastSavedExercises?
+                .first { $0.id == rec.exerciseId }?.name ?? "Cardio"
+            let elapsed = currentCardioElapsed(at: Date())
+            if rec.isPaused || rec.startDate == nil {
+                cardioPausedElapsed = elapsed
+            } else {
+                cardioAnchor = Date().addingTimeInterval(-Double(elapsed))
+            }
+        }
+
         let state = WorkoutActivityAttributes.ContentState(
             isResting: isResting,
             restEndDate: restEndDate,
             lastExerciseName: lastCompletedExerciseName,
             lastSetDisplay: lastCompletedSetDisplay,
             totalSetsCompleted: lastSavedExercises?.reduce(0) { $0 + $1.sets.filter(\.isCompleted).count } ?? 0,
-            totalExercises: lastSavedExercises?.count ?? 0
+            totalExercises: lastSavedExercises?.count ?? 0,
+            cardioExerciseName: cardioName,
+            cardioAnchorDate: cardioAnchor,
+            cardioPausedElapsedSeconds: cardioPausedElapsed
         )
         liveActivityService.updateActivity(state: state)
     }

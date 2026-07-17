@@ -25,6 +25,12 @@ protocol HealthKitServiceProtocol: AnyObject {
     /// - Parameter workout: The workout data to save
     func saveWorkout(_ workout: WorkoutData) async throws
 
+    /// Launches the paired Watch app with a workout configuration so it
+    /// starts its HKWorkoutSession (live HR, ring credit, no system
+    /// "Are you working out?" prompts) even when the Watch app is closed.
+    /// No-ops silently when no Watch is paired.
+    func startWatchWorkoutApp() async
+
     /// Fetches workouts within a date range
     /// - Parameters:
     ///   - startDate: Start date for the query

@@ -11,6 +11,11 @@ import Combine
 @MainActor
 final class WatchDependencyContainer: ObservableObject {
 
+    /// The app's single container instance — needed by WatchAppDelegate,
+    /// which is instantiated by WatchKit and can't be handed a reference
+    /// through SwiftUI's environment.
+    private(set) static weak var shared: WatchDependencyContainer?
+
     let connectivityService: PhoneConnectivityService
     let workoutService: WatchWorkoutService
     let sessionViewModel: WatchSessionViewModel
@@ -33,5 +38,7 @@ final class WatchDependencyContainer: ObservableObject {
         self.sessionViewModel = sessionVM
         self.restTimerViewModel = restTimerVM
         self.setLoggingViewModel = setLoggingVM
+
+        Self.shared = self
     }
 }

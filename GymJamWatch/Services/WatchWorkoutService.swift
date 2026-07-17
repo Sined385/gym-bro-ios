@@ -31,6 +31,10 @@ final class WatchWorkoutService: NSObject, ObservableObject {
     private var batchTimer: Timer?
 
     var onHeartRateBatchReady: ((WatchHeartRateBatch) -> Void)?
+    /// Fires once per successful HKWorkoutSession start. The session VM
+    /// forwards it to the phone so it knows the Watch owns the HealthKit
+    /// workout (and skips its own duplicate save at completion).
+    var onWorkoutStarted: (() -> Void)?
 
     // MARK: - Authorization
 
@@ -61,6 +65,12 @@ final class WatchWorkoutService: NSObject, ObservableObject {
     // MARK: - Workout Session
 
     func startWorkout() async {
+        // Idempotent: the session can be started from two paths — the
+        // phone's HKHealthStore.startWatchApp launch handoff AND the
+        // WCSession state push binding. Whichever lands first wins; the
+        // second call must not spin up a competing HKWorkoutSession.
+        guard workoutSession == nil else { return }
+
         let configuration = HKWorkoutConfiguration()
         configuration.activityType = .traditionalStrengthTraining
         configuration.locationType = .indoor
@@ -85,6 +95,7 @@ final class WatchWorkoutService: NSObject, ObservableObject {
             startBatchTimer()
 
             WatchHaptics.workoutStarted()
+            onWorkoutStarted?()
         } catch {
             print("⌚ Failed to start workout: \(error)")
             workoutStartFailed = true

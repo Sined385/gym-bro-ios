@@ -512,7 +512,10 @@ final class SessionFlowViewModel: ObservableObject {
 
         guard let exerciseIndex = exercises.firstIndex(where: { $0.id == exerciseId }) else { return }
 
-        let setNumber = exercises[exerciseIndex].sets.count + 1
+        // max + 1 rather than count + 1: safe even if numbering ever has
+        // gaps (e.g. state restored from an older build's delete bug).
+        let setNumber =
+            (exercises[exerciseIndex].sets.map(\.setNumber).max() ?? 0) + 1
         let newSet = ActiveSet(
             id: UUID().uuidString,
             setNumber: setNumber,
@@ -557,7 +560,15 @@ final class SessionFlowViewModel: ObservableObject {
 
     func deleteSet(exerciseId: String, setId: String) async {
         guard let exerciseIndex = exercises.firstIndex(where: { $0.id == exerciseId }) else { return }
-        mutateExercises { $0[exerciseIndex].sets.removeAll { $0.id == setId } }
+        mutateExercises {
+            $0[exerciseIndex].sets.removeAll { $0.id == setId }
+            // Renumber so the remaining sets stay sequential — deleting
+            // set 2 of [1, 2, 3] must show [1, 2], not [1, 3] (and keeps
+            // the next logged set from colliding with a surviving number).
+            for i in $0[exerciseIndex].sets.indices {
+                $0[exerciseIndex].sets[i].setNumber = i + 1
+            }
+        }
         sessionManager.registerActivity()
         notifySessionChanged()
     }
@@ -830,10 +841,13 @@ final class SessionFlowViewModel: ObservableObject {
 
     private func saveToHealthKit(response: SessionResponse?) {
         // If the Watch tracked this session, HKLiveWorkoutBuilder.finishWorkout
-        // already wrote an HKWorkout (with real HR + energy samples) to HealthKit
-        // before the summary arrived here. Saving an iOS HKWorkout on top of that
-        // creates a duplicate entry in Apple's Fitness app.
-        guard sessionManager.watchWorkoutSummary == nil else { return }
+        // writes the HKWorkout (with real HR + energy samples) itself. Saving an
+        // iOS HKWorkout on top of that duplicates the entry in Apple's Fitness
+        // app. The summary check alone raced (the summary arrives only after
+        // teardown tells the Watch to finish) — isWatchManagingWorkout is set
+        // the moment the Watch's HKWorkoutSession starts, so it's reliable here.
+        guard sessionManager.watchWorkoutSummary == nil,
+              !sessionManager.isWatchManagingWorkout else { return }
 
         let elapsedSeconds = sessionManager.elapsedSeconds
         let title = sessionTitle

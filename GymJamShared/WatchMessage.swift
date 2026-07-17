@@ -24,6 +24,9 @@ enum WatchMessageType: String, Codable {
     case requestSessionStart
     case heartRateBatch
     case workoutSummary
+    /// Watch's HKWorkoutSession began — the phone must NOT save its own
+    /// HKWorkout at completion (the Watch's builder writes the real one).
+    case watchWorkoutStarted
 }
 
 // MARK: - Rest Timer Actions

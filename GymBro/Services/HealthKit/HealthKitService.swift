@@ -122,6 +122,19 @@ final class HealthKitService: HealthKitServiceProtocol {
 
     // MARK: - Workouts
 
+    func startWatchWorkoutApp() async {
+        guard isHealthDataAvailable else { return }
+        let configuration = HKWorkoutConfiguration()
+        configuration.activityType = .traditionalStrengthTraining
+        configuration.locationType = .indoor
+        do {
+            try await healthStore.startWatchApp(toHandle: configuration)
+        } catch {
+            // No paired Watch / Watch app not installed — nothing to do.
+            print("startWatchApp skipped: \(error.localizedDescription)")
+        }
+    }
+
     func saveWorkout(_ workout: WorkoutData) async throws {
         let energyBurned = workout.totalEnergyBurned.map {
             HKQuantity(unit: .kilocalorie(), doubleValue: $0)

@@ -195,6 +195,15 @@ extension WatchConnectivityService: @preconcurrency WCSessionDelegate {
                 onHeartRateBatch?(batch)
             }
 
+        case .watchWorkoutStarted:
+            // Watch's HKWorkoutSession is live — it owns the HealthKit
+            // workout for this session. SessionFlowViewModel checks this
+            // (via ActiveSessionManager.isWatchManagingWorkout) to skip
+            // the phone-side HKWorkout save that used to duplicate the
+            // workout in Apple Fitness.
+            isWatchSessionManagingWorkout = true
+            replyHandler?(["received": true])
+
         case .workoutSummary:
             if let summary: WatchWorkoutSummary = WatchMessageCoder.decodePayload(WatchWorkoutSummary.self, from: message) {
                 onWorkoutSummary?(summary)
