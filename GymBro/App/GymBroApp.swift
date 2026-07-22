@@ -150,10 +150,11 @@ struct LoadingView: View {
                 .ignoresSafeArea()
 
             VStack(spacing: 24) {
-                // App icon or logo
-                Image(systemName: "figure.run")
-                    .font(.system(size: 60))
-                    .foregroundStyle(Color.gymBroPrimaryGradient)
+                // Brand loader glyph (J-barbell, vector asset)
+                Image("GymJamLoader")
+                    .resizable()
+                    .scaledToFit()
+                    .frame(height: 96)
 
                 ProgressView()
                     .tint(.gymBroPrimary)
