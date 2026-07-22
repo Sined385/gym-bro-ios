@@ -104,7 +104,7 @@ struct PostTile: View {
         Color.clear
             .aspectRatio(1, contentMode: .fit)
             .overlay { content }
-            .overlay(alignment: .bottomLeading) {
+            .overlay(alignment: .bottomTrailing) {
                 if let count = post.reactionCount, count > 0 {
                     HStack(spacing: 3) {
                         Image(systemName: "heart.fill").font(.system(size: 8, weight: .bold))
