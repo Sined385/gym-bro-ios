@@ -108,6 +108,11 @@ enum EquipmentType: String, CaseIterable, Identifiable {
     case cable = "Cable"
     case machine = "Machine"
     case bodyweight = "Bodyweight"
+    // The library also seeds Bands and Other rows — without these cases
+    // those exercises were unreachable through the equipment filter, and
+    // custom-exercise creation couldn't tag them.
+    case bands = "Bands"
+    case other = "Other"
 
     var id: String { rawValue }
 }
