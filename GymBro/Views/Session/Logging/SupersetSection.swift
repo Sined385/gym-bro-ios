@@ -11,7 +11,16 @@ struct SupersetSection: View {
     @EnvironmentObject var sessionManager: ActiveSessionManager
     @ObservedObject var viewModel: SessionFlowViewModel
 
+    /// Snapshot from the parent — used only as identity + fallback. Render
+    /// always goes through `liveGroup` so set mutations (complete round,
+    /// add round) repaint immediately: this section observes the view
+    /// model itself and re-derives the group on every publish, instead of
+    /// trusting the parent's captured value to be re-supplied.
     let group: SupersetGroup
+
+    private var liveGroup: SupersetGroup {
+        viewModel.supersetGroups.first { $0.id == group.id } ?? group
+    }
 
     @Binding var addSetWeight: String
     @Binding var addSetReps: String
@@ -35,6 +44,7 @@ struct SupersetSection: View {
     private let purpleAccent = Color(hex: "7A82F6")
 
     var body: some View {
+        let group = liveGroup
         let maxSets = group.exercises.map { $0.sets.count }.max() ?? 0
 
         return VStack(alignment: .leading, spacing: 16) {
@@ -52,17 +62,29 @@ struct SupersetSection: View {
             .background(purpleAccent)
             .clipShape(Capsule())
 
-            // Exercise labels
-            ForEach(group.exercises) { ex in
-                HStack(spacing: 8) {
-                    Text(ex.supersetOrder ?? "")
-                        .font(.system(size: 15, weight: .bold))
-                        .foregroundColor(purpleAccent)
-                    Text(ex.name)
-                        .font(.system(size: 16, weight: .semibold))
-                        .foregroundColor(.gymBroNeutral900)
+            // Member cards — same anatomy as the regular exercise screen
+            // (image, name, meta) so the superset reads as real exercises,
+            // not a text list.
+            VStack(spacing: 0) {
+                ForEach(Array(group.exercises.enumerated()), id: \.element.id) { idx, ex in
+                    memberRow(ex)
+                    if idx < group.exercises.count - 1 {
+                        Rectangle()
+                            .fill(Color.gymBroNeutral100)
+                            .frame(height: 1)
+                            .padding(.leading, 22)
+                    }
                 }
             }
+            .padding(.horizontal, 16)
+            .padding(.vertical, 6)
+            .background(Color.white)
+            .clipShape(RoundedRectangle(cornerRadius: 20))
+            .overlay(
+                RoundedRectangle(cornerRadius: 20)
+                    .stroke(purpleAccent.opacity(0.15), lineWidth: 1)
+            )
+            .shadow(color: .black.opacity(0.03), radius: 8, y: 3)
 
             // Today header
             HStack(spacing: 4) {
@@ -100,6 +122,84 @@ struct SupersetSection: View {
                 showAddSetSheet = true
             }
         }
+    }
+
+    // MARK: - Member Row
+
+    private func memberRow(_ ex: ActiveSessionExercise) -> some View {
+        let completedSets = ex.sets.filter { $0.isCompleted }.count
+        let hasTarget = ex.targetSets > 0
+
+        return HStack(spacing: 14) {
+            RoundedRectangle(cornerRadius: 100)
+                .fill(Color(hex: ex.accentColor))
+                .frame(width: 5, height: 48)
+
+            memberImage(ex.imageUrl)
+                .overlay(alignment: .bottomTrailing) {
+                    Text(ex.supersetOrder ?? "")
+                        .font(.system(size: 10, weight: .heavy))
+                        .foregroundColor(.white)
+                        .frame(width: 18, height: 18)
+                        .background(purpleAccent)
+                        .clipShape(Circle())
+                        .offset(x: 4, y: 4)
+                }
+
+            VStack(alignment: .leading, spacing: 3) {
+                Text(ex.name)
+                    .font(.system(size: 16, weight: .bold))
+                    .foregroundColor(.gymBroNeutral900)
+                    .lineLimit(1)
+                    .tracking(-0.3)
+
+                Text([ex.muscleGroup, ex.equipment]
+                    .compactMap { $0 }
+                    .filter { !$0.isEmpty }
+                    .joined(separator: " · "))
+                    .font(.system(size: 12, weight: .medium))
+                    .foregroundColor(.gymBroNeutral400)
+                    .lineLimit(1)
+            }
+
+            Spacer()
+
+            Text(hasTarget ? "\(completedSets)/\(ex.targetSets)" : "\(completedSets)")
+                .font(.system(size: 13, weight: .bold))
+                .monospacedDigit()
+                .foregroundColor(.gymBroNeutral600)
+        }
+        .padding(.vertical, 10)
+    }
+
+    @ViewBuilder
+    private func memberImage(_ imageUrl: String?) -> some View {
+        if let imageUrl, let url = URL(string: imageUrl) {
+            CachedAsyncImage(url: url) { image in
+                image
+                    .resizable()
+                    .aspectRatio(contentMode: .fill)
+            } placeholder: {
+                memberImagePlaceholder
+            } failure: {
+                memberImagePlaceholder
+            }
+            .frame(width: 48, height: 48)
+            .clipShape(RoundedRectangle(cornerRadius: 14))
+        } else {
+            memberImagePlaceholder
+        }
+    }
+
+    private var memberImagePlaceholder: some View {
+        RoundedRectangle(cornerRadius: 14)
+            .fill(Color(hex: "F5F5F5"))
+            .frame(width: 48, height: 48)
+            .overlay(
+                Image(systemName: "dumbbell.fill")
+                    .font(.system(size: 18))
+                    .foregroundColor(Color(hex: "D4D4D4"))
+            )
     }
 
     // MARK: - Superset Completed Round
@@ -360,16 +460,38 @@ struct SupersetSection: View {
 
     private func completeRound(group: SupersetGroup, roundIndex: Int) {
         for ex in group.exercises {
-            guard roundIndex < ex.sets.count else { continue }
-            let set = ex.sets[roundIndex]
-            let wKey = set.id
-            let rKey = set.id
-            let wStr = editWeights[wKey] ?? set.weight.map { $0.formattedWeight } ?? ""
-            let rStr = editReps[rKey] ?? set.reps.map { "\($0)" } ?? ""
-            let w = Double(wStr.replacingOccurrences(of: ",", with: "."))
+            // Members can have FEWER pre-filled sets than the round index
+            // (ad-hoc additions, or grouped exercises with different target
+            // counts). The editable row still rendered inputs for them via
+            // the fallback keys — silently skipping here threw that input
+            // away, so the recorded round never appeared on the exercise.
+            let set: ActiveSet? = roundIndex < ex.sets.count ? ex.sets[roundIndex] : nil
+            let wKey = set?.id ?? "\(ex.id)-w-\(roundIndex)"
+            let rKey = set?.id ?? "\(ex.id)-r-\(roundIndex)"
+            let wStr = editWeights[wKey] ?? set?.weight.map { $0.formattedWeight } ?? ""
+            let rStr = editReps[rKey] ?? set?.reps.map { "\($0)" } ?? ""
+            let isBW = set?.isBodyweight ?? (ex.equipment == "Bodyweight")
+            let w = isBW ? nil : Double(wStr.replacingOccurrences(of: ",", with: "."))
             let r = Int(rStr) ?? 0
-            Task {
-                await viewModel.completeSet(exerciseId: ex.id, setId: set.id, weight: w, reps: r)
+            if let set {
+                Task {
+                    await viewModel.completeSet(
+                        exerciseId: ex.id,
+                        setId: set.id,
+                        weight: w,
+                        reps: r,
+                        isBodyweight: isBW
+                    )
+                }
+            } else {
+                Task {
+                    await viewModel.logSet(
+                        exerciseId: ex.id,
+                        weight: w,
+                        reps: r,
+                        isBodyweight: isBW
+                    )
+                }
             }
         }
         sessionManager.startRestTimer()

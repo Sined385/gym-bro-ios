@@ -25,6 +25,15 @@ struct SessionPlanView: View {
     @State private var draggedID: String? = nil
     @State private var dragOffset: CGFloat = 0
     @State private var draggedFromIndex: Int = 0
+
+    // Superset composition mode (home-screen-style jiggle). Long-press a
+    // card to enter; cards shake, taps toggle selection, and the bottom
+    // bar swaps to Create Superset / Cancel. Cardio can't join a superset
+    // (its logging UI is duration-based, not set-by-set).
+    @State private var isSupersetMode = false
+    @State private var selectedForSuperset: Set<String> = []
+    @State private var wiggleAngle: Double = 0
+
     private let cardSpacing: CGFloat = 12
     // Approximate row height including spacing — used purely for the
     // "where would the drop land" math. A small over-estimate is fine
@@ -45,15 +54,54 @@ struct SessionPlanView: View {
                 LazyVStack(spacing: cardSpacing) {
                     ForEach(Array(viewModel.standaloneExercises.enumerated()), id: \.element.id) { idx, exercise in
                         let isDragged = draggedID == exercise.id
+                        let isSelectable = isSupersetMode && isSupersetEligible(exercise)
                         SwipeToDeleteCard {
                             exerciseCardContent(
                                 exercise,
-                                dragHandle: AnyView(dragBadge(for: exercise.id, at: idx)),
+                                dragHandle: isSupersetMode
+                                    ? AnyView(EmptyView())
+                                    : AnyView(dragBadge(for: exercise.id, at: idx)),
                             )
-                            .onTapGesture { onTapExercise(exercise.id) }
+                            .overlay(
+                                RoundedRectangle(cornerRadius: 24)
+                                    .stroke(
+                                        Color(hex: "7A82F6"),
+                                        lineWidth: selectedForSuperset.contains(exercise.id) ? 2.5 : 0
+                                    )
+                            )
+                            .overlay(alignment: .topTrailing) {
+                                if isSelectable {
+                                    Image(systemName: selectedForSuperset.contains(exercise.id)
+                                        ? "checkmark.circle.fill"
+                                        : "circle")
+                                        .font(.system(size: 22))
+                                        .foregroundColor(
+                                            selectedForSuperset.contains(exercise.id)
+                                                ? Color(hex: "7A82F6")
+                                                : .gymBroNeutral400
+                                        )
+                                        .background(Circle().fill(Color.white))
+                                        .offset(x: -10, y: 10)
+                                }
+                            }
+                            .opacity(isSupersetMode && !isSupersetEligible(exercise) ? 0.4 : 1)
+                            .onTapGesture {
+                                if isSupersetMode {
+                                    toggleSupersetSelection(exercise)
+                                } else {
+                                    onTapExercise(exercise.id)
+                                }
+                            }
+                            .onLongPressGesture(minimumDuration: 0.35) {
+                                enterSupersetMode(selecting: exercise)
+                            }
                         } onDelete: {
                             Task { await viewModel.removeExercise(exercise.id) }
                         }
+                        // Home-screen jiggle while composing a superset — a
+                        // small per-index phase flip so cards don't shake in
+                        // lockstep.
+                        .rotationEffect(.degrees(isSupersetMode ? (idx.isMultiple(of: 2) ? wiggleAngle : -wiggleAngle) : 0))
                         .scaleEffect(isDragged ? 1.03 : 1.0)
                         .shadow(
                             color: .black.opacity(isDragged ? 0.18 : 0),
@@ -85,10 +133,14 @@ struct SessionPlanView: View {
                 ForEach(viewModel.supersetGroups) { group in
                     SwipeToDeleteCard {
                         supersetCard(group)
-                            .onTapGesture { onTapSuperset(group.id) }
+                            .onTapGesture {
+                                guard !isSupersetMode else { return }
+                                onTapSuperset(group.id)
+                            }
                     } onDelete: {
                         Task { await viewModel.removeSuperset(group.id) }
                     }
+                    .opacity(isSupersetMode ? 0.4 : 1)
                     .padding(.horizontal, 20)
                     .padding(.top, 12)
                 }
@@ -183,13 +235,116 @@ struct SessionPlanView: View {
 
     private var bottomInset: some View {
         VStack(spacing: 12) {
-            if let remaining = sessionManager.restTimeRemaining {
+            if let remaining = sessionManager.restTimeRemaining, !isSupersetMode {
                 restTimerBar(remaining)
                     .transition(.move(edge: .bottom).combined(with: .opacity))
             }
-            bottomBar
+            if isSupersetMode {
+                supersetModeBar
+            } else {
+                bottomBar
+            }
         }
         .background(Color.gymBroBackground)
+    }
+
+    // MARK: - Superset Mode
+
+    private func isSupersetEligible(_ exercise: ActiveSessionExercise) -> Bool {
+        // Cardio logs as a duration block — it has no set-by-set rounds to
+        // alternate, so it can't join a superset.
+        !(exercise.muscleGroup.caseInsensitiveCompare("Cardio") == .orderedSame
+            || exercise.sets.contains { $0.durationSeconds != nil })
+    }
+
+    private func enterSupersetMode(selecting exercise: ActiveSessionExercise) {
+        guard isSupersetEligible(exercise) else { return }
+        UIImpactFeedbackGenerator(style: .medium).impactOccurred()
+        if !isSupersetMode {
+            isSupersetMode = true
+            wiggleAngle = -1.4
+            withAnimation(.easeInOut(duration: 0.13).repeatForever(autoreverses: true)) {
+                wiggleAngle = 1.4
+            }
+        }
+        selectedForSuperset.insert(exercise.id)
+    }
+
+    private func toggleSupersetSelection(_ exercise: ActiveSessionExercise) {
+        guard isSupersetEligible(exercise) else { return }
+        UIImpactFeedbackGenerator(style: .light).impactOccurred()
+        if selectedForSuperset.contains(exercise.id) {
+            selectedForSuperset.remove(exercise.id)
+        } else {
+            selectedForSuperset.insert(exercise.id)
+        }
+    }
+
+    private func exitSupersetMode() {
+        withAnimation(.easeOut(duration: 0.15)) {
+            wiggleAngle = 0
+        }
+        isSupersetMode = false
+        selectedForSuperset = []
+    }
+
+    private var supersetModeBar: some View {
+        let purpleAccent = Color(hex: "7A82F6")
+        // A/B order follows list position, not tap order — matches how the
+        // grouped card will render.
+        let orderedSelection = viewModel.standaloneExercises
+            .filter { selectedForSuperset.contains($0.id) }
+            .map(\.id)
+        let canCreate = orderedSelection.count >= 2
+
+        return HStack(spacing: 12) {
+            Button {
+                exitSupersetMode()
+            } label: {
+                Text("Cancel")
+                    .font(.system(size: 16, weight: .bold))
+                    .foregroundColor(.gymBroNeutral900)
+                    .frame(width: 110, height: 64)
+                    .background(Color.white)
+                    .clipShape(RoundedRectangle(cornerRadius: 24))
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 24)
+                            .stroke(Color.gymBroNeutral200, lineWidth: 1)
+                    )
+            }
+            .buttonStyle(.plain)
+
+            Button {
+                let ids = orderedSelection
+                exitSupersetMode()
+                Task { await viewModel.addSuperset(ids) }
+            } label: {
+                HStack(spacing: 8) {
+                    Image(systemName: "square.stack.fill")
+                        .font(.system(size: 14, weight: .bold))
+                    Text(canCreate
+                        ? "Create Superset (\(orderedSelection.count))"
+                        : "Select 2+ exercises")
+                        .font(.system(size: 16, weight: .bold))
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.8)
+                }
+                .foregroundColor(.white)
+                .frame(maxWidth: .infinity)
+                .frame(height: 64)
+                .background(canCreate ? purpleAccent : Color.gymBroNeutral400)
+                .clipShape(RoundedRectangle(cornerRadius: 24))
+                .shadow(
+                    color: canCreate ? purpleAccent.opacity(0.3) : .clear,
+                    radius: 8, y: 4
+                )
+            }
+            .buttonStyle(.plain)
+            .disabled(!canCreate)
+        }
+        .padding(.horizontal, 20)
+        .padding(.top, 8)
+        .padding(.bottom, 8)
     }
 
     private var bottomBar: some View {
@@ -483,57 +638,104 @@ struct SessionPlanView: View {
 
     // MARK: - Superset Card
 
+    // Mirrors the regular exercise card's anatomy (accent bar, image,
+    // name, progress badge) so a superset reads as "exercises, grouped"
+    // rather than a separate text-only widget.
     private func supersetCard(_ group: SupersetGroup) -> some View {
-        VStack(alignment: .leading, spacing: 12) {
-            // Superset badge
-            HStack(spacing: 6) {
-                Image(systemName: "square.stack.fill")
-                    .font(.system(size: 10, weight: .bold))
-                Text("SUPERSET")
-                    .font(.system(size: 10, weight: .bold))
-                    .tracking(0.6)
-            }
-            .foregroundColor(.white)
-            .padding(.horizontal, 10)
-            .padding(.vertical, 5)
-            .background(Color(hex: "7A82F6"))
-            .clipShape(Capsule())
-
-            // Exercises in superset
-            ForEach(group.exercises) { exercise in
-                HStack(spacing: 10) {
-                    Text(exercise.supersetOrder ?? "")
-                        .font(.system(size: 14, weight: .bold))
-                        .foregroundColor(Color(hex: "7A82F6"))
-                        .frame(width: 20)
-
-                    Text(exercise.name)
-                        .font(.system(size: 15, weight: .semibold))
-                        .foregroundColor(.gymBroNeutral900)
-
-                    Spacer()
-
-                    Text("\(exercise.sets.count) sets")
-                        .font(.system(size: 12, weight: .medium))
-                        .foregroundColor(.gymBroNeutral400)
-                }
-            }
-
+        let purpleAccent = Color(hex: "7A82F6")
+        return VStack(alignment: .leading, spacing: 10) {
+            // Header: badge + chevron
             HStack {
+                HStack(spacing: 6) {
+                    Image(systemName: "square.stack.fill")
+                        .font(.system(size: 10, weight: .bold))
+                    Text("SUPERSET")
+                        .font(.system(size: 10, weight: .bold))
+                        .tracking(0.6)
+                }
+                .foregroundColor(.white)
+                .padding(.horizontal, 10)
+                .padding(.vertical, 5)
+                .background(purpleAccent)
+                .clipShape(Capsule())
+
                 Spacer()
+
                 Image(systemName: "chevron.right")
                     .font(.system(size: 14, weight: .semibold))
                     .foregroundColor(.gymBroNeutral400)
             }
+
+            // Member rows — same visual language as standalone cards.
+            ForEach(Array(group.exercises.enumerated()), id: \.element.id) { idx, exercise in
+                let completedSets = exercise.sets.filter { $0.isCompleted }.count
+                let hasTarget = exercise.targetSets > 0
+                let allDone = hasTarget && completedSets >= exercise.targetSets
+
+                HStack(spacing: 16) {
+                    RoundedRectangle(cornerRadius: 100)
+                        .fill(Color(hex: exercise.accentColor))
+                        .frame(width: 6, height: 56)
+
+                    exerciseImage(exercise.imageUrl)
+                        .overlay(alignment: .bottomTrailing) {
+                            // A/B/C round-order marker
+                            Text(exercise.supersetOrder ?? "")
+                                .font(.system(size: 10, weight: .heavy))
+                                .foregroundColor(.white)
+                                .frame(width: 18, height: 18)
+                                .background(purpleAccent)
+                                .clipShape(Circle())
+                                .offset(x: 4, y: 4)
+                        }
+
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text(exercise.name)
+                            .font(.system(size: 16, weight: .bold))
+                            .foregroundColor(.gymBroNeutral900)
+                            .lineLimit(1)
+                            .tracking(-0.3)
+
+                        Text(hasTarget
+                            ? "\(completedSets) / \(exercise.targetSets) SETS"
+                            : "\(completedSets) SETS")
+                            .font(.system(size: 11, weight: .semibold))
+                            .tracking(0.6)
+                            .lineLimit(1)
+                            .minimumScaleFactor(0.6)
+                            .foregroundColor(allDone ? Color(hex: "30C08D") : Color(hex: "737373"))
+                            .padding(.horizontal, 8)
+                            .padding(.vertical, 2.5)
+                            .background(allDone ? Color(hex: "30C08D").opacity(0.1) : Color(hex: "F5F5F5"))
+                            .clipShape(RoundedRectangle(cornerRadius: 8))
+                    }
+
+                    Spacer()
+
+                    if allDone {
+                        Image(systemName: "checkmark.circle.fill")
+                            .font(.system(size: 24))
+                            .foregroundColor(Color(hex: "30C08D"))
+                    }
+                }
+
+                if idx < group.exercises.count - 1 {
+                    Rectangle()
+                        .fill(Color.gymBroNeutral100)
+                        .frame(height: 1)
+                        .padding(.leading, 22)
+                }
+            }
         }
-        .padding(16)
+        .padding(.horizontal, 21)
+        .padding(.vertical, 14)
         .background(Color.white)
         .clipShape(RoundedRectangle(cornerRadius: 24))
         .overlay(
             RoundedRectangle(cornerRadius: 24)
-                .stroke(Color(hex: "7A82F6").opacity(0.2), lineWidth: 1)
+                .stroke(purpleAccent.opacity(0.2), lineWidth: 1)
         )
-        .shadow(color: .black.opacity(0.04), radius: 4, y: 2)
+        .shadow(color: .black.opacity(0.03), radius: 10, x: 0, y: 4)
     }
 
     // MARK: - Rest Timer Bar
