@@ -4102,7 +4102,7 @@
       "localizations": {
         "uk": {
           "stringUnit": {
-            "state": "needs_review",
+            "state": "translated",
             "value": "Тренування"
           }
         }
@@ -4962,6 +4962,146 @@
           "stringUnit": {
             "state": "needs_review",
             "value": "У мене є тільки гантелі"
+          }
+        }
+      }
+    },
+    "Stats": {
+      "localizations": {
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Статистика"
+          }
+        }
+      }
+    },
+    "Est. 1RM": {
+      "localizations": {
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Розр. 1ПМ"
+          }
+        }
+      }
+    },
+    "Top set": {
+      "localizations": {
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Топ-підхід"
+          }
+        }
+      }
+    },
+    "Volume": {
+      "localizations": {
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Обсяг"
+          }
+        }
+      }
+    },
+    "Avg wt": {
+      "localizations": {
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Сер. вага"
+          }
+        }
+      }
+    },
+    "ESTIMATED 1RM · CURRENT": {
+      "localizations": {
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "РОЗРАХУНКОВИЙ 1ПМ · ЗАРАЗ"
+          }
+        }
+      }
+    },
+    "TOP SET WEIGHT · LAST": {
+      "localizations": {
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ВАГА ТОП-ПІДХОДУ · ОСТАННЄ"
+          }
+        }
+      }
+    },
+    "PER-SESSION VOLUME · LAST": {
+      "localizations": {
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ОБСЯГ ЗА ТРЕНУВАННЯ · ОСТАННЄ"
+          }
+        }
+      }
+    },
+    "AVG WEIGHT · LAST": {
+      "localizations": {
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "СЕРЕДНЯ ВАГА · ОСТАННЄ"
+          }
+        }
+      }
+    },
+    "All": {
+      "localizations": {
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Всі"
+          }
+        }
+      }
+    },
+    "Estimated": {
+      "localizations": {
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Розрахунковий"
+          }
+        }
+      }
+    },
+    "Actual 1RM": {
+      "localizations": {
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Фактичний 1ПМ"
+          }
+        }
+      }
+    },
+    "5-rep max": {
+      "localizations": {
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Максимум на 5 повторень"
+          }
+        }
+      }
+    },
+    "%lld kg": {
+      "localizations": {
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld кг"
           }
         }
       }

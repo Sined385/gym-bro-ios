@@ -13,8 +13,8 @@ enum DetailTab: String, CaseIterable, Identifiable {
     var id: String { rawValue }
     var label: String {
         switch self {
-        case .workouts: return "Workouts"
-        case .stats: return "Stats"
+        case .workouts: return String(localized: "Workouts")
+        case .stats: return String(localized: "Stats")
         }
     }
 }

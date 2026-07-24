@@ -65,8 +65,10 @@ struct RestTimerBar: View {
             } label: {
                 Text("Skip")
                     .font(.system(size: 14, weight: .bold))
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.6)
                     .foregroundColor(purpleAccent)
-                    .padding(.horizontal, 16)
+                    .padding(.horizontal, 12)
                     .padding(.vertical, 10)
                     .background(Color.white)
                     .clipShape(Capsule())

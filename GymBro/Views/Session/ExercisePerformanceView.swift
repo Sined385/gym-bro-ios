@@ -427,8 +427,8 @@ struct ExercisePerformanceView: View {
             items.append(PRItem(
                 id: "est1rm",
                 tag: "1RM",
-                name: "Estimated",
-                value: "\(Int(best.0.rounded())) kg",
+                name: String(localized: "Estimated"),
+                value: String(localized: "\(Int(best.0.rounded())) kg"),
                 date: formatter.string(from: best.1)
             ))
         }
@@ -440,8 +440,8 @@ struct ExercisePerformanceView: View {
             items.append(PRItem(
                 id: "actual1rm",
                 tag: "x1",
-                name: "Actual 1RM",
-                value: "\(Int(best.set.weight.rounded())) kg",
+                name: String(localized: "Actual 1RM"),
+                value: String(localized: "\(Int(best.set.weight.rounded())) kg"),
                 date: formatter.string(from: best.date)
             ))
         }
@@ -453,8 +453,8 @@ struct ExercisePerformanceView: View {
             items.append(PRItem(
                 id: "rep5",
                 tag: "x5",
-                name: "5-rep max",
-                value: "\(Int(best.set.weight.rounded())) kg",
+                name: String(localized: "5-rep max"),
+                value: String(localized: "\(Int(best.set.weight.rounded())) kg"),
                 date: formatter.string(from: best.date)
             ))
         }
@@ -482,19 +482,19 @@ struct ExercisePerformanceView: View {
 
         var tabLabel: String {
             switch self {
-            case .estimated1RM: return "Est. 1RM"
-            case .topSet: return "Top set"
-            case .volume: return "Volume"
-            case .avgWeight: return "Avg wt"
+            case .estimated1RM: return String(localized: "Est. 1RM")
+            case .topSet: return String(localized: "Top set")
+            case .volume: return String(localized: "Volume")
+            case .avgWeight: return String(localized: "Avg wt")
             }
         }
 
         var headerLabel: String {
             switch self {
-            case .estimated1RM: return "ESTIMATED 1RM · CURRENT"
-            case .topSet: return "TOP SET WEIGHT · LAST"
-            case .volume: return "PER-SESSION VOLUME · LAST"
-            case .avgWeight: return "AVG WEIGHT · LAST"
+            case .estimated1RM: return String(localized: "ESTIMATED 1RM · CURRENT")
+            case .topSet: return String(localized: "TOP SET WEIGHT · LAST")
+            case .volume: return String(localized: "PER-SESSION VOLUME · LAST")
+            case .avgWeight: return String(localized: "AVG WEIGHT · LAST")
             }
         }
 
@@ -573,7 +573,7 @@ struct ExercisePerformanceView: View {
             case .threeMonths: return "3M"
             case .sixMonths: return "6M"
             case .oneYear: return "1Y"
-            case .all: return "All"
+            case .all: return String(localized: "All")
             }
         }
 
