@@ -65,7 +65,12 @@ final class PushNotificationService: ObservableObject {
         do {
             let timezone = TimeZone.current.identifier
             try await networkService.request(
-                NotificationRouter.registerToken(token: token, platform: "ios", timezone: timezone).endpoint
+                NotificationRouter.registerToken(
+                    token: token,
+                    platform: "ios",
+                    timezone: timezone,
+                    language: Bundle.main.preferredLocalizations.first ?? "en"
+                ).endpoint
             )
             tokenRegistered = true
         } catch {

@@ -238,7 +238,7 @@ struct WorkoutLibraryView: View {
 
             // Details
             VStack(alignment: .leading, spacing: 6) {
-                Text(item.name)
+                Text(localizedExerciseName(item.name, externalId: item.externalId))
                     .font(.system(size: 14, weight: .semibold))
                     .foregroundColor(.gymBroNeutral900)
                     .lineLimit(2)
@@ -255,7 +255,7 @@ struct WorkoutLibraryView: View {
                 }
 
                 HStack(spacing: 6) {
-                    Text(item.muscleGroup)
+                    Text(MuscleGroup(rawValue: item.muscleGroup)?.displayName ?? item.muscleGroup)
                         .font(.system(size: 11, weight: .medium))
                         .foregroundColor(.white)
                         .padding(.horizontal, 6)

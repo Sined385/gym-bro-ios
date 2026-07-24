@@ -121,7 +121,7 @@ struct ExercisePreviewSheet: View {
 
     private var exerciseInfo: some View {
         VStack(alignment: .leading, spacing: 10) {
-            Text(exercise.name)
+            Text(localizedExerciseName(exercise.name, externalId: exercise.externalId))
                 .font(.system(size: 28, weight: .bold))
                 .foregroundColor(.gymBroNeutral900)
 

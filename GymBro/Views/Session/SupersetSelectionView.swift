@@ -161,7 +161,7 @@ struct SupersetSelectionView: View {
                         .fixedSize(horizontal: false, vertical: true)
 
                     HStack(spacing: 6) {
-                        Text(item.muscleGroup)
+                        Text(MuscleGroup(rawValue: item.muscleGroup)?.displayName ?? item.muscleGroup)
                             .font(.system(size: 11, weight: .medium))
                             .foregroundColor(.white)
                             .padding(.horizontal, 6)

@@ -26,7 +26,7 @@ struct CategoryFilterChips: View {
                 selectedCategory = category
             }
         } label: {
-            Text(category)
+            Text(String(localized: String.LocalizationValue(category)))
                 .font(.system(size: 13, weight: .semibold))
                 .foregroundColor(isSelected ? .white : .gymBroNeutral900)
                 .padding(.horizontal, 16)
@@ -68,7 +68,7 @@ struct MuscleGroupFilterChips: View {
                 selectedGroup = group
             }
         } label: {
-            Text(group.rawValue)
+            Text(group.displayName)
                 .font(.system(size: 13, weight: .semibold))
                 .foregroundColor(isSelected ? .white : .gymBroNeutral900)
                 .padding(.horizontal, 16)
@@ -110,7 +110,7 @@ struct EquipmentFilterChips: View {
                 selectedEquipment = equipment
             }
         } label: {
-            Text(equipment.rawValue)
+            Text(equipment.displayName)
                 .font(.system(size: 13, weight: .semibold))
                 .foregroundColor(isSelected ? .white : .gymBroNeutral900)
                 .padding(.horizontal, 16)

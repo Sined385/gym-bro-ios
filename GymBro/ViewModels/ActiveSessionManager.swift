@@ -1158,7 +1158,9 @@ final class ActiveSessionManager: ObservableObject {
         let watchExercises = exercises.map { ex in
             WatchExerciseState(
                 id: ex.id,
-                name: ex.name,
+                // Localized on the phone side — the Watch has no
+                // translation map of its own.
+                name: localizedExerciseName(ex.name, externalId: ex.externalId),
                 muscleGroup: ex.muscleGroup,
                 equipment: ex.equipment,
                 sets: ex.sets.map { set in

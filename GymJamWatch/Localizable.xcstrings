@@ -1,0 +1,446 @@
+{
+  "sourceLanguage": "en",
+  "strings": {
+    "Workout Complete": {
+      "localizations": {
+        "uk": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "Тренування завершено"
+          }
+        }
+      }
+    },
+    "Done": {
+      "localizations": {
+        "uk": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "Готово"
+          }
+        }
+      }
+    },
+    "REST": {
+      "localizations": {
+        "uk": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "ВІДПОЧИНОК"
+          }
+        }
+      }
+    },
+    "Skip": {
+      "localizations": {
+        "uk": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "Пропустити"
+          }
+        }
+      }
+    },
+    "+30s": {
+      "localizations": {
+        "uk": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "+30с"
+          }
+        }
+      }
+    },
+    "Rest Complete!": {
+      "localizations": {
+        "uk": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "Відпочинок завершено!"
+          }
+        }
+      }
+    },
+    "Time for next set": {
+      "localizations": {
+        "uk": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "Час для наступного підходу"
+          }
+        }
+      }
+    },
+    "Rest timer will\nappear here": {
+      "localizations": {
+        "uk": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "Таймер відпочинку\nз'явиться тут"
+          }
+        }
+      }
+    },
+    "BPM": {
+      "localizations": {
+        "uk": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "УДАРИ/ХВ"
+          }
+        }
+      }
+    },
+    "Measuring...": {
+      "localizations": {
+        "uk": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "Вимірювання..."
+          }
+        }
+      }
+    },
+    "AVG": {
+      "localizations": {
+        "uk": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "СЕРЕДНЄ"
+          }
+        }
+      }
+    },
+    "MAX": {
+      "localizations": {
+        "uk": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "МАКС"
+          }
+        }
+      }
+    },
+    "WEIGHT": {
+      "localizations": {
+        "uk": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "ВАГА"
+          }
+        }
+      }
+    },
+    "kg": {
+      "localizations": {
+        "uk": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "кг"
+          }
+        }
+      }
+    },
+    "REPS": {
+      "localizations": {
+        "uk": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "ПОВТОРЕННЯ"
+          }
+        }
+      }
+    },
+    "Complete Set": {
+      "localizations": {
+        "uk": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "Завершити підхід"
+          }
+        }
+      }
+    },
+    "Repeat Last": {
+      "localizations": {
+        "uk": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "Повторити останнє"
+          }
+        }
+      }
+    },
+    "Waiting for exercises...": {
+      "localizations": {
+        "uk": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "Очікування вправ..."
+          }
+        }
+      }
+    },
+    "All sets done!": {
+      "localizations": {
+        "uk": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "Усі підходи виконано!"
+          }
+        }
+      }
+    },
+    "Start": {
+      "localizations": {
+        "uk": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "Почати"
+          }
+        }
+      }
+    },
+    "DISTANCE": {
+      "localizations": {
+        "uk": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "ВІДСТАНЬ"
+          }
+        }
+      }
+    },
+    "Save": {
+      "localizations": {
+        "uk": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "Зберегти"
+          }
+        }
+      }
+    },
+    "GymJam": {
+      "localizations": {
+        "uk": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "GymJam"
+          }
+        }
+      }
+    },
+    "Starting...": {
+      "localizations": {
+        "uk": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "Запуск..."
+          }
+        }
+      }
+    },
+    "Start Planned": {
+      "localizations": {
+        "uk": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "Почати заплановане"
+          }
+        }
+      }
+    },
+    "Custom Workout": {
+      "localizations": {
+        "uk": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "Користувацьке тренування"
+          }
+        }
+      }
+    },
+    "iPhone not connected": {
+      "localizations": {
+        "uk": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "iPhone не підключено"
+          }
+        }
+      }
+    },
+    "Rest Day": {
+      "localizations": {
+        "uk": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "День відпочинку"
+          }
+        }
+      }
+    },
+    "%lld exercises": {
+      "localizations": {
+        "uk": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "%lld вправ"
+          }
+        }
+      }
+    },
+    "Set %lld of %lld": {
+      "localizations": {
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Підхід %lld з %lld"
+          }
+        }
+      }
+    },
+    "Chest": {
+      "localizations": {
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Груди"
+          }
+        }
+      }
+    },
+    "Back": {
+      "localizations": {
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Спина"
+          }
+        }
+      }
+    },
+    "Legs": {
+      "localizations": {
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ноги"
+          }
+        }
+      }
+    },
+    "Shoulders": {
+      "localizations": {
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Плечі"
+          }
+        }
+      }
+    },
+    "Arms": {
+      "localizations": {
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Руки"
+          }
+        }
+      }
+    },
+    "Core": {
+      "localizations": {
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Прес"
+          }
+        }
+      }
+    },
+    "Cardio": {
+      "localizations": {
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Кардіо"
+          }
+        }
+      }
+    },
+    "Other": {
+      "localizations": {
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Інше"
+          }
+        }
+      }
+    },
+    "Barbell": {
+      "localizations": {
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Штанга"
+          }
+        }
+      }
+    },
+    "Dumbbells": {
+      "localizations": {
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Гантелі"
+          }
+        }
+      }
+    },
+    "Cable": {
+      "localizations": {
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Блок"
+          }
+        }
+      }
+    },
+    "Machine": {
+      "localizations": {
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Тренажер"
+          }
+        }
+      }
+    },
+    "Bodyweight": {
+      "localizations": {
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Власна вага"
+          }
+        }
+      }
+    },
+    "Bands": {
+      "localizations": {
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Резинки"
+          }
+        }
+      }
+    }
+  },
+  "version": "1.0"
+}

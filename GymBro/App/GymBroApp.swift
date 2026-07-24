@@ -122,6 +122,7 @@ struct GymBroApp: App {
                 _ = deepLinkRouter.handle(url: url)
             }
             .task {
+                ExerciseNameLocalizer.shared.refresh()
                 await coordinator.determineInitialRoute()
             }
             .onChange(of: scenePhase) { _, newPhase in

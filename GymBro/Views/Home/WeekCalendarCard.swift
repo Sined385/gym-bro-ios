@@ -11,8 +11,13 @@ struct WeekCalendarCard: View {
 
     // MARK: - Constants
 
-    private let weekDayLetters = ["M", "T", "W", "T", "F", "S", "S"]
-    private let monthGridDayLetters = ["S", "M", "T", "W", "T", "F", "S"]
+    // Locale-aware single-letter day symbols. veryShortWeekdaySymbols is
+    // Sunday-first; the week strip is Monday-first, so rotate by one.
+    private let weekDayLetters: [String] = {
+        let symbols = Calendar.current.veryShortWeekdaySymbols
+        return Array(symbols[1...]) + [symbols[0]]
+    }()
+    private let monthGridDayLetters = Calendar.current.veryShortWeekdaySymbols
     private let mutedTextColor = Color(hex: "A1A1A1")
     private let dayNumberColor = Color(hex: "525252")
     private let completedColor = Color(hex: "30C08D")

@@ -110,9 +110,9 @@ enum BiologicalSex: String, Codable, CaseIterable, Equatable {
 
     var displayName: String {
         switch self {
-        case .male: return "Male"
-        case .female: return "Female"
-        case .other: return "Other"
+        case .male: return String(localized: "Male")
+        case .female: return String(localized: "Female")
+        case .other: return String(localized: "Other")
         }
     }
 
@@ -136,11 +136,11 @@ enum PrimaryGoal: String, Codable, CaseIterable {
 
     var displayName: String {
         switch self {
-        case .buildMuscle: return "Build Muscle"
-        case .loseFat: return "Lose Fat"
-        case .recomposition: return "Recomposition"
-        case .improveEndurance: return "Improve Endurance"
-        case .generalFitness: return "General Fitness"
+        case .buildMuscle: return String(localized: "Build Muscle")
+        case .loseFat: return String(localized: "Lose Fat")
+        case .recomposition: return String(localized: "Recomposition")
+        case .improveEndurance: return String(localized: "Improve Endurance")
+        case .generalFitness: return String(localized: "General Fitness")
         }
     }
 }
@@ -154,17 +154,17 @@ enum ExperienceLevel: String, Codable, CaseIterable {
 
     var displayName: String {
         switch self {
-        case .beginner: return "Beginner"
-        case .intermediate: return "Intermediate"
-        case .advanced: return "Advanced"
+        case .beginner: return String(localized: "Beginner")
+        case .intermediate: return String(localized: "Intermediate")
+        case .advanced: return String(localized: "Advanced")
         }
     }
 
     var subtitle: String {
         switch self {
-        case .beginner: return "0-1 yrs"
-        case .intermediate: return "1-3 yrs"
-        case .advanced: return "3+ yrs"
+        case .beginner: return String(localized: "0-1 yrs")
+        case .intermediate: return String(localized: "1-3 yrs")
+        case .advanced: return String(localized: "3+ yrs")
         }
     }
 }
@@ -186,18 +186,18 @@ enum TrainingFrequency: Int, Codable, CaseIterable {
 
     var displayName: String {
         switch self {
-        case .oneDay: return "Sunday Warrior"
-        case .twoDays: return "Weekend Warrior"
-        case .threeDays: return "Three-Plate Special"
-        case .fourDays: return "The Dedicated"
-        case .fiveDays: return "Gym Rat"
-        case .sixDays: return "Iron Addict"
-        case .sevenDays: return "No Rest For The Wicked"
+        case .oneDay: return String(localized: "Sunday Warrior")
+        case .twoDays: return String(localized: "Weekend Warrior")
+        case .threeDays: return String(localized: "Three-Plate Special")
+        case .fourDays: return String(localized: "The Dedicated")
+        case .fiveDays: return String(localized: "Gym Rat")
+        case .sixDays: return String(localized: "Iron Addict")
+        case .sevenDays: return String(localized: "No Rest For The Wicked")
         }
     }
 
     var label: String {
-        return "\(days) Day\(days > 1 ? "s" : "")"
+        String(localized: "\(days) days-label")
     }
 }
 
@@ -215,9 +215,9 @@ enum WorkoutDuration: Int, Codable, CaseIterable {
 
     var displayName: String {
         if self == .ninety {
-            return "90+ minutes"
+            return String(localized: "90+ minutes")
         }
-        return "\(minutes) minutes"
+        return String(localized: "\(minutes) minutes")
     }
 }
 
@@ -239,11 +239,13 @@ enum RestTime: Int, Codable, CaseIterable {
         let minutes = rawValue / 60
         let seconds = rawValue % 60
         if minutes == 0 {
-            return "\(seconds) seconds"
+            return String(localized: "\(seconds) seconds")
         } else if seconds == 0 {
-            return minutes == 1 ? "1 minute" : "\(minutes) minutes"
+            return minutes == 1
+                ? String(localized: "1 minute")
+                : String(localized: "\(minutes) minutes")
         } else {
-            return "\(minutes) min \(seconds) sec"
+            return String(localized: "\(minutes) min \(seconds) sec")
         }
     }
 }
@@ -258,10 +260,10 @@ enum Equipment: String, Codable, CaseIterable {
 
     var displayName: String {
         switch self {
-        case .fullGym: return "Full Gym"
-        case .dumbbellsOnly: return "Dumbbells Only"
-        case .bodyweight: return "Bodyweight"
-        case .homeGym: return "Home Gym"
+        case .fullGym: return String(localized: "Full Gym")
+        case .dumbbellsOnly: return String(localized: "Dumbbells Only")
+        case .bodyweight: return String(localized: "Bodyweight")
+        case .homeGym: return String(localized: "Home Gym")
         }
     }
 }
@@ -278,11 +280,11 @@ enum InjuryType: Codable, Equatable, Hashable {
 
     var displayName: String {
         switch self {
-        case .none: return "None"
-        case .shoulders: return "Shoulders / Rotator Cuff"
-        case .lowerBack: return "Lower Back"
-        case .knees: return "Knees"
-        case .wrists: return "Wrists"
+        case .none: return String(localized: "None")
+        case .shoulders: return String(localized: "Shoulders / Rotator Cuff")
+        case .lowerBack: return String(localized: "Lower Back")
+        case .knees: return String(localized: "Knees")
+        case .wrists: return String(localized: "Wrists")
         case .custom(let text): return text
         }
     }

@@ -127,7 +127,7 @@ struct ShareSessionView: View {
                         Text("\u{2022}")
                             .font(.system(size: 12))
                             .foregroundColor(.gymBroTextSecondary)
-                        Text("\(exercises.count) EXERCISE\(exercises.count == 1 ? "" : "S")")
+                        Text("\(exercises.count) EXERCISES-caps")
                             .font(.system(size: 12, weight: .semibold))
                             .foregroundColor(.gymBroTextSecondary)
                     }
@@ -222,7 +222,7 @@ struct ShareSessionView: View {
                     HStack(spacing: 4) {
                         Image(systemName: visibility == "global" ? "globe" : "lock.fill")
                             .font(.system(size: 10))
-                        Text("Sharing to \(visibility == "global" ? "Global Feed" : "Followers")")
+                        Text("Sharing to \(visibility == "global" ? String(localized: "Global Feed") : String(localized: "Followers"))")
                             .font(.system(size: 12, weight: .medium))
                     }
                     .foregroundColor(.gymBroTextSecondary)
@@ -543,7 +543,7 @@ struct ShareSessionView: View {
                         .lineLimit(1)
 
                     if !exercise.muscleGroup.isEmpty {
-                        Text(exercise.muscleGroup.uppercased())
+                        Text((MuscleGroup(rawValue: exercise.muscleGroup)?.displayName ?? exercise.muscleGroup).uppercased())
                             .font(.system(size: 10, weight: .semibold))
                             .tracking(0.4)
                             .foregroundColor(.gymBroTextSecondary)

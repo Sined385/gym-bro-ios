@@ -15,7 +15,7 @@ struct StartSessionButton: View {
 
     // MARK: - Properties
 
-    var label: String = "Start custom workout"
+    var label: String = String(localized: "Start custom workout")
     var action: () -> Void = {}
 
     var body: some View {

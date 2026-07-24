@@ -97,8 +97,8 @@ struct WeeklyOverviewCard: View {
             HStack(spacing: 8) {
                 statCell(
                     label: "Duration",
-                    value: weekAvgDuration.map { "\($0) min" } ?? "--",
-                    avg: avgDuration.map { "\($0) min" },
+                    value: weekAvgDuration.map { String(localized: "\($0) min") } ?? "--",
+                    avg: avgDuration.map { String(localized: "\($0) min") },
                     isUp: (weekAvgDuration != nil && avgDuration != nil) ? weekAvgDuration! > avgDuration! : nil
                 )
                 statCell(

@@ -212,6 +212,10 @@ final class NetworkService: NetworkServiceProtocol {
         if let provider = tokenProvider, let token = await provider() {
             headers["Authorization"] = "Bearer \(token)"
         }
+        // App language for server-generated content (AI text, pushes,
+        // fallback strings). preferredLocalizations respects the per-app
+        // language override and only yields languages the app ships.
+        headers["X-App-Language"] = Bundle.main.preferredLocalizations.first ?? "en"
         return headers.isEmpty ? nil : headers
     }
 

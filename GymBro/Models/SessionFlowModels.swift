@@ -98,6 +98,12 @@ enum MuscleGroup: String, CaseIterable, Identifiable {
     case other = "Other"
 
     var id: String { rawValue }
+
+    /// Localized label for chips/forms. rawValue stays the canonical
+    /// API value — never display rawValue directly.
+    var displayName: String {
+        String(localized: String.LocalizationValue(rawValue))
+    }
 }
 
 // MARK: - Equipment Type
@@ -115,6 +121,11 @@ enum EquipmentType: String, CaseIterable, Identifiable {
     case other = "Other"
 
     var id: String { rawValue }
+
+    /// Localized label — see MuscleGroup.displayName.
+    var displayName: String {
+        String(localized: String.LocalizationValue(rawValue))
+    }
 }
 
 // MARK: - Previous Sets

@@ -44,7 +44,11 @@ final class ExerciseLibraryViewModel: ObservableObject {
         }
 
         if !searchText.isEmpty {
-            result = result.filter { $0.name.localizedCaseInsensitiveContains(searchText) }
+            result = result.filter {
+                $0.name.localizedCaseInsensitiveContains(searchText)
+                    || localizedExerciseName($0.name, externalId: $0.externalId)
+                        .localizedCaseInsensitiveContains(searchText)
+            }
         }
 
         let favorites = result.filter { favoriteIds.contains($0.id) }

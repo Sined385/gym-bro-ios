@@ -218,7 +218,7 @@ struct ExerciseLoggingView: View {
     private func individualContent(_ exercise: ActiveSessionExercise) -> some View {
         VStack(alignment: .leading, spacing: 16) {
             // Exercise name
-            Text(exercise.name)
+            Text(localizedExerciseName(exercise.name, externalId: exercise.externalId))
                 .font(.system(size: 28, weight: .bold))
                 .tracking(-0.5)
                 .foregroundColor(.gymBroNeutral900)

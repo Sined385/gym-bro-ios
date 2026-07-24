@@ -88,7 +88,7 @@ struct WorkoutAttachmentView: View {
                     Text("\u{2022}")
                         .font(.system(size: 11))
                         .foregroundColor(.gymBroTextSecondary)
-                    Text("\(attachment.exerciseCount) EXERCISE\(attachment.exerciseCount == 1 ? "" : "S")")
+                    Text("\(attachment.exerciseCount) EXERCISES-caps")
                         .font(.system(size: 11, weight: .semibold))
                         .foregroundColor(.gymBroTextSecondary)
                 }
@@ -191,7 +191,7 @@ struct WorkoutAttachmentView: View {
                 exerciseImageView(exercise.imageUrl)
 
                 VStack(alignment: .leading, spacing: 2) {
-                    Text(exercise.name)
+                    Text(localizedExerciseName(exercise.name, externalId: exercise.externalId))
                         .font(.system(size: 14, weight: .semibold))
                         .foregroundColor(.gymBroNeutral900)
                         .lineLimit(1)

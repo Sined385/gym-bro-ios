@@ -147,16 +147,13 @@ struct SupersetSection: View {
                 }
 
             VStack(alignment: .leading, spacing: 3) {
-                Text(ex.name)
+                Text(localizedExerciseName(ex.name, externalId: ex.externalId))
                     .font(.system(size: 16, weight: .bold))
                     .foregroundColor(.gymBroNeutral900)
                     .lineLimit(1)
                     .tracking(-0.3)
 
-                Text([ex.muscleGroup, ex.equipment]
-                    .compactMap { $0 }
-                    .filter { !$0.isEmpty }
-                    .joined(separator: " · "))
+                Text(memberMeta(ex))
                     .font(.system(size: 12, weight: .medium))
                     .foregroundColor(.gymBroNeutral400)
                     .lineLimit(1)
@@ -170,6 +167,18 @@ struct SupersetSection: View {
                 .foregroundColor(.gymBroNeutral600)
         }
         .padding(.vertical, 10)
+    }
+
+    /// "Груди · Штанга" — localized muscle/equipment line. Split out so
+    /// the row body stays type-checkable.
+    private func memberMeta(_ ex: ActiveSessionExercise) -> String {
+        let muscle: String = MuscleGroup(rawValue: ex.muscleGroup)?.displayName ?? ex.muscleGroup
+        var parts: [String] = [muscle]
+        let equipment = ex.equipment
+        if !equipment.isEmpty {
+            parts.append(EquipmentType(rawValue: equipment)?.displayName ?? equipment)
+        }
+        return parts.filter { !$0.isEmpty }.joined(separator: " · ")
     }
 
     @ViewBuilder
@@ -278,7 +287,7 @@ struct SupersetSection: View {
                                 .foregroundColor(purpleAccent)
                                 .frame(width: 18)
 
-                            Text(ex.name)
+                            Text(localizedExerciseName(ex.name, externalId: ex.externalId))
                                 .font(.system(size: 14, weight: .medium))
                                 .foregroundColor(.gymBroNeutral600)
                                 .lineLimit(1)
@@ -348,7 +357,7 @@ struct SupersetSection: View {
                         Text(ex.supersetOrder ?? "")
                             .font(.system(size: 13, weight: .bold))
                             .foregroundColor(purpleAccent)
-                        Text(ex.name)
+                        Text(localizedExerciseName(ex.name, externalId: ex.externalId))
                             .font(.system(size: 14, weight: .semibold))
                             .foregroundColor(.gymBroNeutral900)
                             .lineLimit(1)

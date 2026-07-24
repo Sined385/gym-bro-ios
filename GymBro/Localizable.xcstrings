@@ -1,0 +1,3716 @@
+{
+  "sourceLanguage": "en",
+  "strings": {
+    "GymJam": {
+      "localizations": {
+        "uk": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "GymJam"
+          }
+        }
+      }
+    },
+    "Home": {
+      "localizations": {
+        "uk": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "Головна"
+          }
+        }
+      }
+    },
+    "Plan": {
+      "localizations": {
+        "uk": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "План"
+          }
+        }
+      }
+    },
+    "Community": {
+      "localizations": {
+        "uk": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "Спільнота"
+          }
+        }
+      }
+    },
+    "Profile": {
+      "localizations": {
+        "uk": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "Профіль"
+          }
+        }
+      }
+    },
+    "Schedule": {
+      "localizations": {
+        "uk": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "Розклад"
+          }
+        }
+      }
+    },
+    "About You": {
+      "localizations": {
+        "uk": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "Про вас"
+          }
+        }
+      }
+    },
+    "Cancel": {
+      "localizations": {
+        "uk": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "Скасувати"
+          }
+        }
+      }
+    },
+    "Save": {
+      "localizations": {
+        "uk": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "Зберегти"
+          }
+        }
+      }
+    },
+    "Personal context for the AI": {
+      "localizations": {
+        "uk": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "Особистий контекст для AI"
+          }
+        }
+      }
+    },
+    "This note gets added to every plan and coach reply. Mention injuries, exercises you love or hate, equipment quirks — anything the AI should always keep in mind.": {
+      "localizations": {
+        "uk": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "Ця примітка додається до кожного плану та відповіді тренера. Згадайте про травми, вправи, які ви любите чи ненавидите, особливості обладнання — все, що AI завжди має враховувати."
+          }
+        }
+      }
+    },
+    "Settings": {
+      "localizations": {
+        "uk": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "Налаштування"
+          }
+        }
+      }
+    },
+    "SUBSCRIPTION": {
+      "localizations": {
+        "uk": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "ПІДПИСКА"
+          }
+        }
+      }
+    },
+    "GymJam Premium": {
+      "localizations": {
+        "uk": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "GymJam Premium"
+          }
+        }
+      }
+    },
+    "Manage": {
+      "localizations": {
+        "uk": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "Керувати"
+          }
+        }
+      }
+    },
+    "Upgrade to Premium": {
+      "localizations": {
+        "uk": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "Оновити до Premium"
+          }
+        }
+      }
+    },
+    "Unlock unlimited AI coaching & more": {
+      "localizations": {
+        "uk": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "Відкрийте необмежене AI-тренування та більше"
+          }
+        }
+      }
+    },
+    "Redeem promo code": {
+      "localizations": {
+        "uk": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "Активувати промокод"
+          }
+        }
+      }
+    },
+    "PREFERENCES": {
+      "localizations": {
+        "uk": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "НАЛАШТУВАННЯ"
+          }
+        }
+      }
+    },
+    "ACCOUNT": {
+      "localizations": {
+        "uk": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "ОБЛІКОВИЙ ЗАПИС"
+          }
+        }
+      }
+    },
+    "Log Out": {
+      "localizations": {
+        "uk": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "Вийти"
+          }
+        }
+      }
+    },
+    "Sign out of your account": {
+      "localizations": {
+        "uk": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "Вийти з облікового запису"
+          }
+        }
+      }
+    },
+    "Delete Account": {
+      "localizations": {
+        "uk": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "Видалити обліковий запис"
+          }
+        }
+      }
+    },
+    "Permanently delete your account and data": {
+      "localizations": {
+        "uk": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "Назавжди видалити ваш обліковий запис та дані"
+          }
+        }
+      }
+    },
+    "Delete": {
+      "localizations": {
+        "uk": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "Видалити"
+          }
+        }
+      }
+    },
+    "Are you sure you want to permanently delete your account? This action cannot be undone.": {
+      "localizations": {
+        "uk": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "Ви впевнені, що хочете назавжди видалити свій обліковий запис? Цю дію не можна скасувати."
+          }
+        }
+      }
+    },
+    "Version 1.0.0": {
+      "localizations": {
+        "uk": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "Версія 1.0.0"
+          }
+        }
+      }
+    },
+    "Made with heart for fitness enthusiasts": {
+      "localizations": {
+        "uk": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "Зроблено з любов'ю для шанувальників фітнесу"
+          }
+        }
+      }
+    },
+    "Free-form context the AI uses for every plan": {
+      "localizations": {
+        "uk": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "Вільний контекст, який AI використовує для кожного плану"
+          }
+        }
+      }
+    },
+    "Edit": {
+      "localizations": {
+        "uk": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "Редагувати"
+          }
+        }
+      }
+    },
+    "Rest Between Sets": {
+      "localizations": {
+        "uk": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "Відпочинок між підходами"
+          }
+        }
+      }
+    },
+    "WEEKLY OVERVIEW": {
+      "localizations": {
+        "uk": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "ТИЖНЕВИЙ ОГЛЯД"
+          }
+        }
+      }
+    },
+    "Share": {
+      "localizations": {
+        "uk": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "Поділитися"
+          }
+        }
+      }
+    },
+    "Start": {
+      "localizations": {
+        "uk": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "Почати"
+          }
+        }
+      }
+    },
+    "Rest & Recovery": {
+      "localizations": {
+        "uk": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "Відпочинок та відновлення"
+          }
+        }
+      }
+    },
+    "Well Deserved Rest": {
+      "localizations": {
+        "uk": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "Заслужений відпочинок"
+          }
+        }
+      }
+    },
+    "Your body grows stronger during recovery. Take it easy today and come back refreshed.": {
+      "localizations": {
+        "uk": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "Ваше тіло стає сильнішим під час відновлення. Відпочиньте сьогодні і поверніться оновленими."
+          }
+        }
+      }
+    },
+    "Your Stats": {
+      "localizations": {
+        "uk": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "Ваші показники"
+          }
+        }
+      }
+    },
+    "This Week's Progress": {
+      "localizations": {
+        "uk": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "Прогрес цього тижня"
+          }
+        }
+      }
+    },
+    "Workouts": {
+      "localizations": {
+        "uk": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "Тренування"
+          }
+        }
+      }
+    },
+    "PBs": {
+      "localizations": {
+        "uk": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "Особисті рекорди"
+          }
+        }
+      }
+    },
+    "kg": {
+      "localizations": {
+        "uk": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "кг"
+          }
+        }
+      }
+    },
+    "TODAY'S CHALLENGE": {
+      "localizations": {
+        "uk": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "СЬОГОДНІШНІЙ ВИКЛИК"
+          }
+        }
+      }
+    },
+    "Today": {
+      "localizations": {
+        "uk": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "Сьогодні"
+          }
+        }
+      }
+    },
+    "Completed": {
+      "localizations": {
+        "uk": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "Завершено"
+          }
+        }
+      }
+    },
+    "Quick Workout": {
+      "localizations": {
+        "uk": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "Швидке тренування"
+          }
+        }
+      }
+    },
+    "Library": {
+      "localizations": {
+        "uk": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "Бібліотека"
+          }
+        }
+      }
+    },
+    "Shared Workout": {
+      "localizations": {
+        "uk": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "Спільне тренування"
+          }
+        }
+      }
+    },
+    "Done": {
+      "localizations": {
+        "uk": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "Готово"
+          }
+        }
+      }
+    },
+    "•": {
+      "localizations": {
+        "uk": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "•"
+          }
+        }
+      }
+    },
+    "Followers": {
+      "localizations": {
+        "uk": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "Підписники"
+          }
+        }
+      }
+    },
+    "Following": {
+      "localizations": {
+        "uk": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "Підписки"
+          }
+        }
+      }
+    },
+    "Start Workout": {
+      "localizations": {
+        "uk": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "Почати тренування"
+          }
+        }
+      }
+    },
+    "DURATION": {
+      "localizations": {
+        "uk": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "ТРИВАЛІСТЬ"
+          }
+        }
+      }
+    },
+    "min": {
+      "localizations": {
+        "uk": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "хв"
+          }
+        }
+      }
+    },
+    "CALORIES": {
+      "localizations": {
+        "uk": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "КАЛОРІЇ"
+          }
+        }
+      }
+    },
+    "kcal": {
+      "localizations": {
+        "uk": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "ккал"
+          }
+        }
+      }
+    },
+    "Resume session": {
+      "localizations": {
+        "uk": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "Продовжити тренування"
+          }
+        }
+      }
+    },
+    "EXERCISES COMPLETED": {
+      "localizations": {
+        "uk": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "ВПРАВИ ЗАВЕРШЕНО"
+          }
+        }
+      }
+    },
+    "Workout name": {
+      "localizations": {
+        "uk": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "Назва тренування"
+          }
+        }
+      }
+    },
+    "Add Exercises": {
+      "localizations": {
+        "uk": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "Додати вправи"
+          }
+        }
+      }
+    },
+    "Tap + to build your workout": {
+      "localizations": {
+        "uk": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "Натисніть + для створення тренування"
+          }
+        }
+      }
+    },
+    "Save Workout": {
+      "localizations": {
+        "uk": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "Зберегти тренування"
+          }
+        }
+      }
+    },
+    "New Workout": {
+      "localizations": {
+        "uk": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "Нове тренування"
+          }
+        }
+      }
+    },
+    "Create Custom Workout": {
+      "localizations": {
+        "uk": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "Створити власне тренування"
+          }
+        }
+      }
+    },
+    "Search exercises...": {
+      "localizations": {
+        "uk": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "Пошук вправ..."
+          }
+        }
+      }
+    },
+    "No saved workouts yet": {
+      "localizations": {
+        "uk": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "Ще немає збережених тренувань"
+          }
+        }
+      }
+    },
+    "Create one or save from a completed workout": {
+      "localizations": {
+        "uk": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "Створіть або збережіть із завершеного тренування"
+          }
+        }
+      }
+    },
+    "Planned Workout": {
+      "localizations": {
+        "uk": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "Заплановане тренування"
+          }
+        }
+      }
+    },
+    "Start Session": {
+      "localizations": {
+        "uk": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "Почати сесію"
+          }
+        }
+      }
+    },
+    "COMPLETED": {
+      "localizations": {
+        "uk": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "ЗАВЕРШЕНО"
+          }
+        }
+      }
+    },
+    "Gains & Notes": {
+      "localizations": {
+        "uk": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "Досягнення та нотатки"
+          }
+        }
+      }
+    },
+    "UP NEXT": {
+      "localizations": {
+        "uk": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "ДАЛІ"
+          }
+        }
+      }
+    },
+    "Rest Day": {
+      "localizations": {
+        "uk": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "День відпочинку"
+          }
+        }
+      }
+    },
+    "Recovery & regeneration": {
+      "localizations": {
+        "uk": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "Відновлення та регенерація"
+          }
+        }
+      }
+    },
+    "Redistributed to later this week": {
+      "localizations": {
+        "uk": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "Перенесено на пізніше цього тижня"
+          }
+        }
+      }
+    },
+    "SKIPPED": {
+      "localizations": {
+        "uk": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "ПРОПУЩЕНО"
+          }
+        }
+      }
+    },
+    "Your Plan": {
+      "localizations": {
+        "uk": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "Ваш план"
+          }
+        }
+      }
+    },
+    "This Week": {
+      "localizations": {
+        "uk": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "Цього тижня"
+          }
+        }
+      }
+    },
+    "Weekly progression": {
+      "localizations": {
+        "uk": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "Щотижневий прогрес"
+          }
+        }
+      }
+    },
+    "Unlock Your Training Plan": {
+      "localizations": {
+        "uk": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "Розблокувати свій план тренувань"
+          }
+        }
+      }
+    },
+    "Upgrade to Premium to access your AI-generated training plan and track your weekly progress.": {
+      "localizations": {
+        "uk": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "Оновіть до Premium, щоб отримати доступ до вашого AI-згенерованого плану тренувань і відстежувати ваш щотижневий прогрес."
+          }
+        }
+      }
+    },
+    "PROMO CODE": {
+      "localizations": {
+        "uk": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "ПРОМОКОД"
+          }
+        }
+      }
+    },
+    "Unlock GymJam Premium": {
+      "localizations": {
+        "uk": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "Розблокувати GymJam Premium"
+          }
+        }
+      }
+    },
+    "Take your training to the next level": {
+      "localizations": {
+        "uk": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "Підніміть свої тренування на новий рівень"
+          }
+        }
+      }
+    },
+    "Best Value": {
+      "localizations": {
+        "uk": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "Найкраща цінність"
+          }
+        }
+      }
+    },
+    "Continue": {
+      "localizations": {
+        "uk": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "Продовжити"
+          }
+        }
+      }
+    },
+    "Restore Purchases": {
+      "localizations": {
+        "uk": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "Відновити покупки"
+          }
+        }
+      }
+    },
+    "Subscriptions auto-renew. Cancel anytime in Settings.": {
+      "localizations": {
+        "uk": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "Підписки автоматично поновлюються. Скасувати можна в будь-який час у Налаштуваннях."
+          }
+        }
+      }
+    },
+    "Privacy Policy": {
+      "localizations": {
+        "uk": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "Політика конфіденційності"
+          }
+        }
+      }
+    },
+    "·": {
+      "localizations": {
+        "uk": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "·"
+          }
+        }
+      }
+    },
+    "Terms of Use": {
+      "localizations": {
+        "uk": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "Умови використання"
+          }
+        }
+      }
+    },
+    "REGENERATE": {
+      "localizations": {
+        "uk": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "РЕГЕНЕРУВАТИ"
+          }
+        }
+      }
+    },
+    "Load earlier messages": {
+      "localizations": {
+        "uk": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "Завантажити попередні повідомлення"
+          }
+        }
+      }
+    },
+    "AI Coach": {
+      "localizations": {
+        "uk": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "AI Тренер"
+          }
+        }
+      }
+    },
+    "I know your training history, goals, and injuries. Ask me anything about your workouts.": {
+      "localizations": {
+        "uk": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "Я знаю вашу історію тренувань, цілі та травми. Запитайте мене про ваші тренування."
+          }
+        }
+      }
+    },
+    "Unlock unlimited AI coaching conversations": {
+      "localizations": {
+        "uk": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "Розблокувати необмежені розмови з AI тренером"
+          }
+        }
+      }
+    },
+    "Ask your coach anything...": {
+      "localizations": {
+        "uk": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "Запитайте у тренера що завгодно..."
+          }
+        }
+      }
+    },
+    "Skip": {
+      "localizations": {
+        "uk": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "Пропустити"
+          }
+        }
+      }
+    },
+    "YOUR NOTE TO THE COACH": {
+      "localizations": {
+        "uk": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "ВАША НОТАТКА ДЛЯ ТРЕНЕРА"
+          }
+        }
+      }
+    },
+    "e.g. \"I have a back injury, keep deadlifts light\"": {
+      "localizations": {
+        "uk": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "наприклад, \"У мене травма спини, робіть станову тягу легкою\""
+          }
+        }
+      }
+    },
+    "No workouts yet": {
+      "localizations": {
+        "uk": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "Тренувань ще немає"
+          }
+        }
+      }
+    },
+    "PLANNED FOR TODAY": {
+      "localizations": {
+        "uk": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "ЗАПЛАНОВАНО НА СЬОГОДНІ"
+          }
+        }
+      }
+    },
+    "SETS × TARGET": {
+      "localizations": {
+        "uk": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "ПІДХОДИ × ЦІЛЬ"
+          }
+        }
+      }
+    },
+    "PREVIOUS RESULTS": {
+      "localizations": {
+        "uk": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "ПОПЕРЕДНІ РЕЗУЛЬТАТИ"
+          }
+        }
+      }
+    },
+    "No previous sessions": {
+      "localizations": {
+        "uk": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "Попередніх тренувань немає"
+          }
+        }
+      }
+    },
+    "Add Photo": {
+      "localizations": {
+        "uk": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "Додати фото"
+          }
+        }
+      }
+    },
+    "Choose from Library": {
+      "localizations": {
+        "uk": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "Вибрати з бібліотеки"
+          }
+        }
+      }
+    },
+    "Take a Photo": {
+      "localizations": {
+        "uk": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "Зробити фото"
+          }
+        }
+      }
+    },
+    "Premium Feature": {
+      "localizations": {
+        "uk": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "Преміум функція"
+          }
+        }
+      }
+    },
+    "Prev: --": {
+      "localizations": {
+        "uk": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "Поперед.: --"
+          }
+        }
+      }
+    },
+    "Remove Photo": {
+      "localizations": {
+        "uk": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "Видалити фото"
+          }
+        }
+      }
+    },
+    "Display Name": {
+      "localizations": {
+        "uk": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "Ім'я для відображення"
+          }
+        }
+      }
+    },
+    "e.g., Alex Martinez": {
+      "localizations": {
+        "uk": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "наприклад, Олексій Мартінес"
+          }
+        }
+      }
+    },
+    "Username": {
+      "localizations": {
+        "uk": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "Ім'я користувача"
+          }
+        }
+      }
+    },
+    "@": {
+      "localizations": {
+        "uk": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "@"
+          }
+        }
+      }
+    },
+    "username": {
+      "localizations": {
+        "uk": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "ім'я користувача"
+          }
+        }
+      }
+    },
+    "Letters, numbers, and underscores only": {
+      "localizations": {
+        "uk": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "Тільки літери, цифри та підкреслення"
+          }
+        }
+      }
+    },
+    "Edit Profile": {
+      "localizations": {
+        "uk": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "Редагувати профіль"
+          }
+        }
+      }
+    },
+    "ADD PHOTO": {
+      "localizations": {
+        "uk": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "ДОДАТИ ФОТО"
+          }
+        }
+      }
+    },
+    "My Profile": {
+      "localizations": {
+        "uk": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "Мій профіль"
+          }
+        }
+      }
+    },
+    "Could not load profile.": {
+      "localizations": {
+        "uk": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "Не вдалося завантажити профіль."
+          }
+        }
+      }
+    },
+    "Retry": {
+      "localizations": {
+        "uk": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "Повторити"
+          }
+        }
+      }
+    },
+    "Building Your Plan": {
+      "localizations": {
+        "uk": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "Створення вашого плану"
+          }
+        }
+      }
+    },
+    "Our AI coach is crafting a personalized program just for you...": {
+      "localizations": {
+        "uk": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "Наш AI-тренер створює персоналізовану програму саме для вас..."
+          }
+        }
+      }
+    },
+    "Generating...": {
+      "localizations": {
+        "uk": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "Генерація..."
+          }
+        }
+      }
+    },
+    "💡": {
+      "localizations": {
+        "uk": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "💡"
+          }
+        }
+      }
+    },
+    "Tell us more (optional)": {
+      "localizations": {
+        "uk": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "Розкажіть більше (необов'язково)"
+          }
+        }
+      }
+    },
+    "Report submitted. Thank you.": {
+      "localizations": {
+        "uk": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "Звіт надіслано. Дякуємо."
+          }
+        }
+      }
+    },
+    "Submit Report": {
+      "localizations": {
+        "uk": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "Надіслати звіт"
+          }
+        }
+      }
+    },
+    "Report": {
+      "localizations": {
+        "uk": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "Поскаржитися"
+          }
+        }
+      }
+    },
+    "Block": {
+      "localizations": {
+        "uk": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "Заблокувати"
+          }
+        }
+      }
+    },
+    "You won't see their content and they won't be able to interact with you.": {
+      "localizations": {
+        "uk": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "Ви не побачите їхній контент, і вони не зможуть взаємодіяти з вами."
+          }
+        }
+      }
+    },
+    "Search users...": {
+      "localizations": {
+        "uk": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "Пошук користувачів..."
+          }
+        }
+      }
+    },
+    "No users found": {
+      "localizations": {
+        "uk": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "Користувачів не знайдено"
+          }
+        }
+      }
+    },
+    "HOW YOU TWO STACK UP": {
+      "localizations": {
+        "uk": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "ЯК ВИ ДВОЄ СПІВВІДНОСИТЕСЯ"
+          }
+        }
+      }
+    },
+    "Not enough shared workout data to compare yet — once you've both logged the same lifts, they'll show up here.": {
+      "localizations": {
+        "uk": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "Недостатньо спільних даних про тренування для порівняння — як тільки ви обидва зареєструєте однакові вправи, вони з'являться тут."
+          }
+        }
+      }
+    },
+    "AI head-to-head": {
+      "localizations": {
+        "uk": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "AI порівняння"
+          }
+        }
+      }
+    },
+    "TAKEAWAY": {
+      "localizations": {
+        "uk": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "ВИСНОВОК"
+          }
+        }
+      }
+    },
+    "Unlock AI comparison": {
+      "localizations": {
+        "uk": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "Розблокувати порівняння AI"
+          }
+        }
+      }
+    },
+    "Go Premium": {
+      "localizations": {
+        "uk": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "Перейти на Premium"
+          }
+        }
+      }
+    },
+    "Report Comment": {
+      "localizations": {
+        "uk": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "Поскаржитися на коментар"
+          }
+        }
+      }
+    },
+    "Add a comment...": {
+      "localizations": {
+        "uk": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "Додати коментар..."
+          }
+        }
+      }
+    },
+    "Comments": {
+      "localizations": {
+        "uk": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "Коментарі"
+          }
+        }
+      }
+    },
+    "No comments yet. Be the first!": {
+      "localizations": {
+        "uk": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "Коментарів ще немає. Будьте першим!"
+          }
+        }
+      }
+    },
+    "Could not load post.": {
+      "localizations": {
+        "uk": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "Не вдалося завантажити пост."
+          }
+        }
+      }
+    },
+    "Post": {
+      "localizations": {
+        "uk": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "Опублікувати"
+          }
+        }
+      }
+    },
+    "Share Your Victory 🎉": {
+      "localizations": {
+        "uk": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "Поділіться своєю перемогою 🎉"
+          }
+        }
+      }
+    },
+    "Workout Complete": {
+      "localizations": {
+        "uk": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "Тренування завершено"
+          }
+        }
+      }
+    },
+    "EXERCISES": {
+      "localizations": {
+        "uk": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "ВПРАВИ"
+          }
+        }
+      }
+    },
+    "Your Post": {
+      "localizations": {
+        "uk": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "Ваш пост"
+          }
+        }
+      }
+    },
+    "Share your experience... (optional)": {
+      "localizations": {
+        "uk": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "Поділіться своїм досвідом... (необов'язково)"
+          }
+        }
+      }
+    },
+    "Attach Photo": {
+      "localizations": {
+        "uk": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "Додати фото"
+          }
+        }
+      }
+    },
+    "Uploading photo...": {
+      "localizations": {
+        "uk": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "Завантаження фото..."
+          }
+        }
+      }
+    },
+    "Skip for Now": {
+      "localizations": {
+        "uk": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "Пропустити зараз"
+          }
+        }
+      }
+    },
+    "Share to Community": {
+      "localizations": {
+        "uk": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "Поділитися з спільнотою"
+          }
+        }
+      }
+    },
+    "SUPERSET": {
+      "localizations": {
+        "uk": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "СУПЕРСЕТ"
+          }
+        }
+      }
+    },
+    "Follow": {
+      "localizations": {
+        "uk": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "Стежити"
+          }
+        }
+      }
+    },
+    "Report Post": {
+      "localizations": {
+        "uk": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "Поскаржитися на пост"
+          }
+        }
+      }
+    },
+    "Block User": {
+      "localizations": {
+        "uk": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "Заблокувати користувача"
+          }
+        }
+      }
+    },
+    "Read more": {
+      "localizations": {
+        "uk": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "Читати далі"
+          }
+        }
+      }
+    },
+    "Suggested for you": {
+      "localizations": {
+        "uk": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "Рекомендовано для вас"
+          }
+        }
+      }
+    },
+    "Report User": {
+      "localizations": {
+        "uk": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "Поскаржитися на користувача"
+          }
+        }
+      }
+    },
+    "Follows you": {
+      "localizations": {
+        "uk": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "Підписані на вас"
+          }
+        }
+      }
+    },
+    "Strength · 1-rep max": {
+      "localizations": {
+        "uk": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "Сила · максимум на 1 повторення"
+          }
+        }
+      }
+    },
+    " kg": {
+      "localizations": {
+        "uk": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": " кг"
+          }
+        }
+      }
+    },
+    "Consistency": {
+      "localizations": {
+        "uk": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "Послідовність"
+          }
+        }
+      }
+    },
+    "TRAINS MOST": {
+      "localizations": {
+        "uk": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "ТРЕНУЄТЬСЯ НАЙБІЛЬШЕ"
+          }
+        }
+      }
+    },
+    "What's on your mind?": {
+      "localizations": {
+        "uk": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "Що у вас на думці?"
+          }
+        }
+      }
+    },
+    "New Post": {
+      "localizations": {
+        "uk": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "Новий допис"
+          }
+        }
+      }
+    },
+    "Couldn't share": {
+      "localizations": {
+        "uk": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "Не вдалося поділитися"
+          }
+        }
+      }
+    },
+    "OK": {
+      "localizations": {
+        "uk": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "Гаразд"
+          }
+        }
+      }
+    },
+    "Share workout": {
+      "localizations": {
+        "uk": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "Поділитися тренуванням"
+          }
+        }
+      }
+    },
+    "Workout title": {
+      "localizations": {
+        "uk": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "Назва тренування"
+          }
+        }
+      }
+    },
+    "Say something about this workout…": {
+      "localizations": {
+        "uk": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "Скажіть щось про це тренування…"
+          }
+        }
+      }
+    },
+    "GYMJAM": {
+      "localizations": {
+        "uk": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "GYMJAM"
+          }
+        }
+      }
+    },
+    "gyymjaam.com": {
+      "localizations": {
+        "uk": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "gyymjaam.com"
+          }
+        }
+      }
+    },
+    "No posts yet": {
+      "localizations": {
+        "uk": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "Ще немає дописів"
+          }
+        }
+      }
+    },
+    "VOLUME": {
+      "localizations": {
+        "uk": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "ОБСЯГ"
+          }
+        }
+      }
+    },
+    "Loading...": {
+      "localizations": {
+        "uk": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "Завантаження..."
+          }
+        }
+      }
+    },
+    "Error": {
+      "localizations": {
+        "uk": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "Помилка"
+          }
+        }
+      }
+    },
+    "Welcome to GymJam!": {
+      "localizations": {
+        "uk": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "Ласкаво просимо до GymJam!"
+          }
+        }
+      }
+    },
+    "Your personal fitness companion": {
+      "localizations": {
+        "uk": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "Ваш особистий фітнес-помічник"
+          }
+        }
+      }
+    },
+    "Authorize HealthKit": {
+      "localizations": {
+        "uk": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "Авторизувати HealthKit"
+          }
+        }
+      }
+    },
+    "Recent Workouts": {
+      "localizations": {
+        "uk": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "Останні тренування"
+          }
+        }
+      }
+    },
+    "Start your first workout to see it here": {
+      "localizations": {
+        "uk": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "Почніть своє перше тренування, щоб побачити його тут"
+          }
+        }
+      }
+    },
+    "Notifications": {
+      "localizations": {
+        "uk": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "Сповіщення"
+          }
+        }
+      }
+    },
+    "MARK ALL READ": {
+      "localizations": {
+        "uk": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "ПОЗНАЧИТИ ВСІ ЯК ПРОЧИТАНІ"
+          }
+        }
+      }
+    },
+    "No notifications yet": {
+      "localizations": {
+        "uk": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "Ще немає сповіщень"
+          }
+        }
+      }
+    },
+    "All caught up!": {
+      "localizations": {
+        "uk": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "Все переглянуто!"
+          }
+        }
+      }
+    },
+    "Imported from Health": {
+      "localizations": {
+        "uk": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "Імпортовано з Health"
+          }
+        }
+      }
+    },
+    "WEIGHT": {
+      "localizations": {
+        "uk": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "ВАГА"
+          }
+        }
+      }
+    },
+    "HEIGHT": {
+      "localizations": {
+        "uk": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "ЗРІСТ"
+          }
+        }
+      }
+    },
+    "cm": {
+      "localizations": {
+        "uk": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "см"
+          }
+        }
+      }
+    },
+    "SEX": {
+      "localizations": {
+        "uk": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "СТАТЬ"
+          }
+        }
+      }
+    },
+    "Optional - you can skip this": {
+      "localizations": {
+        "uk": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "Необов'язково - ви можете пропустити це"
+          }
+        }
+      }
+    },
+    "WELCOME": {
+      "localizations": {
+        "uk": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "ЛАСКАВО ПРОСИМО"
+          }
+        }
+      }
+    },
+    "Your AI Fitness Coach": {
+      "localizations": {
+        "uk": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "Ваш AI фітнес-тренер"
+          }
+        }
+      }
+    },
+    "Sync your personalized plans, PRs, and AI insights across all your devices.": {
+      "localizations": {
+        "uk": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "Синхронізуйте свої персоналізовані плани, рекорди та AI-інсайти на всіх ваших пристроях."
+          }
+        }
+      }
+    },
+    "Continue with Apple": {
+      "localizations": {
+        "uk": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "Продовжити з Apple"
+          }
+        }
+      }
+    },
+    "Continue with Google": {
+      "localizations": {
+        "uk": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "Продовжити з Google"
+          }
+        }
+      }
+    },
+    "Dev Sign-In": {
+      "localizations": {
+        "uk": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "Вхід для розробників"
+          }
+        }
+      }
+    },
+    "By continuing, you agree to our Terms of Service.": {
+      "localizations": {
+        "uk": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "Продовжуючи, ви погоджуєтеся з нашими Умовами надання послуг."
+          }
+        }
+      }
+    },
+    "Back": {
+      "localizations": {
+        "uk": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "Назад"
+          }
+        }
+      }
+    },
+    "minutes": {
+      "localizations": {
+        "uk": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "хвилин"
+          }
+        }
+      }
+    },
+    "Add": {
+      "localizations": {
+        "uk": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "Додати"
+          }
+        }
+      }
+    },
+    "Custom injuries:": {
+      "localizations": {
+        "uk": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "Індивідуальні травми:"
+          }
+        }
+      }
+    },
+    "Workout Complete!": {
+      "localizations": {
+        "uk": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "Тренування завершено!"
+          }
+        }
+      }
+    },
+    "How hard was this workout?": {
+      "localizations": {
+        "uk": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "Наскільки важким було це тренування?"
+          }
+        }
+      }
+    },
+    "Easy": {
+      "localizations": {
+        "uk": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "Легко"
+          }
+        }
+      }
+    },
+    "Maximum": {
+      "localizations": {
+        "uk": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "Максимально"
+          }
+        }
+      }
+    },
+    "How's your energy level?": {
+      "localizations": {
+        "uk": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "Який у вас рівень енергії?"
+          }
+        }
+      }
+    },
+    "Any pain or discomfort?": {
+      "localizations": {
+        "uk": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "Чи є біль або дискомфорт?"
+          }
+        }
+      }
+    },
+    "Submit & Return Home": {
+      "localizations": {
+        "uk": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "Відправити та повернутися додому"
+          }
+        }
+      }
+    },
+    "Feedback": {
+      "localizations": {
+        "uk": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "Відгук"
+          }
+        }
+      }
+    },
+    "Discard workout?": {
+      "localizations": {
+        "uk": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "Видалити тренування?"
+          }
+        }
+      }
+    },
+    "Discard": {
+      "localizations": {
+        "uk": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "Видалити"
+          }
+        }
+      }
+    },
+    "Keep going": {
+      "localizations": {
+        "uk": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "Продовжуйте"
+          }
+        }
+      }
+    },
+    "Your logged sets will be lost.": {
+      "localizations": {
+        "uk": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "Ваші зареєстровані підходи будуть втрачені."
+          }
+        }
+      }
+    },
+    "Workout Plan": {
+      "localizations": {
+        "uk": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "План тренування"
+          }
+        }
+      }
+    },
+    "Save as Template": {
+      "localizations": {
+        "uk": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "Зберегти як шаблон"
+          }
+        }
+      }
+    },
+    "Discard Workout": {
+      "localizations": {
+        "uk": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "Видалити тренування"
+          }
+        }
+      }
+    },
+    "Complete Workout": {
+      "localizations": {
+        "uk": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "Завершити тренування"
+          }
+        }
+      }
+    },
+    "REST TIME": {
+      "localizations": {
+        "uk": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "ЧАС ВІДПОЧИНКУ"
+          }
+        }
+      }
+    },
+    "+30s": {
+      "localizations": {
+        "uk": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "+30с"
+          }
+        }
+      }
+    },
+    "How far did you go?": {
+      "localizations": {
+        "uk": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "Яку відстань ви пройшли?"
+          }
+        }
+      }
+    },
+    "km": {
+      "localizations": {
+        "uk": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "км"
+          }
+        }
+      }
+    },
+    "CARDIO TARGET": {
+      "localizations": {
+        "uk": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "ЦІЛЬ КАРДІО"
+          }
+        }
+      }
+    },
+    "Set your goal": {
+      "localizations": {
+        "uk": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "Встановіть свою ціль"
+          }
+        }
+      }
+    },
+    "Save target": {
+      "localizations": {
+        "uk": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "Зберегти ціль"
+          }
+        }
+      }
+    },
+    "TARGET": {
+      "localizations": {
+        "uk": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "ЦІЛЬ"
+          }
+        }
+      }
+    },
+    "CARDIO IN PROGRESS": {
+      "localizations": {
+        "uk": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "КАРДІО В ПРОЦЕСІ"
+          }
+        }
+      }
+    },
+    "Finish your current cardio first": {
+      "localizations": {
+        "uk": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "Спочатку завершіть поточне кардіо"
+          }
+        }
+      }
+    },
+    "Tap to go back to it": {
+      "localizations": {
+        "uk": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "Торкніться, щоб повернутися до нього"
+          }
+        }
+      }
+    },
+    "HISTORY": {
+      "localizations": {
+        "uk": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "ІСТОРІЯ"
+          }
+        }
+      }
+    },
+    "START CARDIO": {
+      "localizations": {
+        "uk": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "ПОЧАТИ КАРДІО"
+          }
+        }
+      }
+    },
+    "Tap to begin": {
+      "localizations": {
+        "uk": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "Торкніться, щоб почати"
+          }
+        }
+      }
+    },
+    "CALORIES BURNED": {
+      "localizations": {
+        "uk": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "СПАЛЕНО КАЛОРІЙ"
+          }
+        }
+      }
+    },
+    " kcal": {
+      "localizations": {
+        "uk": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": " ккал"
+          }
+        }
+      }
+    },
+    "ELAPSED": {
+      "localizations": {
+        "uk": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "ЧАС ПРОЙШОВ"
+          }
+        }
+      }
+    },
+    "TARGET SPEED": {
+      "localizations": {
+        "uk": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "ЦІЛЬОВА ШВИДКІСТЬ"
+          }
+        }
+      }
+    },
+    " km/h": {
+      "localizations": {
+        "uk": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": " км/год"
+          }
+        }
+      }
+    },
+    "Set the machine to this pace": {
+      "localizations": {
+        "uk": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "Встановіть тренажер на цю швидкість"
+          }
+        }
+      }
+    },
+    "Heart rate hidden": {
+      "localizations": {
+        "uk": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "Пульс приховано"
+          }
+        }
+      }
+    },
+    "Connect a watch or strap to see live pulse & zones": {
+      "localizations": {
+        "uk": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "Підключіть годинник або ремінець, щоб бачити пульс і зони в реальному часі"
+          }
+        }
+      }
+    },
+    "End workout?": {
+      "localizations": {
+        "uk": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "Завершити тренування?"
+          }
+        }
+      }
+    },
+    "Keep training": {
+      "localizations": {
+        "uk": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "Продовжити тренування"
+          }
+        }
+      }
+    },
+    "End workout": {
+      "localizations": {
+        "uk": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "Завершити тренування"
+          }
+        }
+      }
+    },
+    "Active Workout in Progress": {
+      "localizations": {
+        "uk": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "Активне тренування триває"
+          }
+        }
+      }
+    },
+    "Starting a new session will end your current workout. All unsaved progress will be lost.": {
+      "localizations": {
+        "uk": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "Початок нового тренування завершить поточне. Весь незбережений прогрес буде втрачено."
+          }
+        }
+      }
+    },
+    "Continue Current Workout": {
+      "localizations": {
+        "uk": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "Продовжити поточне тренування"
+          }
+        }
+      }
+    },
+    "End & Start New": {
+      "localizations": {
+        "uk": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "Завершити та почати нове"
+          }
+        }
+      }
+    },
+    "Log a few sessions to see your trend": {
+      "localizations": {
+        "uk": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "Запишіть кілька тренувань, щоб побачити вашу тенденцію"
+          }
+        }
+      }
+    },
+    "PR session": {
+      "localizations": {
+        "uk": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "Сесія рекордів"
+          }
+        }
+      }
+    },
+    "Personal records": {
+      "localizations": {
+        "uk": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "Особисті рекорди"
+          }
+        }
+      }
+    },
+    "No completed sets yet": {
+      "localizations": {
+        "uk": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "Ще немає завершених підходів"
+          }
+        }
+      }
+    },
+    "Ready to Work Out": {
+      "localizations": {
+        "uk": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "Готові до тренування"
+          }
+        }
+      }
+    },
+    "Add exercises to get started": {
+      "localizations": {
+        "uk": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "Додайте вправи, щоб почати"
+          }
+        }
+      }
+    },
+    "Add Exercise": {
+      "localizations": {
+        "uk": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "Додати вправу"
+          }
+        }
+      }
+    },
+    "Cancel Workout": {
+      "localizations": {
+        "uk": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "Скасувати тренування"
+          }
+        }
+      }
+    },
+    "WEIGHT (kg)": {
+      "localizations": {
+        "uk": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "ВАГА (кг)"
+          }
+        }
+      }
+    },
+    "BW": {
+      "localizations": {
+        "uk": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "ВВ"
+          }
+        }
+      }
+    },
+    "REPS": {
+      "localizations": {
+        "uk": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "ПОВТОРЕННЯ"
+          }
+        }
+      }
+    },
+    "Use bodyweight": {
+      "localizations": {
+        "uk": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "Використовуйте власну вагу"
+          }
+        }
+      }
+    },
+    "Next Exercise": {
+      "localizations": {
+        "uk": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "Наступна вправа"
+          }
+        }
+      }
+    },
+    "Update Set": {
+      "localizations": {
+        "uk": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "Оновити підхід"
+          }
+        }
+      }
+    },
+    "Complete Set": {
+      "localizations": {
+        "uk": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "Завершити підхід"
+          }
+        }
+      }
+    },
+    "VS LAST SESSION": {
+      "localizations": {
+        "uk": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "ПОРІВНЯННЯ З ОСТАННІМ ТРЕНУВАННЯМ"
+          }
+        }
+      }
+    },
+    "Add Set": {
+      "localizations": {
+        "uk": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "Додати підхід"
+          }
+        }
+      }
+    },
+    "Complete Round": {
+      "localizations": {
+        "uk": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "Завершити раунд"
+          }
+        }
+      }
+    },
+    "EXERCISE NAME": {
+      "localizations": {
+        "uk": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "НАЗВА ВПРАВИ"
+          }
+        }
+      }
+    },
+    "e.g. Zercher Squat": {
+      "localizations": {
+        "uk": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "наприклад, Zercher Squat"
+          }
+        }
+      }
+    },
+    "TARGET MUSCLE GROUP": {
+      "localizations": {
+        "uk": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "ЦІЛЬОВА М'ЯЗОВА ГРУПА"
+          }
+        }
+      }
+    },
+    "EQUIPMENT NEEDED": {
+      "localizations": {
+        "uk": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "ПОТРІБНЕ ОБЛАДНАННЯ"
+          }
+        }
+      }
+    },
+    "Save & Add to Workout": {
+      "localizations": {
+        "uk": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "Зберегти та додати до тренування"
+          }
+        }
+      }
+    },
+    "Create Exercise": {
+      "localizations": {
+        "uk": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "Створити вправу"
+          }
+        }
+      }
+    },
+    "Select Exercises": {
+      "localizations": {
+        "uk": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "Вибрати вправи"
+          }
+        }
+      }
+    },
+    "Start Superset": {
+      "localizations": {
+        "uk": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "Почати суперсет"
+          }
+        }
+      }
+    },
+    "Create Custom Exercise": {
+      "localizations": {
+        "uk": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "Створити власну вправу"
+          }
+        }
+      }
+    },
+    "Exercise Library": {
+      "localizations": {
+        "uk": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "Бібліотека вправ"
+          }
+        }
+      }
+    },
+    "avg %@": {
+      "localizations": {
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "сер. %@"
+          }
+        }
+      }
+    },
+    "%@'s Session": {
+      "localizations": {
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Тренування: %@"
+          }
+        }
+      }
+    },
+    "Last: %@": {
+      "localizations": {
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Останній: %@"
+          }
+        }
+      }
+    },
+    "Tip: %@": {
+      "localizations": {
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Порада: %@"
+          }
+        }
+      }
+    },
+    "Rest — %@": {
+      "localizations": {
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Відпочинок — %@"
+          }
+        }
+      }
+    },
+    "Why are you reporting this %@?": {
+      "localizations": {
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Чому ви скаржитеся на цей %@?"
+          }
+        }
+      }
+    },
+    "You vs %@": {
+      "localizations": {
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ви проти %@"
+          }
+        }
+      }
+    },
+    "See how you stack up against %@ on the lifts you both train, and what to steal from their routine.": {
+      "localizations": {
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Порівняйте себе з %@ у вправах, які ви обоє тренуєте, і дізнайтеся, що варто перейняти."
+          }
+        }
+      }
+    },
+    "Sharing to %@": {
+      "localizations": {
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Поділитися у %@"
+          }
+        }
+      }
+    },
+    "Duration: %@": {
+      "localizations": {
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Тривалість: %@"
+          }
+        }
+      }
+    },
+    "Duration: %@ · enter distance for pace tracking": {
+      "localizations": {
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Тривалість: %@ · введіть відстань для темпу"
+          }
+        }
+      }
+    },
+    "EXERCISE %@": {
+      "localizations": {
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ВПРАВА %@"
+          }
+        }
+      }
+    },
+    "Prev: BW × %lld": {
+      "localizations": {
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Мин.: ВВ × %lld"
+          }
+        }
+      }
+    },
+    "Prev: %@%@ × %lld": {
+      "localizations": {
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Мин.: %@%@ × %lld"
+          }
+        }
+      }
+    },
+    "%lld exercises": {
+      "localizations": {
+        "uk": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "%lld вправ"
+          }
+        }
+      }
+    },
+    "%lld movements": {
+      "localizations": {
+        "uk": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "%lld рухів"
+          }
+        }
+      }
+    },
+    "%lld sets": {
+      "localizations": {
+        "uk": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "%lld підходів"
+          }
+        }
+      }
+    },
+    "%lld reps": {
+      "localizations": {
+        "uk": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "%lld повторень"
+          }
+        }
+      }
+    },
+    "%lld workouts": {
+      "localizations": {
+        "uk": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "%lld тренувань"
+          }
+        }
+      }
+    },
+    "%lld unread": {
+      "localizations": {
+        "uk": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "%lld непрочитаних"
+          }
+        }
+      }
+    },
+    "%lld set": {
+      "localizations": {
+        "uk": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "%lld підхід"
+          }
+        }
+      }
+    },
+    "%lld min": {
+      "localizations": {
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld хв"
+          }
+        }
+      }
+    },
+    "%lld MIN": {
+      "localizations": {
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld ХВ"
+          }
+        }
+      }
+    },
+    "%lld KCAL": {
+      "localizations": {
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld ККАЛ"
+          }
+        }
+      }
+    },
+    "%lld kcal": {
+      "localizations": {
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld ккал"
+          }
+        }
+      }
+    },
+    "SET %lld": {
+      "localizations": {
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ПІДХІД %lld"
+          }
+        }
+      }
+    },
+    "Set %lld": {
+      "localizations": {
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Підхід %lld"
+          }
+        }
+      }
+    },
+    "ROUND %lld": {
+      "localizations": {
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "РАУНД %lld"
+          }
+        }
+      }
+    },
+    "EXERCISES · %lld": {
+      "localizations": {
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ВПРАВИ · %lld"
+          }
+        }
+      }
+    },
+    "%lld of %lld": {
+      "localizations": {
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld з %lld"
+          }
+        }
+      }
+    },
+    "Save Superset (%lld selected)": {
+      "localizations": {
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Зберегти суперсет (обрано: %lld)"
+          }
+        }
+      }
+    },
+    "Chest": {
+      "localizations": {
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Груди"
+          }
+        }
+      }
+    },
+    "Legs": {
+      "localizations": {
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ноги"
+          }
+        }
+      }
+    },
+    "Shoulders": {
+      "localizations": {
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Плечі"
+          }
+        }
+      }
+    },
+    "Arms": {
+      "localizations": {
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Руки"
+          }
+        }
+      }
+    },
+    "Core": {
+      "localizations": {
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Прес"
+          }
+        }
+      }
+    },
+    "Cardio": {
+      "localizations": {
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Кардіо"
+          }
+        }
+      }
+    },
+    "Other": {
+      "localizations": {
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Інше"
+          }
+        }
+      }
+    },
+    "Barbell": {
+      "localizations": {
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Штанга"
+          }
+        }
+      }
+    },
+    "Dumbbells": {
+      "localizations": {
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Гантелі"
+          }
+        }
+      }
+    },
+    "Cable": {
+      "localizations": {
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Блок"
+          }
+        }
+      }
+    },
+    "Machine": {
+      "localizations": {
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Тренажер"
+          }
+        }
+      }
+    },
+    "Bodyweight": {
+      "localizations": {
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Власна вага"
+          }
+        }
+      }
+    },
+    "Bands": {
+      "localizations": {
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Резинки"
+          }
+        }
+      }
+    },
+    "%lld days-label": {
+      "localizations": {
+        "en": {
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld Day"
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld Days"
+                }
+              }
+            }
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "%lld днів"
+          }
+        }
+      }
+    },
+    "%lld minutes": {
+      "localizations": {
+        "uk": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "%lld хвилин"
+          }
+        }
+      }
+    },
+    "%lld seconds": {
+      "localizations": {
+        "uk": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "%lld секунд"
+          }
+        }
+      }
+    },
+    "1 minute": {
+      "localizations": {
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "1 хвилина"
+          }
+        }
+      }
+    },
+    "%lld min %lld sec": {
+      "localizations": {
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld хв %lld с"
+          }
+        }
+      }
+    },
+    "90+ minutes": {
+      "localizations": {
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "90+ хвилин"
+          }
+        }
+      }
+    },
+    "Good morning": {
+      "localizations": {
+        "uk": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "Доброго ранку"
+          }
+        }
+      }
+    },
+    "Good afternoon": {
+      "localizations": {
+        "uk": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "Доброго дня"
+          }
+        }
+      }
+    },
+    "Good evening": {
+      "localizations": {
+        "uk": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "Доброго вечора"
+          }
+        }
+      }
+    },
+    "Good night": {
+      "localizations": {
+        "uk": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "На добраніч"
+          }
+        }
+      }
+    },
+    "Male": {
+      "localizations": {
+        "uk": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "Чоловік"
+          }
+        }
+      }
+    },
+    "Female": {
+      "localizations": {
+        "uk": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "Жінка"
+          }
+        }
+      }
+    },
+    "Build Muscle": {
+      "localizations": {
+        "uk": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "Нарощування м'язів"
+          }
+        }
+      }
+    },
+    "Lose Fat": {
+      "localizations": {
+        "uk": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "Спалювання жиру"
+          }
+        }
+      }
+    },
+    "Recomposition": {
+      "localizations": {
+        "uk": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "Рекомпозиція"
+          }
+        }
+      }
+    },
+    "Improve Endurance": {
+      "localizations": {
+        "uk": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "Покращення витривалості"
+          }
+        }
+      }
+    },
+    "General Fitness": {
+      "localizations": {
+        "uk": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "Загальна фізична форма"
+          }
+        }
+      }
+    },
+    "Beginner": {
+      "localizations": {
+        "uk": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "Початківець"
+          }
+        }
+      }
+    },
+    "Intermediate": {
+      "localizations": {
+        "uk": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "Середній рівень"
+          }
+        }
+      }
+    },
+    "Advanced": {
+      "localizations": {
+        "uk": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "Просунутий"
+          }
+        }
+      }
+    },
+    "0-1 yrs": {
+      "localizations": {
+        "uk": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "0-1 рік"
+          }
+        }
+      }
+    },
+    "1-3 yrs": {
+      "localizations": {
+        "uk": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "1-3 роки"
+          }
+        }
+      }
+    },
+    "3+ yrs": {
+      "localizations": {
+        "uk": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "3+ роки"
+          }
+        }
+      }
+    },
+    "Sunday Warrior": {
+      "localizations": {
+        "uk": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "Недільний воїн"
+          }
+        }
+      }
+    },
+    "Weekend Warrior": {
+      "localizations": {
+        "uk": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "Воїн вихідного дня"
+          }
+        }
+      }
+    },
+    "Three-Plate Special": {
+      "localizations": {
+        "uk": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "Спеціальна трьохпластинкова"
+          }
+        }
+      }
+    },
+    "The Dedicated": {
+      "localizations": {
+        "uk": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "Відданий"
+          }
+        }
+      }
+    },
+    "Gym Rat": {
+      "localizations": {
+        "uk": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "Щур тренажерного залу"
+          }
+        }
+      }
+    },
+    "Iron Addict": {
+      "localizations": {
+        "uk": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "Залежний від заліза"
+          }
+        }
+      }
+    },
+    "No Rest For The Wicked": {
+      "localizations": {
+        "uk": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "Без відпочинку для злих"
+          }
+        }
+      }
+    },
+    "Full Gym": {
+      "localizations": {
+        "uk": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "Повний зал"
+          }
+        }
+      }
+    },
+    "Dumbbells Only": {
+      "localizations": {
+        "uk": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "Тільки гантелі"
+          }
+        }
+      }
+    },
+    "Home Gym": {
+      "localizations": {
+        "uk": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "Домашній зал"
+          }
+        }
+      }
+    },
+    "None": {
+      "localizations": {
+        "uk": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "Немає"
+          }
+        }
+      }
+    },
+    "Shoulders / Rotator Cuff": {
+      "localizations": {
+        "uk": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "Плечі / Обертальна манжета"
+          }
+        }
+      }
+    },
+    "Lower Back": {
+      "localizations": {
+        "uk": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "Нижня частина спини"
+          }
+        }
+      }
+    },
+    "Knees": {
+      "localizations": {
+        "uk": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "Коліна"
+          }
+        }
+      }
+    },
+    "Wrists": {
+      "localizations": {
+        "uk": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "Зап'ястя"
+          }
+        }
+      }
+    },
+    "Start custom workout": {
+      "localizations": {
+        "uk": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "Почати власне тренування"
+          }
+        }
+      }
+    },
+    "Global Feed": {
+      "localizations": {
+        "uk": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "Глобальна стрічка"
+          }
+        }
+      }
+    },
+    "%lld EXERCISES-caps": {
+      "localizations": {
+        "en": {
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld EXERCISE"
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld EXERCISES"
+                }
+              }
+            }
+          }
+        },
+        "uk": {
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld ВПРАВА"
+                }
+              },
+              "few": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld ВПРАВИ"
+                }
+              },
+              "many": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld ВПРАВ"
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld ВПРАВ"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "version": "1.0"
+}

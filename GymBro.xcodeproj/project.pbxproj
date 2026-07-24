@@ -14,6 +14,7 @@
 		3B93B0E5ECD228F565ECB993 /* SetInputView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4ACD7074563C9CE7C8A60688 /* SetInputView.swift */; };
 		49EE1B36BF06E6AF7C6FA773 /* WatchConnectivityServiceProtocol.swift in Sources */ = {isa = PBXBuildFile; fileRef = AEF39B94E3FEE2228B97E6EB /* WatchConnectivityServiceProtocol.swift */; };
 		4BD5ECB618A3A5D471DA42EE /* ExerciseView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 38A7C1E4217F01408DED71A9 /* ExerciseView.swift */; };
+		50DD1DD84C0D93D085436F85 /* Localizable.xcstrings in Resources */ = {isa = PBXBuildFile; fileRef = EAD448CC0E01518543BFE898 /* Localizable.xcstrings */; };
 		53915FA4854E5025B25E7AB0 /* HeartRateView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0E4E3595D0A748E3C7582B7A /* HeartRateView.swift */; };
 		5B44A95BE5631E390165A712 /* Foundation.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = C2949198870ED2274810F964 /* Foundation.framework */; };
 		5FCD8CDCE841F220919C88BA /* PhoneConnectivityService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 18B2011487FE3FF8CEE3691C /* PhoneConnectivityService.swift */; };
@@ -32,7 +33,7 @@
 		74C81D942F85185B006BC9EF /* WidgetKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 74C81D932F85185B006BC9EF /* WidgetKit.framework */; };
 		74C81D962F85185B006BC9EF /* SwiftUI.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 74C81D952F85185B006BC9EF /* SwiftUI.framework */; };
 		74C81DA52F85185D006BC9EF /* GymJamWidgetsExtension.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = 74C81D912F85185A006BC9EF /* GymJamWidgetsExtension.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
-		74C81DB12F851900006BC9EF /* WorkoutActivityAttributes.swift in Sources */ = {isa = PBXBuildFile; fileRef = 74C81DB02F851900006BC9EF /* WorkoutActivityAttributes.swift */; };
+		74C81DB12F851900006BC9EF /* GymBro/Models/LiveActivity/WorkoutActivityAttributes.swift in Sources */ = {isa = PBXBuildFile; fileRef = 74C81DB02F851900006BC9EF /* GymBro/Models/LiveActivity/WorkoutActivityAttributes.swift */; };
 		74C834272F8698FB006BC9EF /* GymJamWatch.app in Embed Watch Content */ = {isa = PBXBuildFile; fileRef = D4E95AB36E2F198811D3B986 /* GymJamWatch.app */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 		74C8F57D2F73ED9E006BC9EF /* FirebaseMessaging in Frameworks */ = {isa = PBXBuildFile; productRef = 74C8F57C2F73ED9E006BC9EF /* FirebaseMessaging */; };
 		74C8F57F2F73ED9E006BC9EF /* FirebaseAnalytics in Frameworks */ = {isa = PBXBuildFile; productRef = 74C8F57E2F73ED9E006BC9EF /* FirebaseAnalytics */; };
@@ -153,7 +154,7 @@
 		74C81D912F85185A006BC9EF /* GymJamWidgetsExtension.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = GymJamWidgetsExtension.appex; sourceTree = BUILT_PRODUCTS_DIR; };
 		74C81D932F85185B006BC9EF /* WidgetKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = WidgetKit.framework; path = System/Library/Frameworks/WidgetKit.framework; sourceTree = SDKROOT; };
 		74C81D952F85185B006BC9EF /* SwiftUI.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = SwiftUI.framework; path = System/Library/Frameworks/SwiftUI.framework; sourceTree = SDKROOT; };
-		74C81DB02F851900006BC9EF /* WorkoutActivityAttributes.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GymBro/Models/LiveActivity/WorkoutActivityAttributes.swift; sourceTree = SOURCE_ROOT; };
+		74C81DB02F851900006BC9EF /* GymBro/Models/LiveActivity/WorkoutActivityAttributes.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GymBro/Models/LiveActivity/WorkoutActivityAttributes.swift; sourceTree = SOURCE_ROOT; };
 		74C8F5872F756497006BC9EF /* Dev.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = Dev.xcconfig; sourceTree = "<group>"; };
 		74C8F5892F7564AD006BC9EF /* Prod.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = Prod.xcconfig; sourceTree = "<group>"; };
 		74D0000000000000000000F0 /* Staging.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = Staging.xcconfig; sourceTree = "<group>"; };
@@ -166,6 +167,7 @@
 		C40E40FE963C12743E1DD198 /* Info.plist */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 		D4E95AB36E2F198811D3B986 /* GymJamWatch.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = GymJamWatch.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		EA439978EF82B9618DA5D853 /* GymJamShared.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; includeInIndex = 0; path = GymJamShared.framework; sourceTree = BUILT_PRODUCTS_DIR; };
+		EAD448CC0E01518543BFE898 /* Localizable.xcstrings */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.json.xcstrings; path = Localizable.xcstrings; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
@@ -181,22 +183,16 @@
 /* Begin PBXFileSystemSynchronizedRootGroup section */
 		743C12BF2F62F80400DDED12 /* GymBro */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
-			exceptions = (
-			);
 			path = GymBro;
 			sourceTree = "<group>";
 		};
 		743C12CD2F62F80500DDED12 /* GymBroTests */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
-			exceptions = (
-			);
 			path = GymBroTests;
 			sourceTree = "<group>";
 		};
 		743C12D72F62F80500DDED12 /* GymBroUITests */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
-			exceptions = (
-			);
 			path = GymBroUITests;
 			sourceTree = "<group>";
 		};
@@ -352,7 +348,7 @@
 		74C8260C2F851D8F006BC9EF /* Recovered References */ = {
 			isa = PBXGroup;
 			children = (
-				74C81DB02F851900006BC9EF /* WorkoutActivityAttributes.swift */,
+				74C81DB02F851900006BC9EF /* GymBro/Models/LiveActivity/WorkoutActivityAttributes.swift */,
 				AD6915021B092297593BA39A /* WatchConnectivityService.swift */,
 				AEF39B94E3FEE2228B97E6EB /* WatchConnectivityServiceProtocol.swift */,
 			);
@@ -406,6 +402,7 @@
 				2112F14B1BE4969043A3EF0F /* Assets.xcassets */,
 				C40E40FE963C12743E1DD198 /* Info.plist */,
 				B7AC4C529B3389F9A6E5C8CF /* GymJamWatch.entitlements */,
+				EAD448CC0E01518543BFE898 /* Localizable.xcstrings */,
 			);
 			path = GymJamWatch;
 			sourceTree = "<group>";
@@ -562,6 +559,7 @@
 			knownRegions = (
 				en,
 				Base,
+				uk,
 			);
 			mainGroup = 743C12B42F62F80400DDED12;
 			minimizedProjectReferenceProxies = 1;
@@ -626,6 +624,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				A284AF73009B7BB89A161B8A /* Assets.xcassets in Resources */,
+				50DD1DD84C0D93D085436F85 /* Localizable.xcstrings in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -662,7 +661,7 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				74C81DB12F851900006BC9EF /* WorkoutActivityAttributes.swift in Sources */,
+				74C81DB12F851900006BC9EF /* GymBro/Models/LiveActivity/WorkoutActivityAttributes.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

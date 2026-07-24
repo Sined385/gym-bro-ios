@@ -81,7 +81,7 @@ struct ExerciseHistoryRow: View {
 
             // Exercise name + muscle group
             VStack(alignment: .leading, spacing: 2) {
-                Text(exercise.name)
+                Text(localizedExerciseName(exercise.name, externalId: exercise.externalId))
                     .font(.system(size: 14, weight: .bold))
                     .foregroundColor(.gymBroNeutral900)
 

@@ -1,0 +1,86 @@
+{
+  "sourceLanguage": "en",
+  "strings": {
+    "sets": {
+      "localizations": {
+        "uk": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "підходи"
+          }
+        }
+      }
+    },
+    "Paused": {
+      "localizations": {
+        "uk": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "Призупинено"
+          }
+        }
+      }
+    },
+    "Rest:": {
+      "localizations": {
+        "uk": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "Відпочинок:"
+          }
+        }
+      }
+    },
+    "Skip Rest": {
+      "localizations": {
+        "uk": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "Пропустити відпочинок"
+          }
+        }
+      }
+    },
+    "Repeat Set": {
+      "localizations": {
+        "uk": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "Повторити підхід"
+          }
+        }
+      }
+    },
+    "%lld sets": {
+      "localizations": {
+        "uk": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "%lld підходів"
+          }
+        }
+      }
+    },
+    "%lld sets completed": {
+      "localizations": {
+        "uk": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "%lld підходів завершено"
+          }
+        }
+      }
+    },
+    "Last: %@": {
+      "localizations": {
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Останній: %@"
+          }
+        }
+      }
+    }
+  },
+  "version": "1.0"
+}

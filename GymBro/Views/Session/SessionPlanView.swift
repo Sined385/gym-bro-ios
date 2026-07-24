@@ -450,7 +450,7 @@ struct SessionPlanView: View {
             exerciseImage(exercise.imageUrl)
 
             VStack(alignment: .leading, spacing: 4) {
-                Text(exercise.name)
+                Text(localizedExerciseName(exercise.name, externalId: exercise.externalId))
                     .font(.system(size: 16, weight: .bold))
                     .foregroundColor(.gymBroNeutral900)
                     .lineLimit(1)
@@ -690,7 +690,7 @@ struct SessionPlanView: View {
                         }
 
                     VStack(alignment: .leading, spacing: 4) {
-                        Text(exercise.name)
+                        Text(localizedExerciseName(exercise.name, externalId: exercise.externalId))
                             .font(.system(size: 16, weight: .bold))
                             .foregroundColor(.gymBroNeutral900)
                             .lineLimit(1)
