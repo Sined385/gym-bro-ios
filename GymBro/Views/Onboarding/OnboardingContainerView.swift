@@ -74,7 +74,7 @@ struct OnboardingContainerView: View {
     private var progressLabel: String {
         let stepNumber = viewModel.currentStep.rawValue - 1 // auth=0, rest are 1-based visible steps
         let totalVisible = OnboardingStep.allCases.count - 1 // exclude authentication
-        return "Step \(stepNumber) of \(totalVisible)"
+        return String(localized: "Step \(stepNumber) of \(totalVisible)")
     }
 
     private var progressPercentage: String {
@@ -211,9 +211,9 @@ struct OnboardingContainerView: View {
         // and the submit trigger. CompleteProfile is now second-to-last with
         // a regular Continue button.
         if viewModel.currentStep == .aboutYou {
-            return "Build My Plan"
+            return String(localized: "Build My Plan")
         } else {
-            return "Continue"
+            return String(localized: "Continue")
         }
     }
 

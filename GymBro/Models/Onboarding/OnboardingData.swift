@@ -373,22 +373,22 @@ enum OnboardingStep: Int, CaseIterable {
 
     var title: String {
         switch self {
-        case .authentication: return "Create your account"
-        case .showcaseTrack: return "Track Every Rep"
-        case .showcasePlans: return "Personalized Plans"
-        case .showcaseCoach: return "AI Coach 24/7"
-        case .showcaseCommunity: return "Train Together"
-        case .primaryGoal: return "What is your primary goal?"
-        case .primarySport: return "What is your primary sport?"
-        case .experienceLevel: return "What is your experience level?"
-        case .bodyMetrics: return "About you"
-        case .trainingFrequency: return "Weekly workout goal"
-        case .workoutDuration: return "Preferred workout duration?"
-        case .restTime: return "Preferred rest between sets?"
-        case .equipment: return "Available equipment?"
-        case .injuries: return "Any current injuries?"
-        case .completeProfile: return "Complete Your Profile"
-        case .aboutYou: return "Anything else?"
+        case .authentication: return String(localized: "Create your account")
+        case .showcaseTrack: return String(localized: "Track Every Rep")
+        case .showcasePlans: return String(localized: "Personalized Plans")
+        case .showcaseCoach: return String(localized: "AI Coach 24/7")
+        case .showcaseCommunity: return String(localized: "Train Together")
+        case .primaryGoal: return String(localized: "What is your primary goal?")
+        case .primarySport: return String(localized: "What is your primary sport?")
+        case .experienceLevel: return String(localized: "What is your experience level?")
+        case .bodyMetrics: return String(localized: "About you")
+        case .trainingFrequency: return String(localized: "Weekly workout goal")
+        case .workoutDuration: return String(localized: "Preferred workout duration?")
+        case .restTime: return String(localized: "Preferred rest between sets?")
+        case .equipment: return String(localized: "Available equipment?")
+        case .injuries: return String(localized: "Any current injuries?")
+        case .completeProfile: return String(localized: "Complete Your Profile")
+        case .aboutYou: return String(localized: "Anything else?")
         }
     }
 
