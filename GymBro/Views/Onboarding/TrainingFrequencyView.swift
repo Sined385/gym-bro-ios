@@ -17,7 +17,7 @@ struct TrainingFrequencyView: View {
             // Header
             StepHeader(
                 icon: "calendar",
-                title: "Weekly workout goal"
+                title: String(localized: "Weekly workout goal")
             )
 
             // Frequency selection cards

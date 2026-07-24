@@ -18,7 +18,7 @@ struct InjuriesView: View {
             // Header
             StepHeader(
                 icon: "exclamationmark.triangle.fill",
-                title: "Any current injuries?"
+                title: String(localized: "Any current injuries?")
             )
 
             VStack(spacing: 12) {
@@ -35,7 +35,7 @@ struct InjuriesView: View {
 
                 // Custom injury option
                 SelectionCard(
-                    title: "Other (Custom)",
+                    title: String(localized: "Other (Custom)"),
                     isSelected: showCustomInput,
                     showCheckmark: true,
                     onTap: {

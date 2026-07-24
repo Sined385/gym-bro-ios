@@ -17,7 +17,7 @@ struct WorkoutDurationView: View {
             // Header
             StepHeader(
                 icon: "clock.fill",
-                title: "Preferred workout duration?"
+                title: String(localized: "Preferred workout duration?")
             )
 
             // Duration selection cards

@@ -101,7 +101,7 @@ struct AuthenticationView: View {
             // Header
             StepHeader(
                 icon: "person.crop.rectangle",
-                title: "Create your account"
+                title: String(localized: "Create your account")
             )
 
             // Center content

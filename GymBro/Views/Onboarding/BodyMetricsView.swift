@@ -17,7 +17,7 @@ struct BodyMetricsView: View {
             // Header
             StepHeader(
                 icon: "figure.arms.open",
-                title: "About you"
+                title: String(localized: "About you")
             )
 
             // HealthKit status badge

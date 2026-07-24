@@ -34,7 +34,7 @@ struct PrimarySportView: View {
             // Header
             StepHeader(
                 icon: "waveform.path.ecg",
-                title: "What sports do you do?"
+                title: String(localized: "What sports do you do?")
             )
 
             // Sport selection cards
@@ -42,7 +42,9 @@ struct PrimarySportView: View {
                 // Preset options
                 ForEach(presetSports, id: \.self) { sport in
                     SelectionCard(
-                        title: sport,
+                        // Display localized; the stored/sent value stays
+                        // the canonical English preset string.
+                        title: String(localized: String.LocalizationValue(sport)),
                         isSelected: viewModel.onboardingData.primarySports.contains(sport),
                         showCheckmark: true,
                         onTap: {
@@ -53,7 +55,7 @@ struct PrimarySportView: View {
 
                 // "Other (Custom)" option with checkmark
                 SelectionCard(
-                    title: "Other (Custom)",
+                    title: String(localized: "Other (Custom)"),
                     isSelected: viewModel.showCustomInput || hasCustomSports,
                     showCheckmark: true,
                     onTap: {

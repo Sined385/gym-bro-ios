@@ -4264,8 +4264,8 @@
       "localizations": {
         "uk": {
           "stringUnit": {
-            "state": "needs_review",
-            "value": "Переглядайте свої досягнення в реальному часі з обсягом, PR та тенденціями сили"
+            "state": "translated",
+            "value": "Переглядайте свої досягнення в реальному часі — обсяг, рекорди та тенденції сили"
           }
         }
       }
@@ -4474,8 +4474,8 @@
       "localizations": {
         "uk": {
           "stringUnit": {
-            "state": "needs_review",
-            "value": "Діліться своїми тренуваннями, святкуйте PR та залишайтеся мотивованими з спільнотою однодумців."
+            "state": "translated",
+            "value": "Діліться своїми тренуваннями, святкуйте рекорди та залишайтеся мотивованими зі спільнотою однодумців."
           }
         }
       }
@@ -4504,8 +4504,8 @@
       "localizations": {
         "uk": {
           "stringUnit": {
-            "state": "needs_review",
-            "value": "Святкуйте PR"
+            "state": "translated",
+            "value": "Святкуйте рекорди"
           }
         }
       }
@@ -4676,6 +4676,86 @@
           "stringUnit": {
             "state": "translated",
             "value": "Крок %lld з %lld"
+          }
+        }
+      }
+    },
+    "Gym / Weightlifting": {
+      "localizations": {
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Зал / Важка атлетика"
+          }
+        }
+      }
+    },
+    "Running": {
+      "localizations": {
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Біг"
+          }
+        }
+      }
+    },
+    "Cycling": {
+      "localizations": {
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Велоспорт"
+          }
+        }
+      }
+    },
+    "Swimming": {
+      "localizations": {
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Плавання"
+          }
+        }
+      }
+    },
+    "CrossFit": {
+      "localizations": {
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Кросфіт"
+          }
+        }
+      }
+    },
+    "Other (Custom)": {
+      "localizations": {
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Інше (свій варіант)"
+          }
+        }
+      }
+    },
+    "What are your goals?": {
+      "localizations": {
+        "uk": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "Які ваші цілі?"
+          }
+        }
+      }
+    },
+    "What sports do you do?": {
+      "localizations": {
+        "uk": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "Якими видами спорту ви займаєтеся?"
           }
         }
       }

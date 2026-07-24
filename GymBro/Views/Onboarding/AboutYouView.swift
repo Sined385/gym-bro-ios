@@ -16,7 +16,7 @@ struct AboutYouView: View {
         VStack(spacing: 32) {
             StepHeader(
                 icon: "note.text",
-                title: "Anything else?"
+                title: String(localized: "Anything else?")
             )
 
             AboutYouField(text: $viewModel.onboardingData.aiCoachContext)

@@ -16,7 +16,7 @@ struct RestTimeView: View {
         VStack(spacing: 32) {
             StepHeader(
                 icon: "timer",
-                title: "Preferred rest between sets?"
+                title: String(localized: "Preferred rest between sets?")
             )
 
             RestTimeStepper(

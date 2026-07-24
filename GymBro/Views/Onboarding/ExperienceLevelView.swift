@@ -17,7 +17,7 @@ struct ExperienceLevelView: View {
             // Header
             StepHeader(
                 icon: "dumbbell.fill",
-                title: "What is your experience level?"
+                title: String(localized: "What is your experience level?")
             )
 
             // Experience level selection cards

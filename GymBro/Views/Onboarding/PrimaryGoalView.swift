@@ -17,7 +17,7 @@ struct PrimaryGoalView: View {
             // Header
             StepHeader(
                 icon: "target",
-                title: "What are your goals?"
+                title: String(localized: "What are your goals?")
             )
 
             // Goal selection cards

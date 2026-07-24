@@ -17,7 +17,7 @@ struct EquipmentView: View {
             // Header
             StepHeader(
                 icon: "dumbbell.fill",
-                title: "Available equipment?"
+                title: String(localized: "Available equipment?")
             )
 
             // Equipment selection cards

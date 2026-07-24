@@ -14,7 +14,7 @@ struct CompleteProfileView: View {
 
     var body: some View {
         VStack(spacing: 32) {
-            StepHeader(icon: "person.crop.circle.fill", title: "Complete Your Profile")
+            StepHeader(icon: "person.crop.circle.fill", title: String(localized: "Complete Your Profile"))
 
             // Avatar picker
             VStack(spacing: 8) {
