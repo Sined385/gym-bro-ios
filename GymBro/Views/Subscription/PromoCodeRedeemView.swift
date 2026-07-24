@@ -162,9 +162,9 @@ struct PromoCodeRedeemView: View {
         if case .some(.some(let date)) = grantedUntil {
             let formatter = DateFormatter()
             formatter.dateStyle = .long
-            return "Premium is active until \(formatter.string(from: date))."
+            return String(localized: "Premium is active until \(formatter.string(from: date)).")
         }
-        return "Premium is now active on your account."
+        return String(localized: "Premium is now active on your account.")
     }
 
     private func redeem() {

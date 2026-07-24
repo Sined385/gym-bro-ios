@@ -4759,6 +4759,146 @@
           }
         }
       }
+    },
+    "Analyzing your goals": {
+      "localizations": {
+        "uk": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "Аналізуємо ваші цілі"
+          }
+        }
+      }
+    },
+    "Selecting exercises": {
+      "localizations": {
+        "uk": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "Вибираємо вправи"
+          }
+        }
+      }
+    },
+    "Building weekly schedule": {
+      "localizations": {
+        "uk": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "Створюємо тижневий розклад"
+          }
+        }
+      }
+    },
+    "Optimizing intensity": {
+      "localizations": {
+        "uk": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "Оптимізуємо інтенсивність"
+          }
+        }
+      }
+    },
+    "Setting milestones": {
+      "localizations": {
+        "uk": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "Встановлюємо етапи"
+          }
+        }
+      }
+    },
+    "Finalizing your plan": {
+      "localizations": {
+        "uk": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "Завершуємо ваш план"
+          }
+        }
+      }
+    },
+    "Consistency beats perfection. Show up, even on tough days!": {
+      "localizations": {
+        "uk": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "Послідовність важливіша за досконалість. Приходьте, навіть у важкі дні!"
+          }
+        }
+      }
+    },
+    "Rest days are growth days. Your muscles rebuild while you recover.": {
+      "localizations": {
+        "uk": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "Дні відпочинку — це дні зростання. Ваші м'язи відновлюються, поки ви відпочиваєте."
+          }
+        }
+      }
+    },
+    "Progressive overload is key — small increases add up to big gains.": {
+      "localizations": {
+        "uk": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "Прогресивне навантаження — це ключ. Невеликі збільшення призводять до великих досягнень."
+          }
+        }
+      }
+    },
+    "Hydration affects performance more than you think. Drink up!": {
+      "localizations": {
+        "uk": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "Гідратація впливає на продуктивність більше, ніж ви думаєте. Пийте більше!"
+          }
+        }
+      }
+    },
+    "Sleep is the most underrated performance enhancer.": {
+      "localizations": {
+        "uk": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "Сон — це найменш оцінений підсилювач продуктивності."
+          }
+        }
+      }
+    },
+    "Premium is active until %@.": {
+      "localizations": {
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Преміум активний до %@."
+          }
+        }
+      }
+    },
+    "Premium is now active on your account.": {
+      "localizations": {
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Преміум тепер активний у вашому акаунті."
+          }
+        }
+      }
+    },
+    "Premium until %@": {
+      "localizations": {
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Преміум до %@"
+          }
+        }
+      }
     }
   },
   "version": "1.1"

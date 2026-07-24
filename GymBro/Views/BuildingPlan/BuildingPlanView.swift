@@ -31,20 +31,20 @@ struct BuildingPlanView: View {
     // MARK: - Constants
 
     private let steps: [(icon: String, label: String)] = [
-        ("target", "Analyzing your goals"),
-        ("dumbbell.fill", "Selecting exercises"),
-        ("calendar", "Building weekly schedule"),
-        ("bolt.fill", "Optimizing intensity"),
-        ("trophy.fill", "Setting milestones"),
-        ("chart.line.uptrend.xyaxis", "Finalizing your plan"),
+        ("target", String(localized: "Analyzing your goals")),
+        ("dumbbell.fill", String(localized: "Selecting exercises")),
+        ("calendar", String(localized: "Building weekly schedule")),
+        ("bolt.fill", String(localized: "Optimizing intensity")),
+        ("trophy.fill", String(localized: "Setting milestones")),
+        ("chart.line.uptrend.xyaxis", String(localized: "Finalizing your plan")),
     ]
 
     private let tips = [
-        "Consistency beats perfection. Show up, even on tough days!",
-        "Rest days are growth days. Your muscles rebuild while you recover.",
-        "Progressive overload is key — small increases add up to big gains.",
-        "Hydration affects performance more than you think. Drink up!",
-        "Sleep is the most underrated performance enhancer.",
+        String(localized: "Consistency beats perfection. Show up, even on tough days!"),
+        String(localized: "Rest days are growth days. Your muscles rebuild while you recover."),
+        String(localized: "Progressive overload is key — small increases add up to big gains."),
+        String(localized: "Hydration affects performance more than you think. Drink up!"),
+        String(localized: "Sleep is the most underrated performance enhancer."),
     ]
 
     private let stepDuration: Double = 1.2
@@ -53,6 +53,7 @@ struct BuildingPlanView: View {
     var body: some View {
         ZStack {
             background
+                .ignoresSafeArea()
 
             VStack(spacing: 0) {
                 Spacer()
@@ -78,7 +79,6 @@ struct BuildingPlanView: View {
                     .padding(.bottom, 40)
             }
         }
-        .ignoresSafeArea()
         .task {
             tip = tips.randomElement() ?? tips[0]
             await startAnimations()

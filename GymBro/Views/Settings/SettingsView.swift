@@ -234,7 +234,7 @@ struct SettingsView: View {
            let until = subscriptionManager.premiumExpiresAt {
             let formatter = DateFormatter()
             formatter.dateStyle = .medium
-            return "Premium until \(formatter.string(from: until))"
+            return String(localized: "Premium until \(formatter.string(from: until))")
         }
         return "Active"
     }
