@@ -4915,6 +4915,56 @@
           }
         }
       }
+    },
+    "Build my plan": {
+      "localizations": {
+        "uk": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "Скласти мій план"
+          }
+        }
+      }
+    },
+    "Create today's workout": {
+      "localizations": {
+        "uk": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "Створити сьогоднішнє тренування"
+          }
+        }
+      }
+    },
+    "Swap an exercise": {
+      "localizations": {
+        "uk": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "Замінити вправу"
+          }
+        }
+      }
+    },
+    "Make it shorter": {
+      "localizations": {
+        "uk": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "Зробити коротшим"
+          }
+        }
+      }
+    },
+    "I only have dumbbells": {
+      "localizations": {
+        "uk": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "У мене є тільки гантелі"
+          }
+        }
+      }
     }
   },
   "version": "1.1"

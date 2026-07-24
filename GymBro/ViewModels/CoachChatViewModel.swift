@@ -101,11 +101,11 @@ final class CoachChatViewModel: ObservableObject {
     // MARK: - Quick Actions
 
     let quickActions = [
-        "Build my plan",
-        "Create today's workout",
-        "Swap an exercise",
-        "Make it shorter",
-        "I only have dumbbells"
+        String(localized: "Build my plan"),
+        String(localized: "Create today's workout"),
+        String(localized: "Swap an exercise"),
+        String(localized: "Make it shorter"),
+        String(localized: "I only have dumbbells")
     ]
 
     private var cancellables = Set<AnyCancellable>()
