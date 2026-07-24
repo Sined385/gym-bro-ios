@@ -136,26 +136,21 @@ struct CoachChatView: View {
 
     // MARK: - Welcome Section
 
+    /// Rendered as the coach's first message in an empty conversation —
+    /// same bubble as real replies, but purely client-side (never sent
+    /// to the server, costs no tokens, not persisted).
     private var welcomeSection: some View {
-        VStack(spacing: 16) {
-            Spacer().frame(height: 40)
-
-            Image(systemName: "sparkles")
-                .font(.system(size: 40))
-                .foregroundColor(.gymBroPrimary)
-
-            Text("AI Coach")
-                .font(.gymBroHeaderSmall)
-                .foregroundColor(.gymBroTextPrimary)
-
-            Text("I know your training history, goals, and injuries. Ask me anything about your workouts.")
-                .font(.gymBroSmall)
-                .foregroundColor(.gymBroTextSecondary)
-                .multilineTextAlignment(.center)
-                .padding(.horizontal, 32)
-
-            Spacer().frame(height: 20)
-        }
+        CoachMessageBubble(
+            message: CoachMessageResponse(
+                id: "local-welcome",
+                role: "assistant",
+                content: String(localized: "coach.welcome"),
+                session: nil,
+                createdAt: Date()
+            ),
+            onStartWorkout: {},
+            onRegenerate: {}
+        )
     }
 
     // MARK: - Limit Reached Bar

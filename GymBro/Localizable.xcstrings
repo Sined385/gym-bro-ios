@@ -4899,6 +4899,22 @@
           }
         }
       }
+    },
+    "coach.welcome": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Hey! I'm your GymJam coach 💪 I know your training history, goals, and injuries — so everything I suggest is personal.\n\nHere's what I can do:\n• Build a workout for today — just say what you're in the mood for\n• Adjust your weekly plan — swap days or change the focus\n• Suggest weights and progressions for your lifts\n• Answer questions about form, nutrition, and recovery\n\nWhat are we doing today?"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Привіт! Я твій тренер GymJam 💪 Я знаю твою історію тренувань, цілі й травми — тож усі мої поради персональні.\n\nОсь що я вмію:\n• Скласти тренування на сьогодні — просто скажи, чого хочеться\n• Змінити твій тижневий план — поміняти дні чи фокус\n• Підказати вагу та прогресію для твоїх вправ\n• Відповісти про техніку, харчування та відновлення\n\nЩо робимо сьогодні?"
+          }
+        }
+      }
     }
   },
   "version": "1.1"
