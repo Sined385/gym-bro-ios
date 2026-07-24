@@ -413,11 +413,11 @@ struct BuildingPlanView: View {
         // Mark as loaded so HomeView doesn't re-trigger loadDashboard
         homeViewModel.markAsLoaded()
 
-        // Post-onboarding paywall: the plan-built moment is peak
-        // motivation. MainTabView's fullScreenCover is bound to this
-        // flag, so the paywall presents right as home appears.
+        // Post-onboarding monetization moment: offer promo-code entry
+        // FIRST (MainTabView cover); the paywall chains from that
+        // cover's onDismiss when the user skips or fails to redeem.
         if !subscriptionManager.isPremium {
-            subscriptionManager.showPaywall = true
+            subscriptionManager.showPostOnboardingPromo = true
         }
 
         withAnimation(.easeInOut(duration: 0.3)) {

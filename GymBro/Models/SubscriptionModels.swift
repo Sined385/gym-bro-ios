@@ -19,6 +19,17 @@ struct SyncResponse: Decodable {
     let isPremium: Bool
 }
 
+/// 200-envelope from POST /subscription/promo/redeem. Errors ride in
+/// the body (success=false + message) because NetworkService drops
+/// 4xx response bodies.
+struct PromoRedeemResponse: Decodable {
+    let success: Bool
+    let expiresAt: String?
+    let durationDays: Int?
+    let errorCode: String?
+    let message: String?
+}
+
 enum PremiumFeature: String {
     case coachChat = "coach_chat"
     case customExercises = "custom_exercises"

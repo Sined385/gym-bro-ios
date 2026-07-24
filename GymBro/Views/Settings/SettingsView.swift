@@ -16,6 +16,7 @@ struct SettingsView: View {
     @Environment(\.dismiss) private var dismiss
 
     @State private var showAboutYouEditor = false
+    @State private var showPromoCodeSheet = false
 
     var body: some View {
         VStack(spacing: 0) {
@@ -40,6 +41,12 @@ struct SettingsView: View {
         }
         .sheet(isPresented: $showAboutYouEditor) {
             AboutYouEditorView(viewModel: viewModel)
+        }
+        .sheet(isPresented: $showPromoCodeSheet) {
+            PromoCodeRedeemView(context: .settings) { _ in
+                showPromoCodeSheet = false
+            }
+            .environmentObject(subscriptionManager)
         }
         .analyticsScreen("Settings")
     }
@@ -104,7 +111,7 @@ struct SettingsView: View {
                             .font(.system(size: 16, weight: .semibold))
                             .foregroundColor(.gymBroNeutral900)
 
-                        Text("Active")
+                        Text(premiumStatusLine)
                             .font(.system(size: 13, weight: .medium))
                             .foregroundColor(Color(hex: "30C08D"))
                     }
@@ -171,7 +178,65 @@ struct SettingsView: View {
                 .cornerRadius(24)
                 .shadow(color: .black.opacity(0.04), radius: 8, x: 0, y: 2)
             }
+
+            // Promo code — free users, and promo-premium users who can
+            // extend by stacking another code. StoreKit/admin premium is
+            // blocked server-side, so hide the row for them.
+            if !subscriptionManager.isPremium || subscriptionManager.premiumSource == "promo" {
+                Button {
+                    showPromoCodeSheet = true
+                } label: {
+                    HStack(spacing: 14) {
+                        ZStack {
+                            Circle()
+                                .fill(Color.gymBroPrimary.opacity(0.1))
+                                .frame(width: 44, height: 44)
+
+                            Image(systemName: "giftcard.fill")
+                                .font(.system(size: 17, weight: .medium))
+                                .foregroundColor(.gymBroPrimary)
+                        }
+
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text("Redeem promo code")
+                                .font(.system(size: 16, weight: .semibold))
+                                .foregroundColor(.gymBroNeutral900)
+
+                            Text(subscriptionManager.premiumSource == "promo"
+                                ? "Extend your Premium access"
+                                : "Unlock Premium with a code")
+                                .font(.system(size: 13, weight: .medium))
+                                .foregroundColor(.gymBroTextSecondary)
+                        }
+
+                        Spacer()
+
+                        Image(systemName: "chevron.right")
+                            .font(.system(size: 14, weight: .semibold))
+                            .foregroundColor(Color(hex: "D4D4D4"))
+                    }
+                    .padding(16)
+                }
+                .background(Color.white)
+                .overlay(
+                    RoundedRectangle(cornerRadius: 24)
+                        .stroke(Color(hex: "F5F5F5"), lineWidth: 1)
+                )
+                .cornerRadius(24)
+                .shadow(color: .black.opacity(0.04), radius: 8, x: 0, y: 2)
+            }
         }
+    }
+
+    /// "Active" — or "Premium until {date}" for expiring (promo) premium.
+    private var premiumStatusLine: String {
+        if subscriptionManager.premiumSource == "promo",
+           let until = subscriptionManager.premiumExpiresAt {
+            let formatter = DateFormatter()
+            formatter.dateStyle = .medium
+            return "Premium until \(formatter.string(from: until))"
+        }
+        return "Active"
     }
 
     // MARK: - Preferences Section

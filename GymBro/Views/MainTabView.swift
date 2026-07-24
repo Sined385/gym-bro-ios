@@ -175,6 +175,25 @@ struct MainTabView: View {
                     .environmentObject(subscriptionManager)
             }
         }
+        // Post-onboarding promo-code offer — presented BEFORE the paywall.
+        // Two covers can't swap in the same frame, so a skip/failure sets
+        // pendingPaywallAfterPromo and the paywall flips on in onDismiss,
+        // after this cover has fully dismissed.
+        .fullScreenCover(
+            isPresented: $subscriptionManager.showPostOnboardingPromo,
+            onDismiss: {
+                if subscriptionManager.pendingPaywallAfterPromo {
+                    subscriptionManager.pendingPaywallAfterPromo = false
+                    subscriptionManager.showPaywall = true
+                }
+            }
+        ) {
+            PromoCodeRedeemView(context: .postOnboarding) { redeemed in
+                subscriptionManager.pendingPaywallAfterPromo = !redeemed
+                subscriptionManager.showPostOnboardingPromo = false
+            }
+            .environmentObject(subscriptionManager)
+        }
         .task {
             await subscriptionManager.loadStatus()
         }

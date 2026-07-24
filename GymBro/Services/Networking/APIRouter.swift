@@ -159,11 +159,14 @@ enum ExerciseRouter: APIRouter {
     case previousSets(exerciseId: String)
     case favorite(exerciseId: String)
     case unfavorite(exerciseId: String)
+    case translations(lang: String)
 
     var path: String {
         switch self {
         case .list, .create:
             return "/api/v1/exercises"
+        case .translations:
+            return "/api/v1/exercises/translations"
         case .detail(let exerciseId):
             return "/api/v1/exercises/\(exerciseId)"
         case .previousSets(let exerciseId):
@@ -175,7 +178,7 @@ enum ExerciseRouter: APIRouter {
 
     var method: HTTPMethod {
         switch self {
-        case .list, .detail, .previousSets: return .get
+        case .list, .detail, .previousSets, .translations: return .get
         case .create, .favorite: return .post
         case .unfavorite: return .delete
         }
@@ -185,6 +188,8 @@ enum ExerciseRouter: APIRouter {
         switch self {
         case .list, .detail, .previousSets, .favorite, .unfavorite:
             return nil
+        case .translations(let lang):
+            return ["lang": lang]
         case .create(let name, let muscleGroup, let equipment):
             return [
                 "name": name,
@@ -586,7 +591,7 @@ struct SharedCardResponse: Decodable {
 // MARK: - Notification Router
 
 enum NotificationRouter: APIRouter {
-    case registerToken(token: String, platform: String, timezone: String)
+    case registerToken(token: String, platform: String, timezone: String, language: String)
     case removeToken(token: String)
     case list(cursor: String?, limit: Int)
     case unreadCount
@@ -619,8 +624,8 @@ enum NotificationRouter: APIRouter {
 
     var parameters: [String: Any]? {
         switch self {
-        case .registerToken(let token, let platform, let timezone):
-            return ["token": token, "platform": platform, "timezone": timezone]
+        case .registerToken(let token, let platform, let timezone, let language):
+            return ["token": token, "platform": platform, "timezone": timezone, "language": language]
         case .removeToken(let token):
             return ["token": token]
         case .list(let cursor, let limit):
@@ -812,6 +817,7 @@ enum SubscriptionRouter: APIRouter {
     case verify(transactionId: String, productId: String)
     case restore(transactionId: String, productId: String)
     case sync(hasActiveEntitlement: Bool, transactionId: String?, productId: String?)
+    case redeemPromo(code: String)
 
     var path: String {
         switch self {
@@ -823,13 +829,15 @@ enum SubscriptionRouter: APIRouter {
             return "/api/v1/subscription/restore"
         case .sync:
             return "/api/v1/subscription/sync"
+        case .redeemPromo:
+            return "/api/v1/subscription/promo/redeem"
         }
     }
 
     var method: HTTPMethod {
         switch self {
         case .getStatus: return .get
-        case .verify, .restore, .sync: return .post
+        case .verify, .restore, .sync, .redeemPromo: return .post
         }
     }
 
@@ -845,13 +853,15 @@ enum SubscriptionRouter: APIRouter {
             if let transactionId { params["transaction_id"] = transactionId }
             if let productId { params["product_id"] = productId }
             return params
+        case .redeemPromo(let code):
+            return ["code": code]
         }
     }
 
     var encoding: ParameterEncoding {
         switch self {
         case .getStatus: return .url
-        case .verify, .restore, .sync: return .json
+        case .verify, .restore, .sync, .redeemPromo: return .json
         }
     }
 }

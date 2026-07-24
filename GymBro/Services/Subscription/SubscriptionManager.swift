@@ -18,6 +18,17 @@ final class SubscriptionManager: ObservableObject {
     @Published var availableProducts: [Product] = []
     @Published var purchaseInProgress: Bool = false
     @Published var showPaywall: Bool = false
+    /// Post-onboarding promo-code offer. Presented (MainTabView cover)
+    /// before the paywall; on skip/failure the paywall chains from the
+    /// cover's onDismiss.
+    @Published var showPostOnboardingPromo: Bool = false
+    /// 'storekit' | 'promo' | 'admin' | nil — from /subscription/status.
+    @Published var premiumSource: String?
+    /// Premium expiry (promo/storekit) for "Premium until …" display.
+    @Published var premiumExpiresAt: Date?
+    /// Set when the post-onboarding promo screen is skipped/fails so the
+    /// paywall presents after the promo cover fully dismisses.
+    var pendingPaywallAfterPromo: Bool = false
 
     // MARK: - Dependencies
 
@@ -58,9 +69,53 @@ final class SubscriptionManager: ObservableObject {
             isPremium = status.isPremium
             coachMessagesUsed = status.coachMessagesUsed
             coachMessagesLimit = status.coachMessagesLimit ?? 20
+            premiumSource = status.premiumSource
+            premiumExpiresAt = status.expiresAt.flatMap(Self.parseISODate)
         } catch {
             print("[SubscriptionManager] Failed to load status: \(error)")
         }
+    }
+
+    // MARK: - Promo Codes
+
+    enum PromoRedeemResult {
+        case success(expiresAt: Date?)
+        case failure(message: String)
+    }
+
+    func redeemPromoCode(_ code: String) async -> PromoRedeemResult {
+        do {
+            let response = try await networkService.request(
+                SubscriptionRouter.redeemPromo(code: code).endpoint,
+                responseType: PromoRedeemResponse.self
+            )
+            if response.success {
+                analyticsService.track("promo_redeem_succeeded", properties: [
+                    "code": code,
+                    "duration_days": response.durationDays ?? 0
+                ])
+                // Refresh authoritative status (isPremium, source, expiry).
+                await loadStatus()
+                return .success(expiresAt: response.expiresAt.flatMap(Self.parseISODate))
+            } else {
+                analyticsService.track("promo_redeem_failed", properties: [
+                    "error_code": response.errorCode ?? "unknown"
+                ])
+                return .failure(message: response.message ?? "This code can't be redeemed.")
+            }
+        } catch {
+            print("[SubscriptionManager] Promo redeem failed: \(error)")
+            return .failure(message: "Something went wrong. Check your connection and try again.")
+        }
+    }
+
+    /// Nest serializes dates with fractional seconds; plain ISO8601
+    /// parsing fails on them, so try fractional first.
+    private static func parseISODate(_ raw: String) -> Date? {
+        let withFraction = ISO8601DateFormatter()
+        withFraction.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+        if let date = withFraction.date(from: raw) { return date }
+        return ISO8601DateFormatter().date(from: raw)
     }
 
     // MARK: - Sync Entitlement with Backend
