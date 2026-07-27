@@ -128,19 +128,27 @@ final class TrainingPlanViewModel: ObservableObject {
     // MARK: - Computed Properties
 
     var goalDisplayText: String {
-        guard let plan = plan else { return "Training Plan" }
-        let goal = plan.primaryGoals.first?
-            .replacingOccurrences(of: "_", with: " ")
-            .split(separator: " ")
-            .map { $0.prefix(1).uppercased() + $0.dropFirst() }
-            .joined(separator: " ") ?? "Training"
-        let level = plan.experienceLevel.prefix(1).uppercased() + plan.experienceLevel.dropFirst()
+        guard let plan = plan else { return String(localized: "Training Plan") }
+        // Map raw API values through the localized onboarding enums;
+        // fall back to prettified raw text for unknown values.
+        let goal: String
+        if let raw = plan.primaryGoals.first {
+            goal = PrimaryGoal(rawValue: raw)?.displayName
+                ?? raw.replacingOccurrences(of: "_", with: " ")
+                    .split(separator: " ")
+                    .map { $0.prefix(1).uppercased() + $0.dropFirst() }
+                    .joined(separator: " ")
+        } else {
+            goal = String(localized: "Training")
+        }
+        let level = ExperienceLevel(rawValue: plan.experienceLevel)?.displayName
+            ?? plan.experienceLevel.prefix(1).uppercased() + plan.experienceLevel.dropFirst()
         return "\(goal) \u{2022} \(level)"
     }
 
     var weekLabel: String {
-        guard let plan = plan else { return "WEEK 1" }
-        return "WEEK \(plan.weekNumber)"
+        guard let plan = plan else { return String(localized: "WEEK 1") }
+        return String(localized: "WEEK \(plan.weekNumber)")
     }
 
     // MARK: - Data Loading
