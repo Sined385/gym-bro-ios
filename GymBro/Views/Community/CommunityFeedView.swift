@@ -254,7 +254,7 @@ struct CommunityFeedView: View {
                                 Button {
                                     viewModel.toggleFollowSearchResult(userId: user.id)
                                 } label: {
-                                    Text(user.isFollowing ? "Following" : "Follow")
+                                    Text(user.isFollowing ? String(localized: "Following") : String(localized: "Follow"))
                                         .font(.system(size: 12, weight: .semibold))
                                         .foregroundColor(.white)
                                         .padding(.horizontal, 14)

@@ -13,8 +13,8 @@ struct FeedTabPills: View {
 
     var body: some View {
         HStack(spacing: 10) {
-            tabPill(title: "Global", icon: "globe", tab: "global")
-            tabPill(title: "Following", icon: "person.2", tab: "following")
+            tabPill(title: String(localized: "Global"), icon: "globe", tab: "global")
+            tabPill(title: String(localized: "Following"), icon: "person.2", tab: "following")
             Spacer()
         }
     }

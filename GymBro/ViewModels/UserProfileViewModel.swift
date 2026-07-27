@@ -14,9 +14,9 @@ enum ProfileTab: String, CaseIterable, Identifiable {
     var id: String { rawValue }
     var title: String {
         switch self {
-        case .overview: return "Overview"
-        case .workouts: return "Workouts"
-        case .posts: return "Posts"
+        case .overview: return String(localized: "Overview")
+        case .workouts: return String(localized: "Workouts")
+        case .posts: return String(localized: "Posts")
         }
     }
 }
@@ -27,9 +27,9 @@ enum PostFilter: String, CaseIterable, Identifiable {
     var id: String { rawValue }
     var title: String {
         switch self {
-        case .all: return "All"
+        case .all: return String(localized: "All")
         case .workouts: return "Workouts"
-        case .photos: return "Photos"
+        case .photos: return String(localized: "Photos")
         }
     }
 }
@@ -97,7 +97,7 @@ final class UserProfileViewModel: ObservableObject, ProfilePostsSource {
     }
 
     var followButtonTitle: String {
-        isFollowing ? "Following" : "Follow"
+        isFollowing ? String(localized: "Following") : String(localized: "Follow")
     }
 
     var recentPosts: [CommunityPost] {

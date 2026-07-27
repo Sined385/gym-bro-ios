@@ -154,12 +154,12 @@ struct MyProfileView: View {
 
     private func followerRow(_ profile: MyProfileResponse) -> some View {
         HStack(spacing: 0) {
-            statButton("\(profile.followerCount)", "Followers") {
+            statButton("\(profile.followerCount)", String(localized: "Followers")) {
                 followListInitialTab = .followers
                 showFollowList = true
             }
             Rectangle().fill(Color.gymBroBorderLight).frame(width: 1, height: 28)
-            statButton("\(profile.followingCount)", "Following") {
+            statButton("\(profile.followingCount)", String(localized: "Following")) {
                 followListInitialTab = .following
                 showFollowList = true
             }
@@ -283,8 +283,10 @@ struct MyProfileView: View {
     private func metaLine(_ profile: MyProfileResponse) -> String {
         var parts: [String] = []
         if let username = profile.user.username, !username.isEmpty { parts.append("@\(username)") }
-        if let level = profile.experienceLevel, !level.isEmpty { parts.append(level.capitalized) }
-        if let weight = profile.bodyWeightKg { parts.append("\(weight.formattedWeight) kg") }
+        if let level = profile.experienceLevel, !level.isEmpty {
+            parts.append(ExperienceLevel(rawValue: level.lowercased())?.displayName ?? level.capitalized)
+        }
+        if let weight = profile.bodyWeightKg { parts.append(String(localized: "\(weight.formattedWeight) kg-str")) }
         return parts.joined(separator: " · ")
     }
 

@@ -64,7 +64,7 @@ struct UserProfileView: View {
             ProfilePostsFeedView(
                 viewModel: viewModel,
                 initialPostId: op.id,
-                title: viewModel.profile?.user.fullName ?? "Posts"
+                title: viewModel.profile?.user.fullName ?? String(localized: "Posts")
             )
         }
         .sheet(isPresented: $showFollowList) {
@@ -205,12 +205,12 @@ struct UserProfileView: View {
 
     private func followerRow(_ profile: UserProfile) -> some View {
         HStack(spacing: 0) {
-            statButton("\(profile.followerCount ?? 0)", "Followers") {
+            statButton("\(profile.followerCount ?? 0)", String(localized: "Followers")) {
                 followListTab = .followers
                 showFollowList = true
             }
             divider
-            statButton("\(profile.followingCount ?? 0)", "Following") {
+            statButton("\(profile.followingCount ?? 0)", String(localized: "Following")) {
                 followListTab = .following
                 showFollowList = true
             }
@@ -328,8 +328,10 @@ struct UserProfileView: View {
     private func metaLine(_ profile: UserProfile) -> String {
         var parts: [String] = []
         if let username = profile.user.username, !username.isEmpty { parts.append("@\(username)") }
-        if let level = profile.experienceLevel, !level.isEmpty { parts.append(level.capitalized) }
-        if let weight = profile.bodyWeightKg { parts.append("\(weight.formattedWeight) kg") }
+        if let level = profile.experienceLevel, !level.isEmpty {
+            parts.append(ExperienceLevel(rawValue: level.lowercased())?.displayName ?? level.capitalized)
+        }
+        if let weight = profile.bodyWeightKg { parts.append(String(localized: "\(weight.formattedWeight) kg-str")) }
         return parts.joined(separator: " · ")
     }
 
