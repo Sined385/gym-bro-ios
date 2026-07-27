@@ -51,7 +51,7 @@ struct ExerciseListSlide: View {
 
             VStack(alignment: .leading, spacing: 2) {
                 HStack(spacing: 5) {
-                    Text(ex.name)
+                    Text(localizedExerciseName(ex.name, externalId: ex.externalId))
                         .font(.system(size: 14, weight: .heavy))
                         .foregroundColor(.gymBroNeutral900)
                         .lineLimit(1)

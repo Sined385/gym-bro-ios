@@ -202,7 +202,7 @@ struct ShareCardView: View {
             }
             .frame(width: 18 * s, height: 18 * s)
 
-            Text(ex.name)
+            Text(localizedExerciseName(ex.name, externalId: ex.externalId))
                 .font(.system(size: 12 * s, weight: .heavy))
                 .foregroundColor(palette.title)
                 .lineLimit(1)

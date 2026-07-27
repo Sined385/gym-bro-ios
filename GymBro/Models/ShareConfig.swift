@@ -19,21 +19,21 @@ enum StatKey: String, CaseIterable, Identifiable, Codable {
     /// Pill label / card label (already title-cased).
     var label: String {
         switch self {
-        case .time:     return "Time"
-        case .volume:   return "Volume"
-        case .sets:     return "Sets"
-        case .calories: return "Calories"
-        case .avgHR:    return "Avg HR"
+        case .time:     return String(localized: "Time")
+        case .volume:   return String(localized: "Volume")
+        case .sets:     return String(localized: "Sets")
+        case .calories: return String(localized: "Calories")
+        case .avgHR:    return String(localized: "Avg HR")
         }
     }
 
     var shortLabel: String {
         switch self {
-        case .time:     return "TIME"
-        case .volume:   return "VOLUME"
-        case .sets:     return "SETS"
-        case .calories: return "CALORIES"
-        case .avgHR:    return "AVG HR"
+        case .time:     return String(localized: "TIME")
+        case .volume:   return String(localized: "VOLUME")
+        case .sets:     return String(localized: "SETS")
+        case .calories: return String(localized: "CALORIES")
+        case .avgHR:    return String(localized: "AVG HR")
         }
     }
 }
@@ -281,6 +281,9 @@ struct WorkoutSnapshot: Equatable {
 struct WorkoutSnapshotExercise: Equatable, Identifiable {
     let id: String
     let name: String
+    /// For display-time name localization; id/name stay canonical
+    /// English (id round-trips through share_config).
+    var externalId: String? = nil
     let muscleGroup: String?
     let accentColorHex: String
     /// Compact display chips for the card — e.g. ["60", "70", "80", "85"].
@@ -373,6 +376,7 @@ extension WorkoutSnapshotExercise {
             return WorkoutSnapshotExercise(
                 id: ex.name,
                 name: ex.name,
+                externalId: ex.externalId,
                 muscleGroup: ex.muscleGroup,
                 accentColorHex: ex.accentColor,
                 setChips: [],
@@ -408,6 +412,7 @@ extension WorkoutSnapshotExercise {
             // match what the feed sees.
             id: ex.name,
             name: ex.name,
+                externalId: ex.externalId,
             muscleGroup: ex.muscleGroup,
             accentColorHex: ex.accentColor,
             setChips: chips,
@@ -431,6 +436,7 @@ extension WorkoutSnapshotExercise {
             return WorkoutSnapshotExercise(
                 id: ex.name,
                 name: ex.name,
+                externalId: ex.externalId,
                 muscleGroup: ex.muscleGroup,
                 accentColorHex: ex.accentColor ?? "#E86A75",
                 setChips: [],
@@ -458,6 +464,7 @@ extension WorkoutSnapshotExercise {
         return WorkoutSnapshotExercise(
             id: ex.name,
             name: ex.name,
+                externalId: ex.externalId,
             muscleGroup: ex.muscleGroup,
             accentColorHex: ex.accentColor ?? "#E86A75",
             setChips: chips,

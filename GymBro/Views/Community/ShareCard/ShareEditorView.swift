@@ -160,7 +160,7 @@ struct ShareEditorView: View {
 
     private var backgroundSection: some View {
         VStack(alignment: .leading, spacing: 8) {
-            sectionLabel("BACKGROUND")
+            sectionLabel(String(localized: "BACKGROUND"))
             ScrollView(.horizontal, showsIndicators: false) {
                 HStack(spacing: 10) {
                     photoUploadTile
@@ -249,7 +249,7 @@ struct ShareEditorView: View {
 
     private var statsSection: some View {
         VStack(alignment: .leading, spacing: 8) {
-            sectionLabel("STATS · TAP TO TOGGLE")
+            sectionLabel(String(localized: "STATS · TAP TO TOGGLE"))
             // Left-packed wrap: each chip is its natural width, rows flow
             // left-to-right, partial selections compress to the left with
             // no orphan whitespace on the right.
@@ -302,7 +302,7 @@ struct ShareEditorView: View {
     private var exercisesSection: some View {
         VStack(alignment: .leading, spacing: 8) {
             HStack {
-                sectionLabel("EXERCISES · \(config.selectedExerciseIds.count) OF \(workout.exercises.count)")
+                sectionLabel(String(localized: "EXERCISES · \(config.selectedExerciseIds.count) OF \(workout.exercises.count)"))
                 Spacer()
                 Button {
                     if config.selectedExerciseIds.count == workout.exercises.count {
@@ -350,7 +350,7 @@ struct ShareEditorView: View {
 
                 VStack(alignment: .leading, spacing: 1) {
                     HStack(spacing: 5) {
-                        Text(ex.name)
+                        Text(localizedExerciseName(ex.name, externalId: ex.externalId))
                             .font(.system(size: 13, weight: .heavy))
                             .foregroundColor(.gymBroNeutral900)
                             .lineLimit(1)
@@ -404,7 +404,7 @@ struct ShareEditorView: View {
 
     private var titleField: some View {
         VStack(alignment: .leading, spacing: 8) {
-            sectionLabel("TITLE")
+            sectionLabel(String(localized: "TITLE"))
             TextField("Workout title", text: $config.title)
                 .font(.system(size: 16, weight: .semibold))
                 .foregroundColor(.gymBroNeutral900)
@@ -423,7 +423,7 @@ struct ShareEditorView: View {
 
     private var captionField: some View {
         VStack(alignment: .leading, spacing: 8) {
-            sectionLabel("CAPTION")
+            sectionLabel(String(localized: "CAPTION"))
             TextField("Say something about this workout…", text: $caption, axis: .vertical)
                 .font(.system(size: 14, weight: .medium))
                 .foregroundColor(.gymBroNeutral900)
@@ -454,7 +454,7 @@ struct ShareEditorView: View {
     private var shareRail: some View {
         HStack(spacing: 0) {
             railButton(
-                label: "Community",
+                label: String(localized: "Community"),
                 background: AnyShapeStyle(LinearGradient(
                     colors: [.gymBroPrimary, .gymBroPrimary],
                     startPoint: .topLeading, endPoint: .bottomTrailing
@@ -470,7 +470,7 @@ struct ShareEditorView: View {
             }
 
             railButton(
-                label: "Stories",
+                label: String(localized: "Stories"),
                 background: AnyShapeStyle(LinearGradient(
                     // Instagram brand gradient (yellow → orange → pink → purple).
                     colors: [Color(hex: "FEDA77"), Color(hex: "F58529"),
@@ -486,7 +486,7 @@ struct ShareEditorView: View {
             }
 
             railButton(
-                label: "Save",
+                label: String(localized: "Save"),
                 background: AnyShapeStyle(Color.gymBroNeutral100),
                 labelColor: .gymBroNeutral600
             ) {
@@ -498,7 +498,7 @@ struct ShareEditorView: View {
             }
 
             railButton(
-                label: "Link",
+                label: String(localized: "Link"),
                 background: AnyShapeStyle(Color.gymBroNeutral100),
                 labelColor: .gymBroNeutral600
             ) {
@@ -612,7 +612,7 @@ struct ShareEditorView: View {
         guard let image = await renderedCardImage() else { return }
         UIImageWriteToSavedPhotosAlbum(image, nil, nil, nil)
         UINotificationFeedbackGenerator().notificationOccurred(.success)
-        showToast(text: "Saved to Photos", systemImage: "checkmark.circle.fill")
+        showToast(text: String(localized: "Saved to Photos"), systemImage: "checkmark.circle.fill")
         analytics.track("share_card_exported", properties: ["session_id": data.sessionId, "target": "save"])
     }
 
@@ -630,7 +630,7 @@ struct ShareEditorView: View {
         if let image = await ShareCardRasterizer.render(config: config, workout: workout) {
             return image
         }
-        errorMessage = "Couldn't render the share card."
+        errorMessage = String(localized: "Couldn't render the share card.")
         return nil
     }
 
@@ -678,7 +678,7 @@ struct ShareEditorView: View {
             return
         }
         guard let url = URL(string: response.shareUrl) else {
-            errorMessage = "Couldn't build share link."
+            errorMessage = String(localized: "Couldn't build share link.")
             return
         }
         pendingActivityItems = [url]
