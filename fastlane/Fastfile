@@ -170,6 +170,9 @@ platform :ios do
       # the scheme's visionOS destination and bails because the visionOS SDK
       # isn't installed locally.
       destination: 'generic/platform=iOS',
+      # Refresh stale automatic team profiles (watch target's profile can
+      # lag behind a renewed development cert and fail the archive).
+      xcargs: '-allowProvisioningUpdates',
     )
   end
 
