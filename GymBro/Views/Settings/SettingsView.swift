@@ -266,8 +266,8 @@ struct SettingsView: View {
                     icon: "bell",
                     iconBgColor: Color(red: 232/255, green: 106/255, blue: 117/255, opacity: 0.1),
                     iconColor: .gymBroPrimary,
-                    title: "Push Notifications",
-                    subtitle: "Get notified about activity",
+                    title: String(localized: "Push Notifications"),
+                    subtitle: String(localized: "Get notified about activity"),
                     toggle: $viewModel.pushNotificationsEnabled,
                     onToggle: { newValue in
                         Task { await viewModel.togglePushNotifications(enabled: newValue) }
@@ -282,8 +282,8 @@ struct SettingsView: View {
                     icon: "square.and.arrow.up",
                     iconBgColor: Color(red: 122/255, green: 130/255, blue: 246/255, opacity: 0.1),
                     iconColor: Color(red: 122/255, green: 130/255, blue: 246/255),
-                    title: "Share Progress Data",
-                    subtitle: "Allow friends to see your workout progress and achievements",
+                    title: String(localized: "Share Progress Data"),
+                    subtitle: String(localized: "Allow friends to see your workout progress and achievements"),
                     toggle: $viewModel.shareProgressData,
                     onToggle: nil
                 )

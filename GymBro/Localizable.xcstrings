@@ -5441,6 +5441,46 @@
           }
         }
       }
+    },
+    "Push Notifications": {
+      "localizations": {
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Push-сповіщення"
+          }
+        }
+      }
+    },
+    "Get notified about activity": {
+      "localizations": {
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Отримуйте сповіщення про активність"
+          }
+        }
+      }
+    },
+    "Share Progress Data": {
+      "localizations": {
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ділитися прогресом"
+          }
+        }
+      }
+    },
+    "Allow friends to see your workout progress and achievements": {
+      "localizations": {
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Дозвольте друзям бачити ваш прогрес тренувань і досягнення"
+          }
+        }
+      }
     }
   },
   "version": "1.1"
