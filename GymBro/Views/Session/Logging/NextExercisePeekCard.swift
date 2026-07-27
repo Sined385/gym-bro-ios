@@ -26,7 +26,7 @@ struct NextExercisePeekCard: View {
             afterExerciseId: exerciseId,
             afterSupersetGroupId: supersetGroupId
         ) {
-            peekCardButton(eyebrow: "UP NEXT", label: target.label, iconName: "arrow.right") {
+            peekCardButton(eyebrow: String(localized: "UP NEXT"), label: target.label, iconName: "arrow.right") {
                 switch target {
                 case .exercise(let id, _):
                     onSwitchToExercise?(id)
@@ -35,7 +35,7 @@ struct NextExercisePeekCard: View {
                 }
             }
         } else if let onEndWorkout {
-            peekCardButton(eyebrow: "FINISH", label: "End Workout", iconName: "checkmark") {
+            peekCardButton(eyebrow: String(localized: "FINISH"), label: String(localized: "End Workout"), iconName: "checkmark") {
                 onEndWorkout()
             }
         }

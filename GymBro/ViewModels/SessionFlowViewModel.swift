@@ -93,7 +93,7 @@ final class SessionFlowViewModel: ObservableObject {
         var slots: [Slot] = []
         for ex in standaloneExercises {
             slots.append(Slot(
-                target: .exercise(id: ex.id, label: ex.name),
+                target: .exercise(id: ex.id, label: localizedExerciseName(ex.name, externalId: ex.externalId)),
                 stepNumber: ex.stepNumber,
                 matchesExerciseId: ex.id,
                 matchesGroupId: nil
@@ -101,7 +101,9 @@ final class SessionFlowViewModel: ObservableObject {
         }
         for group in supersetGroups {
             let firstStep = group.exercises.map { $0.stepNumber }.min() ?? Int.max
-            let label = group.exercises.first?.name ?? "Superset"
+            let label = group.exercises.first.map {
+                localizedExerciseName($0.name, externalId: $0.externalId)
+            } ?? String(localized: "Superset")
             slots.append(Slot(
                 target: .superset(groupId: group.id, label: label),
                 stepNumber: firstStep,
