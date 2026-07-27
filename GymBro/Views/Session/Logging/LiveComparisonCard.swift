@@ -54,25 +54,25 @@ struct LiveComparisonCard: View {
             let hasToday = !currentSets.isEmpty
             HStack(spacing: 12) {
                 comparisonStat(
-                    label: "VOLUME",
+                    label: String(localized: "VOLUME"),
                     value: hasToday ? "\(Int(totalVolume))kg" : "--",
                     todayValue: hasToday ? Int(totalVolume) : nil,
                     prevValue: hasPrevData ? Int(prevVolume) : nil
                 )
                 comparisonStat(
-                    label: "AVG WT",
+                    label: String(localized: "AVG WT"),
                     value: hasToday ? "\(Int(avgWeight))kg" : "--",
                     todayValue: hasToday ? Int(avgWeight) : nil,
                     prevValue: hasPrevData ? Int(prevAvgWeight) : nil
                 )
                 comparisonStat(
-                    label: "REPS",
+                    label: String(localized: "REPS"),
                     value: hasToday ? "\(totalReps)" : "--",
                     todayValue: hasToday ? totalReps : nil,
                     prevValue: hasPrevData ? prevTotalReps : nil
                 )
                 comparisonStat(
-                    label: "SETS",
+                    label: String(localized: "SETS"),
                     value: hasToday ? "\(setCount)" : "--",
                     todayValue: hasToday ? setCount : nil,
                     prevValue: hasPrevData ? prevSetCount : nil

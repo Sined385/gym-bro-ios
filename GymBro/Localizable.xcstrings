@@ -3539,8 +3539,8 @@
       "localizations": {
         "uk": {
           "stringUnit": {
-            "state": "needs_review",
-            "value": "ПОВТОРЕННЯ"
+            "state": "translated",
+            "value": "ПОВТОРИ"
           }
         }
       }
@@ -4719,7 +4719,7 @@
       "localizations": {
         "uk": {
           "stringUnit": {
-            "state": "needs_review",
+            "state": "translated",
             "value": "ОБСЯГ"
           }
         }
@@ -5143,6 +5143,26 @@
           "stringUnit": {
             "state": "translated",
             "value": "ТИЖДЕНЬ %lld"
+          }
+        }
+      }
+    },
+    "AVG WT": {
+      "localizations": {
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "СЕР. ВАГА"
+          }
+        }
+      }
+    },
+    "SETS": {
+      "localizations": {
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ПІДХОДИ"
           }
         }
       }
