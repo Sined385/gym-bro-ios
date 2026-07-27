@@ -28,7 +28,7 @@ enum PostFilter: String, CaseIterable, Identifiable {
     var title: String {
         switch self {
         case .all: return String(localized: "All")
-        case .workouts: return "Workouts"
+        case .workouts: return String(localized: "Workouts")
         case .photos: return String(localized: "Photos")
         }
     }
