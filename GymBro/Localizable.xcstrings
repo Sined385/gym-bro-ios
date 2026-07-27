@@ -2985,7 +2985,7 @@
       "localizations": {
         "uk": {
           "stringUnit": {
-            "state": "needs_review",
+            "state": "translated",
             "value": "Немає"
           }
         }
@@ -5193,6 +5193,36 @@
           "stringUnit": {
             "state": "translated",
             "value": "Суперсет"
+          }
+        }
+      }
+    },
+    "Joint Pain": {
+      "localizations": {
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Біль у суглобах"
+          }
+        }
+      }
+    },
+    "Muscle Tweak": {
+      "localizations": {
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Потягнув м’яз"
+          }
+        }
+      }
+    },
+    "Extreme Fatigue": {
+      "localizations": {
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Сильна втома"
           }
         }
       }

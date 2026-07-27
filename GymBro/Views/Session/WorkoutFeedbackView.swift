@@ -239,7 +239,9 @@ struct WorkoutFeedbackView: View {
                     .font(.system(size: 18))
                     .foregroundColor(isSelected ? .gymBroPrimary : .gymBroNeutral600)
 
-                Text(option)
+                // Display localized; the stored painDiscomfort value
+                // stays the canonical English option (sent to the API).
+                Text(String(localized: String.LocalizationValue(option)))
                     .font(.system(size: 14, weight: .semibold))
                     .foregroundColor(isSelected ? .gymBroNeutral900 : .gymBroNeutral600)
 
