@@ -96,6 +96,12 @@ struct CoachChatView: View {
                     .padding(.top, 16)
                     .padding(.bottom, 8)
                 }
+                // Chat starts (and stays) pinned to the newest message:
+                // initial history load lands at the bottom instead of the
+                // top, and when the keyboard shrinks the viewport the
+                // bottom edge stays anchored so the last message remains
+                // visible above the input bar.
+                .defaultScrollAnchor(.bottom)
                 // Any change to the last message — new append OR streaming
                 // delta — instantly pins the view to the bottom anchor.
                 // We used to also have a separate `onChange(messages.count)`
@@ -109,6 +115,22 @@ struct CoachChatView: View {
                     proxy.scrollTo(bottomAnchorId, anchor: .bottom)
                 }
                 .onChange(of: viewModel.messages.count) { _, _ in
+                    proxy.scrollTo(bottomAnchorId, anchor: .bottom)
+                }
+                // Keyboard appearance shrinks the viewport but the scroll
+                // view keeps its top-relative offset, hiding the newest
+                // messages behind the keyboard — re-pin to the bottom once
+                // the keyboard finishes animating in.
+                .onReceive(NotificationCenter.default.publisher(for: UIResponder.keyboardWillShowNotification)) { _ in
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.05) {
+                        withAnimation(.easeOut(duration: 0.25)) {
+                            proxy.scrollTo(bottomAnchorId, anchor: .bottom)
+                        }
+                    }
+                }
+                // The growing TextEditor also shrinks the viewport line by
+                // line — keep the conversation pinned while typing.
+                .onChange(of: viewModel.inputText) { _, _ in
                     proxy.scrollTo(bottomAnchorId, anchor: .bottom)
                 }
                 .scrollDismissesKeyboard(.interactively)
