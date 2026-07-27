@@ -138,7 +138,7 @@ struct ExercisePreviewSheet: View {
                 }
 
                 if let equipment = exercise.equipment {
-                    Text(equipment.uppercased())
+                    Text((EquipmentType(rawValue: equipment)?.displayName ?? equipment).uppercased())
                         .font(.system(size: 11, weight: .bold))
                         .tracking(0.5)
                         .foregroundColor(Color(hex: "525252"))

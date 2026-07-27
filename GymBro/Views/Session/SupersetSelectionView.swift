@@ -169,7 +169,7 @@ struct SupersetSelectionView: View {
                             .background(Color(hex: "2D3240").opacity(0.7))
                             .clipShape(Capsule())
 
-                        Text(item.equipment)
+                        Text(EquipmentType(rawValue: item.equipment)?.displayName ?? item.equipment)
                             .font(.system(size: 11, weight: .medium))
                             .foregroundColor(.gymBroNeutral600)
                             .lineLimit(1)
