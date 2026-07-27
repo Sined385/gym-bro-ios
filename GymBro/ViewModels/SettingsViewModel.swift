@@ -27,7 +27,6 @@ final class SettingsViewModel: ObservableObject {
     // MARK: - Published
 
     @Published var pushNotificationsEnabled: Bool = false
-    @Published var shareProgressData: Bool = true
     @Published var preferredRestTime: RestTime = .ninety
     @Published var aiCoachContext: String = ""
     @Published var aiCoachContextUpdatedAt: Date?

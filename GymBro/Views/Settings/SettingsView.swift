@@ -274,19 +274,6 @@ struct SettingsView: View {
                     }
                 )
 
-                Divider()
-                    .padding(.leading, 60)
-
-                // Share Progress Data
-                settingsRow(
-                    icon: "square.and.arrow.up",
-                    iconBgColor: Color(red: 122/255, green: 130/255, blue: 246/255, opacity: 0.1),
-                    iconColor: Color(red: 122/255, green: 130/255, blue: 246/255),
-                    title: String(localized: "Share Progress Data"),
-                    subtitle: String(localized: "Allow friends to see your workout progress and achievements"),
-                    toggle: $viewModel.shareProgressData,
-                    onToggle: nil
-                )
             }
             .background(Color.white)
             .overlay(
