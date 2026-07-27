@@ -81,7 +81,7 @@ struct PlannedWorkoutCard: View {
                                 selectedExercise = ExercisePreviewData(from: exercise)
                             } label: {
                                 ExerciseRowView(
-                                    name: exercise.name,
+                                    name: localizedExerciseName(exercise.name, externalId: exercise.externalId),
                                     sets: exercise.setsDisplay,
                                     step: index + 1,
                                     accentColor: Color(hex: exercise.accentColor),

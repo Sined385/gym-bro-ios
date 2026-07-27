@@ -83,7 +83,7 @@ struct SharedTemplatePreviewView: View {
                     VStack(spacing: 8) {
                         ForEach(Array(template.exercises.enumerated()), id: \.element.id) { index, exercise in
                             PlanExerciseRow(
-                                name: exercise.name,
+                                name: localizedExerciseName(exercise.name, externalId: exercise.externalId),
                                 muscleGroup: exercise.muscleGroup,
                                 setsDisplay: exercise.setsDisplay,
                                 accentColor: accentColors[index % accentColors.count],

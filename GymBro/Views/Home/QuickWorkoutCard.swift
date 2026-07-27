@@ -166,7 +166,7 @@ struct QuickWorkoutCard: View {
                         selectedExercise = ExercisePreviewData(from: exercise)
                     } label: {
                         ExerciseRowView(
-                            name: exercise.name,
+                            name: localizedExerciseName(exercise.name, externalId: exercise.externalId),
                             sets: exercise.setsDisplay,
                             step: exercise.stepNumber,
                             accentColor: Color(hex: exercise.accentColor),

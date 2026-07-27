@@ -35,7 +35,7 @@ struct PlanExerciseRow: View {
 
                 HStack(spacing: 6) {
                     if !muscleGroup.isEmpty {
-                        Text(muscleGroup.uppercased())
+                        Text((MuscleGroup(rawValue: muscleGroup)?.displayName ?? muscleGroup).uppercased())
                             .font(.system(size: 11, weight: .semibold))
                             .tracking(0.6)
                             .foregroundColor(accentColor)

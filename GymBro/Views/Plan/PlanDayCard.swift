@@ -157,7 +157,7 @@ struct PlanDayCard: View {
                             selectedExercise = ExercisePreviewData(from: exercise)
                         } label: {
                             PlanExerciseRow(
-                                name: exercise.name,
+                                name: localizedExerciseName(exercise.name, externalId: exercise.externalId),
                                 muscleGroup: exercise.muscleGroup,
                                 setsDisplay: exercise.setsDisplay,
                                 accentColor: Color(hex: exercise.accentColor ?? "E86A75"),
@@ -232,7 +232,7 @@ struct PlanDayCard: View {
                             selectedExercise = ExercisePreviewData(from: exercise)
                         } label: {
                             PlanExerciseRow(
-                                name: exercise.name,
+                                name: localizedExerciseName(exercise.name, externalId: exercise.externalId),
                                 muscleGroup: exercise.muscleGroup,
                                 setsDisplay: exercise.setsDisplay,
                                 accentColor: Color(hex: exercise.accentColor ?? "E86A75"),
